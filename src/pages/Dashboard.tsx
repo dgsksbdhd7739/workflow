@@ -1,7 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { ProjektForm } from '../components/ProjektForm'
+import { SignedImage } from '../components/SignedImage'
+import { formatProjektAdresse } from '../lib/adresse'
 import type { Baustelle } from '../types/database'
 
 export function Dashboard() {
@@ -11,10 +14,6 @@ export function Dashboard() {
   const [favoritenIds, setFavoritenIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [name, setName] = useState('')
-  const [adresse, setAdresse] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
     if (!user) return
@@ -32,23 +31,6 @@ export function Dashboard() {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
-
-  const handleCreate = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!user) return
-    setSaving(true)
-    setFehler(null)
-    const { error } = await supabase.from('baustellen').insert({ name, adresse, created_by: user.id })
-    setSaving(false)
-    if (error) {
-      setFehler(error.message)
-      return
-    }
-    setName('')
-    setAdresse('')
-    setShowForm(false)
-    load()
-  }
 
   const toggleFavorit = async (baustelleId: string) => {
     if (!user) return
@@ -86,40 +68,16 @@ export function Dashboard() {
         )}
       </div>
 
-      {fehler && (
-        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
-
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
-            <input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-              placeholder="z. B. Neubau Mehrfamilienhaus Musterstraße 12"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Adresse</label>
-            <input
-              value={adresse}
-              onChange={(e) => setAdresse(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {saving ? 'Speichert…' : 'Projekt anlegen'}
-          </button>
-        </form>
+        <div className="mb-6">
+          <ProjektForm
+            onSaved={() => {
+              setShowForm(false)
+              load()
+            }}
+            onCancel={() => setShowForm(false)}
+          />
+        </div>
       )}
 
       {loading ? (
@@ -139,10 +97,22 @@ export function Dashboard() {
               </button>
               <Link
                 to={`/baustellen/${b.id}`}
-                className="block flex-1 rounded-xl border border-gray-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/40"
+                className="flex flex-1 items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/40"
               >
-                <div className="font-medium text-gray-900">{b.name}</div>
-                {b.adresse && <div className="text-sm text-gray-500">{b.adresse}</div>}
+                {b.logo_pfad && (
+                  <SignedImage
+                    bucket="projekt-logos"
+                    path={b.logo_pfad}
+                    alt=""
+                    className="h-12 w-12 flex-shrink-0 rounded-lg object-cover"
+                  />
+                )}
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-900">{b.name}</div>
+                  {formatProjektAdresse(b) && (
+                    <div className="truncate text-sm text-gray-500">{formatProjektAdresse(b)}</div>
+                  )}
+                </div>
               </Link>
             </li>
           ))}

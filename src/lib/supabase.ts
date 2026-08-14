@@ -11,10 +11,14 @@ export const supabase = createClient(
 )
 
 /**
- * Beide Storage-Buckets sind privat (siehe Migration 0007). Anzeige/Download
- * funktioniert nur ueber zeitlich begrenzte signierte URLs.
+ * Alle Storage-Buckets sind privat (siehe Migration 0007, 0012). Anzeige/
+ * Download funktioniert nur ueber zeitlich begrenzte signierte URLs.
  */
-export async function getSignedUrl(bucket: 'mangel-fotos' | 'plaene', path: string, expiresInSeconds = 3600) {
+export async function getSignedUrl(
+  bucket: 'mangel-fotos' | 'plaene' | 'projekt-logos',
+  path: string,
+  expiresInSeconds = 3600,
+) {
   const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresInSeconds)
   if (error) {
     console.error(`Signed-URL-Fehler (${bucket}/${path}):`, error.message)

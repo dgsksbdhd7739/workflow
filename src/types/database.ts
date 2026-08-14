@@ -15,6 +15,26 @@ export interface Baustelle {
   id: string
   name: string
   adresse: string | null
+  projektnummer: string | null
+  projektleiter_id: string | null
+  bauleitender_obermonteur_id: string | null
+  kunde_name: string | null
+  projekt_beginn: string | null
+  projekt_ende: string | null
+  sprache: string
+  logo_pfad: string | null
+  projekt_land: string | null
+  projekt_strasse: string | null
+  projekt_hausnummer: string | null
+  projekt_adresszusatz: string | null
+  projekt_plz: string | null
+  projekt_stadt: string | null
+  kunden_land: string | null
+  kunden_strasse: string | null
+  kunden_hausnummer: string | null
+  kunden_adresszusatz: string | null
+  kunden_plz: string | null
+  kunden_stadt: string | null
   created_by: string
   created_at: string
 }

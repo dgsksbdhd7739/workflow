@@ -7,7 +7,7 @@ export function SignedImage({
   alt,
   className,
 }: {
-  bucket: 'mangel-fotos' | 'plaene'
+  bucket: 'mangel-fotos' | 'plaene' | 'projekt-logos'
   path: string
   alt: string
   className?: string

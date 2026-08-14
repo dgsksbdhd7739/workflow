@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { useProfiles } from '../hooks/useProfiles'
+import { ProjektForm } from '../components/ProjektForm'
+import { SignedImage } from '../components/SignedImage'
+import { formatProjektAdresse } from '../lib/adresse'
 import type { Baustelle, Rolle, Tagesbericht, Termin } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
@@ -20,7 +24,10 @@ export function ProjektDashboard() {
   const { id: baustelleId } = useParams<{ id: string }>()
   const { role } = useAuth()
   const kannKalkulationSehen = role === 'admin' || role === 'planer'
+  const kannBearbeiten = role === 'admin' || role === 'planer'
+  const { nameOf } = useProfiles()
   const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
+  const [bearbeiten, setBearbeiten] = useState(false)
   const [offeneMaengel, setOffeneMaengel] = useState(0)
   const [hochPrioMaengel, setHochPrioMaengel] = useState(0)
   const [termine, setTermine] = useState<Termin[]>([])
@@ -62,10 +69,58 @@ export function ProjektDashboard() {
     .sort((a, b) => a.start_datum.localeCompare(b.start_datum))
     .slice(0, 3)
 
+  if (bearbeiten && baustelle) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-6">
+        <h1 className="mb-4 text-xl font-semibold text-gray-900">Projekt bearbeiten</h1>
+        <ProjektForm
+          baustelle={baustelle}
+          onSaved={(saved) => {
+            setBaustelle(saved)
+            setBearbeiten(false)
+          }}
+          onCancel={() => setBearbeiten(false)}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-xl font-semibold text-gray-900">{baustelle?.name}</h1>
-      {baustelle?.adresse && <p className="mb-4 text-sm text-gray-500">{baustelle.adresse}</p>}
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          {baustelle?.logo_pfad && (
+            <SignedImage
+              bucket="projekt-logos"
+              path={baustelle.logo_pfad}
+              alt=""
+              className="h-14 w-14 flex-shrink-0 rounded-lg object-cover"
+            />
+          )}
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">{baustelle?.name}</h1>
+            {baustelle && formatProjektAdresse(baustelle) && (
+              <p className="text-sm text-gray-500">{formatProjektAdresse(baustelle)}</p>
+            )}
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-400">
+              {baustelle?.projektnummer && <span>Nr. {baustelle.projektnummer}</span>}
+              {baustelle?.kunde_name && <span>Kunde: {baustelle.kunde_name}</span>}
+              {baustelle?.projektleiter_id && <span>PL: {nameOf(baustelle.projektleiter_id)}</span>}
+              {baustelle?.bauleitender_obermonteur_id && (
+                <span>Obermonteur: {nameOf(baustelle.bauleitender_obermonteur_id)}</span>
+              )}
+            </div>
+          </div>
+        </div>
+        {kannBearbeiten && (
+          <button
+            onClick={() => setBearbeiten(true)}
+            className="flex-shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Projekt bearbeiten
+          </button>
+        )}
+      </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-gray-200 bg-white p-4">

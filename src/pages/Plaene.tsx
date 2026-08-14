@@ -63,8 +63,8 @@ export function Plaene() {
         <p className="text-sm text-gray-500">Lädt…</p>
       ) : plaene.length === 0 ? (
         <p className="text-sm text-gray-500">
-          Noch keine Pläne hochgeladen. Unterstützt werden Bilder (Foto/Screenshot eines Plans); für die
-          Markierungsfunktion muss der Plan als Bild vorliegen.
+          Noch keine Pläne hochgeladen. Unterstützt werden Bilder und PDFs — auf beiden können Markierungen gesetzt
+          werden.
         </p>
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">

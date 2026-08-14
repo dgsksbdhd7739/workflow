@@ -11,7 +11,7 @@ const jetzt = () => new Date().toTimeString().slice(0, 5)
 export function Zeiterfassung() {
   const { id: baustelleId } = useParams<{ id: string }>()
   const { user } = useAuth()
-  const { nameOf } = useProfiles()
+  const { profiles, nameOf } = useProfiles()
   const [eintraege, setEintraege] = useState<ZeiterfassungEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -22,6 +22,7 @@ export function Zeiterfassung() {
   const [endZeit, setEndZeit] = useState('')
   const [pauseMinuten, setPauseMinuten] = useState('30')
   const [taetigkeit, setTaetigkeit] = useState('')
+  const [ausgewaehlt, setAusgewaehlt] = useState<string[]>([])
 
   const load = async () => {
     if (!baustelleId) return
@@ -41,19 +42,29 @@ export function Zeiterfassung() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baustelleId])
 
+  const toggleMitarbeiter = (id: string) => {
+    setAusgewaehlt((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
+  }
+
+  const openForm = () => {
+    setAusgewaehlt(user ? [user.id] : [])
+    setShowForm((v) => !v)
+  }
+
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user || !baustelleId) return
+    if (!user || !baustelleId || ausgewaehlt.length === 0) return
     setSaving(true)
-    const { error } = await supabase.from('zeiterfassung').insert({
+    const eintraege = ausgewaehlt.map((userId) => ({
       baustelle_id: baustelleId,
-      user_id: user.id,
+      user_id: userId,
       datum,
       start_zeit: startZeit,
       end_zeit: endZeit || null,
       pause_minuten: Number(pauseMinuten) || 0,
       taetigkeit: taetigkeit || null,
-    })
+    }))
+    const { error } = await supabase.from('zeiterfassung').insert(eintraege)
     setSaving(false)
     if (!error) {
       setDatum(heute())
@@ -80,7 +91,7 @@ export function Zeiterfassung() {
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Zeiterfassung</h1>
         <button
-          onClick={() => setShowForm((v) => !v)}
+          onClick={openForm}
           className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
           {showForm ? 'Abbrechen' : '+ Zeit erfassen'}
@@ -89,6 +100,27 @@ export function Zeiterfassung() {
 
       {showForm && (
         <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Mitarbeiter ({ausgewaehlt.length} ausgewählt)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {profiles.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => toggleMitarbeiter(p.id)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                    ausgewaehlt.includes(p.id)
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 text-gray-600'
+                  }`}
+                >
+                  {p.full_name}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Datum</label>
@@ -141,10 +173,10 @@ export function Zeiterfassung() {
           </div>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || ausgewaehlt.length === 0}
             className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {saving ? 'Speichert…' : 'Zeit speichern'}
+            {saving ? 'Speichert…' : ausgewaehlt.length > 1 ? `Zeit für ${ausgewaehlt.length} Personen speichern` : 'Zeit speichern'}
           </button>
         </form>
       )}

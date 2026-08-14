@@ -29,6 +29,7 @@ export interface Mangel {
   plan_id: string | null
   position_x: number | null
   position_y: number | null
+  farbe: string | null
   erstellt_von: string
   erstellt_am: string
 }
@@ -38,17 +39,6 @@ export interface Plan {
   baustelle_id: string
   name: string
   datei_url: string
-  erstellt_von: string
-  erstellt_am: string
-}
-
-export interface PlanMarkierung {
-  id: string
-  plan_id: string
-  x: number
-  y: number
-  notiz: string | null
-  mangel_id: string | null
   erstellt_von: string
   erstellt_am: string
 }
@@ -75,5 +65,31 @@ export interface Zeiterfassung {
   end_zeit: string | null
   pause_minuten: number
   taetigkeit: string | null
+  erstellt_am: string
+}
+
+export interface Leistung {
+  id: string
+  baustelle_id: string
+  position_nr: number
+  bezeichnung: string
+  menge: number
+  einheit: string
+  einzelpreis: number
+  erstellt_von: string
+  erstellt_am: string
+}
+
+export type TerminStatus = 'geplant' | 'laufend' | 'abgeschlossen' | 'verzoegert'
+
+export interface Termin {
+  id: string
+  baustelle_id: string
+  titel: string
+  start_datum: string
+  end_datum: string
+  status: TerminStatus
+  vorgaenger_id: string | null
+  erstellt_von: string
   erstellt_am: string
 }

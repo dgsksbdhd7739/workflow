@@ -9,6 +9,8 @@ import { Plaene } from './pages/Plaene'
 import { PlanDetail } from './pages/PlanDetail'
 import { Tagesberichte } from './pages/Tagesberichte'
 import { Zeiterfassung } from './pages/Zeiterfassung'
+import { Kalkulation } from './pages/Kalkulation'
+import { Termine } from './pages/Termine'
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
               <Route path="/baustellen/:id/plaene/:planId" element={<PlanDetail />} />
               <Route path="/baustellen/:id/tagesberichte" element={<Tagesberichte />} />
               <Route path="/baustellen/:id/zeiterfassung" element={<Zeiterfassung />} />
+              <Route path="/baustellen/:id/kalkulation" element={<Kalkulation />} />
+              <Route path="/baustellen/:id/termine" element={<Termine />} />
             </Route>
           </Route>
         </Routes>

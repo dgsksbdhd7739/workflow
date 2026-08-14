@@ -5,10 +5,12 @@ const mainNav = [{ to: '/', label: 'Baustellen', icon: '🏗️' }]
 
 function baustelleNav(id: string) {
   return [
+    { to: `/baustellen/${id}/termine`, label: 'Termine', icon: '📅' },
     { to: `/baustellen/${id}/maengel`, label: 'Mängel', icon: '⚠️' },
     { to: `/baustellen/${id}/plaene`, label: 'Pläne', icon: '🗺️' },
     { to: `/baustellen/${id}/tagesberichte`, label: 'Tagesberichte', icon: '📋' },
     { to: `/baustellen/${id}/zeiterfassung`, label: 'Zeiterfassung', icon: '⏱️' },
+    { to: `/baustellen/${id}/kalkulation`, label: 'Kalkulation', icon: '💶' },
   ]
 }
 

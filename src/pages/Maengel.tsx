@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
@@ -245,6 +245,14 @@ export function Maengel() {
                   ))}
                 </select>
               </div>
+              {m.plan_id && (
+                <Link
+                  to={`/baustellen/${baustelleId}/plaene/${m.plan_id}`}
+                  className="mt-2 inline-block text-xs text-blue-600"
+                >
+                  📍 Position auf Plan ansehen
+                </Link>
+              )}
             </li>
           ))}
         </ul>

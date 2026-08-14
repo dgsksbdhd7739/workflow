@@ -1,28 +1,39 @@
 import { NavLink, Outlet, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import type { Rolle } from '../types/database'
 
-const mainNav = [
+type NavItem = { to: string; label: string; icon: string; end: boolean; roles?: Rolle[] }
+
+const mainNav: NavItem[] = [
   { to: '/', label: 'Projekte', icon: '🏗️', end: true },
-  { to: '/statusvorlagen', label: 'Statusvorlagen', icon: '🏷️', end: false },
+  { to: '/statusvorlagen', label: 'Statusvorlagen', icon: '🏷️', end: false, roles: ['admin', 'planer'] },
+  { to: '/nutzer', label: 'Nutzer', icon: '👤', end: false, roles: ['admin'] },
 ]
 
-function baustelleNav(id: string) {
+function baustelleNav(id: string): NavItem[] {
   return [
     { to: `/baustellen/${id}`, label: 'Übersicht', icon: '📊', end: true },
     { to: `/baustellen/${id}/termine`, label: 'Termine', icon: '📅', end: false },
     { to: `/baustellen/${id}/maengel`, label: 'Mängel', icon: '⚠️', end: false },
     { to: `/baustellen/${id}/plaene`, label: 'Pläne', icon: '🗺️', end: false },
     { to: `/baustellen/${id}/tagesberichte`, label: 'Tagesberichte', icon: '📋', end: false },
-    { to: `/baustellen/${id}/zeiterfassung`, label: 'Zeiterfassung', icon: '⏱️', end: false },
-    { to: `/baustellen/${id}/kalkulation`, label: 'Kalkulation', icon: '💶', end: false },
+    {
+      to: `/baustellen/${id}/zeiterfassung`,
+      label: 'Zeiterfassung',
+      icon: '⏱️',
+      end: false,
+      roles: ['admin', 'planer', 'techniker'],
+    },
+    { to: `/baustellen/${id}/kalkulation`, label: 'Kalkulation', icon: '💶', end: false, roles: ['admin', 'planer'] },
   ]
 }
 
 export function Layout() {
-  const { signOut, user } = useAuth()
+  const { signOut, user, role } = useAuth()
   const { id } = useParams()
-  const nav = id ? [...mainNav, ...baustelleNav(id)] : mainNav
+  const alleItems = id ? [...mainNav, ...baustelleNav(id)] : mainNav
+  const nav = alleItems.filter((item) => !item.roles || (role && item.roles.includes(role)))
   const online = useOnlineStatus()
 
   return (

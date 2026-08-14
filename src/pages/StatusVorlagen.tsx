@@ -6,7 +6,7 @@ import type { StatusVorlage, StatusVorlageWert } from '../types/database'
 const farbPalette = ['#dc2626', '#ea580c', '#f59e0b', '#eab308', '#16a34a', '#2563eb', '#9333ea', '#d946ef', '#000000', '#6b7280']
 
 export function StatusVorlagen() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const [vorlagen, setVorlagen] = useState<StatusVorlage[]>([])
   const [werte, setWerte] = useState<StatusVorlageWert[]>([])
   const [ausgewaehlteVorlage, setAusgewaehlteVorlage] = useState<string | null>(null)
@@ -139,6 +139,14 @@ export function StatusVorlagen() {
       setFehler(error.message)
       loadWerte(ausgewaehlteVorlage)
     }
+  }
+
+  if (role && role !== 'admin' && role !== 'planer') {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-6">
+        <p className="text-sm text-gray-500">Kein Zugriff — Statusvorlagen sind Admin und Planer vorbehalten.</p>
+      </div>
+    )
   }
 
   return (

@@ -28,7 +28,8 @@ const prioritaetLabel: Record<MangelPrioritaet, string> = {
 
 export function Maengel() {
   const { id: baustelleId } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const kannBearbeiten = role !== 'kunde'
   const { profiles, nameOf } = useProfiles()
   const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
   const [maengel, setMaengel] = useState<Mangel[]>([])
@@ -141,12 +142,14 @@ export function Maengel() {
               PDF exportieren
             </button>
           )}
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            {showForm ? 'Abbrechen' : '+ Mangel melden'}
-          </button>
+          {kannBearbeiten && (
+            <button
+              onClick={() => setShowForm((v) => !v)}
+              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              {showForm ? 'Abbrechen' : '+ Mangel melden'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -293,7 +296,7 @@ export function Maengel() {
                     {statusLabel[m.status]}
                   </span>
                 )}
-                {!wert && (
+                {!wert && kannBearbeiten && (
                   <select
                     value={m.status}
                     onChange={(e) => updateStatus(m.id, e.target.value as MangelStatus)}

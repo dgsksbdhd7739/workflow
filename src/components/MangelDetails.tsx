@@ -35,7 +35,8 @@ function relativZeit(iso: string) {
 }
 
 export function MangelDetails({ mangelId }: { mangelId: string }) {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const kannBearbeiten = role !== 'kunde'
   const { nameOf } = useProfiles()
   const [phasen, setPhasen] = useState<MangelPhase[]>([])
   const [kommentare, setKommentare] = useState<MangelKommentar[]>([])
@@ -157,12 +158,14 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-medium text-gray-900">Fortschritt</h3>
-          <button
-            onClick={() => setPhaseFormOffen((v) => !v)}
-            className="text-xs font-medium text-blue-600"
-          >
-            {phaseFormOffen ? 'Abbrechen' : '+ Baustufe'}
-          </button>
+          {kannBearbeiten && (
+            <button
+              onClick={() => setPhaseFormOffen((v) => !v)}
+              className="text-xs font-medium text-blue-600"
+            >
+              {phaseFormOffen ? 'Abbrechen' : '+ Baustufe'}
+            </button>
+          )}
         </div>
 
         {phaseFormOffen && (
@@ -197,22 +200,24 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
                   <div className="truncate text-sm font-medium text-gray-900">{p.titel}</div>
                   <div className={`text-xs italic ${statusTextColor[p.status]}`}>{statusLabel[p.status]}</div>
                 </div>
-                <div className="flex flex-shrink-0 items-center gap-2">
-                  <select
-                    value={p.status}
-                    onChange={(e) => updatePhaseStatus(p.id, e.target.value as MangelStatus)}
-                    className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
-                  >
-                    {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
-                      <option key={s} value={s}>
-                        {statusLabel[s]}
-                      </option>
-                    ))}
-                  </select>
-                  <button onClick={() => deletePhase(p.id)} className="text-xs text-gray-400 hover:text-red-600">
-                    ✕
-                  </button>
-                </div>
+                {kannBearbeiten && (
+                  <div className="flex flex-shrink-0 items-center gap-2">
+                    <select
+                      value={p.status}
+                      onChange={(e) => updatePhaseStatus(p.id, e.target.value as MangelStatus)}
+                      className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
+                    >
+                      {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
+                        <option key={s} value={s}>
+                          {statusLabel[s]}
+                        </option>
+                      ))}
+                    </select>
+                    <button onClick={() => deletePhase(p.id)} className="text-xs text-gray-400 hover:text-red-600">
+                      ✕
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -257,31 +262,33 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
           </ul>
         )}
 
-        <form onSubmit={handleKommentarSenden} className="space-y-2">
-          <textarea
-            value={kommentarText}
-            onChange={(e) => setKommentarText(e.target.value)}
-            rows={2}
-            placeholder="Kommentar schreiben…"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          />
-          <div className="flex items-center justify-between gap-2">
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setKommentarFoto(e.target.files?.[0] ?? null)}
-              className="text-xs"
+        {kannBearbeiten && (
+          <form onSubmit={handleKommentarSenden} className="space-y-2">
+            <textarea
+              value={kommentarText}
+              onChange={(e) => setKommentarText(e.target.value)}
+              rows={2}
+              placeholder="Kommentar schreiben…"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
-            <button
-              type="submit"
-              disabled={kommentarSaving || (!kommentarText.trim() && !kommentarFoto)}
-              className="flex-shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {kommentarSaving ? 'Sendet…' : 'Kommentieren'}
-            </button>
-          </div>
-        </form>
+            <div className="flex items-center justify-between gap-2">
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setKommentarFoto(e.target.files?.[0] ?? null)}
+                className="text-xs"
+              />
+              <button
+                type="submit"
+                disabled={kommentarSaving || (!kommentarText.trim() && !kommentarFoto)}
+                className="flex-shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {kommentarSaving ? 'Sendet…' : 'Kommentieren'}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   )

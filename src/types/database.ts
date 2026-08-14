@@ -1,10 +1,12 @@
 export type MangelStatus = 'offen' | 'in_bearbeitung' | 'erledigt'
 export type MangelPrioritaet = 'niedrig' | 'mittel' | 'hoch'
 
+export type Rolle = 'admin' | 'planer' | 'techniker' | 'kunde'
+
 export interface Profile {
   id: string
   full_name: string
-  role: 'admin' | 'polier' | 'arbeiter'
+  role: Rolle
   created_at: string
 }
 

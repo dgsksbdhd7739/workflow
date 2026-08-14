@@ -10,7 +10,8 @@ const heute = () => new Date().toISOString().slice(0, 10)
 
 export function Tagesberichte() {
   const { id: baustelleId } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const kannBearbeiten = role !== 'kunde'
   const { nameOf } = useProfiles()
   const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
   const [berichte, setBerichte] = useState<Tagesbericht[]>([])
@@ -86,12 +87,14 @@ export function Tagesberichte() {
               PDF exportieren
             </button>
           )}
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            {showForm ? 'Abbrechen' : '+ Tagesbericht'}
-          </button>
+          {kannBearbeiten && (
+            <button
+              onClick={() => setShowForm((v) => !v)}
+              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              {showForm ? 'Abbrechen' : '+ Tagesbericht'}
+            </button>
+          )}
         </div>
       </div>
 

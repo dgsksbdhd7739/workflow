@@ -10,7 +10,7 @@ const jetzt = () => new Date().toTimeString().slice(0, 5)
 
 export function Zeiterfassung() {
   const { id: baustelleId } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const { profiles, nameOf } = useProfiles()
   const [eintraege, setEintraege] = useState<ZeiterfassungEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,6 +88,14 @@ export function Zeiterfassung() {
     const minuten = eh * 60 + em - (sh * 60 + sm) - pause
     if (minuten < 0) return '—'
     return `${Math.floor(minuten / 60)}h ${minuten % 60}min`
+  }
+
+  if (role === 'kunde') {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-6">
+        <p className="text-sm text-gray-500">Kein Zugriff — die Zeiterfassung ist internen Nutzern vorbehalten.</p>
+      </div>
+    )
   }
 
   return (

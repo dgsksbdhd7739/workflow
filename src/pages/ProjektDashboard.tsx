@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import type { Baustelle, Tagesbericht, Termin } from '../types/database'
+import { useAuth } from '../contexts/AuthContext'
+import type { Baustelle, Rolle, Tagesbericht, Termin } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
 const euro = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })
 
-const quickLinks = [
+const quickLinks: { to: string; label: string; icon: string; roles?: Rolle[] }[] = [
   { to: 'maengel', label: 'Mängel', icon: '⚠️' },
   { to: 'plaene', label: 'Pläne', icon: '🗺️' },
   { to: 'tagesberichte', label: 'Tagesberichte', icon: '📋' },
-  { to: 'zeiterfassung', label: 'Zeiterfassung', icon: '⏱️' },
+  { to: 'zeiterfassung', label: 'Zeiterfassung', icon: '⏱️', roles: ['admin', 'planer', 'techniker'] },
   { to: 'termine', label: 'Termine', icon: '📅' },
-  { to: 'kalkulation', label: 'Kalkulation', icon: '💶' },
+  { to: 'kalkulation', label: 'Kalkulation', icon: '💶', roles: ['admin', 'planer'] },
 ]
 
 export function ProjektDashboard() {
   const { id: baustelleId } = useParams<{ id: string }>()
+  const { role } = useAuth()
+  const kannKalkulationSehen = role === 'admin' || role === 'planer'
   const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
   const [offeneMaengel, setOffeneMaengel] = useState(0)
   const [hochPrioMaengel, setHochPrioMaengel] = useState(0)
@@ -74,10 +77,12 @@ export function ProjektDashboard() {
           <div className="text-2xl font-semibold text-gray-900">{ueberfaellig.length}</div>
           <div className="text-xs text-gray-500">Verzögerte Termine</div>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <div className="text-2xl font-semibold text-gray-900">{euro(kalkulationSumme)}</div>
-          <div className="text-xs text-gray-500">Kalkulationssumme</div>
-        </div>
+        {kannKalkulationSehen && (
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <div className="text-2xl font-semibold text-gray-900">{euro(kalkulationSumme)}</div>
+            <div className="text-xs text-gray-500">Kalkulationssumme</div>
+          </div>
+        )}
       </div>
 
       {(naechste.length > 0 || ueberfaellig.length > 0) && (
@@ -116,7 +121,9 @@ export function ProjektDashboard() {
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {quickLinks.map((l) => (
+        {quickLinks
+          .filter((l) => !l.roles || (role && l.roles.includes(role)))
+          .map((l) => (
           <Link
             key={l.to}
             to={`/baustellen/${baustelleId}/${l.to}`}

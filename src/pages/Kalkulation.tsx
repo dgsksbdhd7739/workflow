@@ -8,7 +8,7 @@ const euro = (n: number) => n.toLocaleString('de-DE', { style: 'currency', curre
 
 export function Kalkulation() {
   const { id: baustelleId } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const [leistungen, setLeistungen] = useState<Leistung[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -77,6 +77,14 @@ export function Kalkulation() {
   }
 
   const summe = leistungen.reduce((acc, l) => acc + l.menge * l.einzelpreis, 0)
+
+  if (role && role !== 'admin' && role !== 'planer') {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-6">
+        <p className="text-sm text-gray-500">Kein Zugriff — die Kalkulation ist Admin und Planer vorbehalten.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">

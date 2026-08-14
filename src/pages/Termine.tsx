@@ -30,7 +30,8 @@ const tageSeitEpoch = (d: string) => Math.floor(new Date(d).getTime() / 86_400_0
 
 export function Termine() {
   const { id: baustelleId } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const kannBearbeiten = role !== 'kunde'
   const [termine, setTermine] = useState<Termin[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -106,12 +107,14 @@ export function Termine() {
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Termine</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          {showForm ? 'Abbrechen' : '+ Meilenstein'}
-        </button>
+        {kannBearbeiten && (
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {showForm ? 'Abbrechen' : '+ Meilenstein'}
+          </button>
+        )}
       </div>
 
       {fehler && (
@@ -230,17 +233,19 @@ export function Termine() {
                       {statusLabel[status]}
                     </span>
                   </div>
-                  <select
-                    value={t.status}
-                    onChange={(e) => updateStatus(t.id, e.target.value as TerminStatus)}
-                    className="mt-2 rounded-lg border border-gray-300 px-2 py-1 text-xs"
-                  >
-                    {(['geplant', 'laufend', 'abgeschlossen'] as const).map((s) => (
-                      <option key={s} value={s}>
-                        {statusLabel[s]}
-                      </option>
-                    ))}
-                  </select>
+                  {kannBearbeiten && (
+                    <select
+                      value={t.status}
+                      onChange={(e) => updateStatus(t.id, e.target.value as TerminStatus)}
+                      className="mt-2 rounded-lg border border-gray-300 px-2 py-1 text-xs"
+                    >
+                      {(['geplant', 'laufend', 'abgeschlossen'] as const).map((s) => (
+                        <option key={s} value={s}>
+                          {statusLabel[s]}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </li>
               )
             })}

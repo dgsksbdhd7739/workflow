@@ -13,6 +13,7 @@ import { Zeiterfassung } from './pages/Zeiterfassung'
 import { Kalkulation } from './pages/Kalkulation'
 import { Termine } from './pages/Termine'
 import { StatusVorlagen } from './pages/StatusVorlagen'
+import { Nutzerverwaltung } from './pages/Nutzerverwaltung'
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/statusvorlagen" element={<StatusVorlagen />} />
+              <Route path="/nutzer" element={<Nutzerverwaltung />} />
               <Route path="/baustellen/:id" element={<ProjektDashboard />} />
               <Route path="/baustellen/:id/maengel" element={<Maengel />} />
               <Route path="/baustellen/:id/plaene" element={<Plaene />} />

@@ -76,7 +76,9 @@ function FarbAuswahl({ value, onChange }: { value: string | null; onChange: (v: 
 
 export function PlanDetail() {
   const { id: baustelleId, planId } = useParams<{ id: string; planId: string }>()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const kannBearbeiten = role !== 'kunde'
+  const kannVorlageZuweisen = role === 'admin' || role === 'planer'
   const { profiles, nameOf } = useProfiles()
   const [plan, setPlan] = useState<Plan | null>(null)
   const [pins, setPins] = useState<Mangel[]>([])
@@ -317,7 +319,7 @@ export function PlanDetail() {
   if (!datenUrl) return <p className="p-6 text-sm text-gray-500">Lädt…</p>
 
   const isImage = plan.datei_pfad.match(/\.(png|jpe?g|webp|gif)$/i)
-  const canMark = Boolean(isImage) || (isPdf && pdfReady)
+  const canMark = kannBearbeiten && (Boolean(isImage) || (isPdf && pdfReady))
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
@@ -334,18 +336,22 @@ export function PlanDetail() {
 
       <div className="mb-4 flex items-center gap-2 text-xs text-gray-500">
         <span>Statusvorlage:</span>
-        <select
-          value={plan.statusvorlage_id ?? ''}
-          onChange={(e) => handleVorlageZuweisen(e.target.value)}
-          className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
-        >
-          <option value="">— Keine (Standardstatus) —</option>
-          {alleVorlagen.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}
-            </option>
-          ))}
-        </select>
+        {kannVorlageZuweisen ? (
+          <select
+            value={plan.statusvorlage_id ?? ''}
+            onChange={(e) => handleVorlageZuweisen(e.target.value)}
+            className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
+          >
+            <option value="">— Keine (Standardstatus) —</option>
+            {alleVorlagen.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span>{alleVorlagen.find((v) => v.id === plan.statusvorlage_id)?.name ?? 'Keine (Standardstatus)'}</span>
+        )}
       </div>
 
       {isPdf && pdfError ? (
@@ -552,6 +558,14 @@ export function PlanDetail() {
                 </button>
               </div>
               {selectedPin.beschreibung && <p className="text-sm text-gray-600">{selectedPin.beschreibung}</p>}
+              {!kannBearbeiten ? (
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                  <span>Priorität: {prioritaetLabel[selectedPin.prioritaet]}</span>
+                  <span>Verantwortlich: {nameOf(selectedPin.verantwortlicher_id)}</span>
+                  {selectedPin.faellig_am && <span>Fällig: {selectedPin.faellig_am}</span>}
+                </div>
+              ) : (
+              <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
@@ -640,6 +654,8 @@ export function PlanDetail() {
                   Vom Plan entfernen
                 </button>
               </div>
+              </>
+              )}
               <div className="border-t border-gray-100 pt-3">
                 <MangelDetails mangelId={selectedPin.id} />
               </div>

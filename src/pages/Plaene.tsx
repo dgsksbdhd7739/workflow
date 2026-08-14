@@ -7,7 +7,8 @@ import type { Plan } from '../types/database'
 
 export function Plaene() {
   const { id: baustelleId } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const kannBearbeiten = role !== 'kunde'
   const [plaene, setPlaene] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -60,10 +61,12 @@ export function Plaene() {
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Pläne</h1>
-        <label className="cursor-pointer rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
-          {uploading ? 'Lädt hoch…' : '+ Plan hochladen'}
-          <input type="file" accept="image/*,.pdf" onChange={handleUpload} className="hidden" disabled={uploading} />
-        </label>
+        {kannBearbeiten && (
+          <label className="cursor-pointer rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            {uploading ? 'Lädt hoch…' : '+ Plan hochladen'}
+            <input type="file" accept="image/*,.pdf" onChange={handleUpload} className="hidden" disabled={uploading} />
+          </label>
+        )}
       </div>
 
       {fehler && (

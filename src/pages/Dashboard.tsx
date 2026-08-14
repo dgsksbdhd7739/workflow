@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext'
 import type { Baustelle } from '../types/database'
 
 export function Dashboard() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const kannAnlegen = role === 'admin' || role === 'planer'
   const [baustellen, setBaustellen] = useState<Baustelle[]>([])
   const [favoritenIds, setFavoritenIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
@@ -75,12 +76,14 @@ export function Dashboard() {
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Projekte</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          {showForm ? 'Abbrechen' : '+ Neues Projekt'}
-        </button>
+        {kannAnlegen && (
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {showForm ? 'Abbrechen' : '+ Neues Projekt'}
+          </button>
+        )}
       </div>
 
       {fehler && (

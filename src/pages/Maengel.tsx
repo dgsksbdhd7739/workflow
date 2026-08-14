@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { MangelDetails } from '../components/MangelDetails'
-import type { Mangel, MangelPrioritaet, MangelStatus } from '../types/database'
+import type { Mangel, MangelPrioritaet, MangelStatus, StatusVorlageWert } from '../types/database'
 
 const statusLabel: Record<MangelStatus, string> = {
   offen: 'Offen',
@@ -34,6 +34,7 @@ export function Maengel() {
   const [saving, setSaving] = useState(false)
   const [filterStatus, setFilterStatus] = useState<MangelStatus | 'alle'>('alle')
   const [geoeffnetId, setGeoeffnetId] = useState<string | null>(null)
+  const [werteMap, setWerteMap] = useState<Record<string, StatusVorlageWert>>({})
 
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
@@ -56,6 +57,14 @@ export function Maengel() {
 
   useEffect(() => {
     load()
+    supabase
+      .from('statusvorlage_werte')
+      .select('*')
+      .then(({ data }) => {
+        const map: Record<string, StatusVorlageWert> = {}
+        for (const w of data ?? []) map[w.id] = w
+        setWerteMap(map)
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baustelleId])
 
@@ -215,7 +224,9 @@ export function Maengel() {
         <p className="text-sm text-gray-500">Keine Mängel in dieser Ansicht.</p>
       ) : (
         <ul className="space-y-3">
-          {gefiltert.map((m) => (
+          {gefiltert.map((m) => {
+            const wert = m.status_wert_id ? werteMap[m.status_wert_id] : undefined
+            return (
             <li key={m.id} className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -232,20 +243,31 @@ export function Maengel() {
                 )}
               </div>
               <div className="mt-3 flex items-center justify-between">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor[m.status]}`}>
-                  {statusLabel[m.status]}
-                </span>
-                <select
-                  value={m.status}
-                  onChange={(e) => updateStatus(m.id, e.target.value as MangelStatus)}
-                  className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
-                >
-                  {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
-                    <option key={s} value={s}>
-                      {statusLabel[s]}
-                    </option>
-                  ))}
-                </select>
+                {wert ? (
+                  <span
+                    style={{ backgroundColor: `${wert.farbe}22`, color: wert.farbe }}
+                    className="rounded-full px-2 py-0.5 text-xs font-medium"
+                  >
+                    {wert.titel}
+                  </span>
+                ) : (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor[m.status]}`}>
+                    {statusLabel[m.status]}
+                  </span>
+                )}
+                {!wert && (
+                  <select
+                    value={m.status}
+                    onChange={(e) => updateStatus(m.id, e.target.value as MangelStatus)}
+                    className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
+                  >
+                    {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
+                      <option key={s} value={s}>
+                        {statusLabel[s]}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               {m.plan_id && (
                 <Link
@@ -267,7 +289,8 @@ export function Maengel() {
                 </div>
               )}
             </li>
-          ))}
+            )
+          })}
         </ul>
       )}
     </div>

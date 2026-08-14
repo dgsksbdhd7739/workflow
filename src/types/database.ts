@@ -30,6 +30,7 @@ export interface Mangel {
   position_x: number | null
   position_y: number | null
   farbe: string | null
+  status_wert_id: string | null
   erstellt_von: string
   erstellt_am: string
 }
@@ -39,6 +40,7 @@ export interface Plan {
   baustelle_id: string
   name: string
   datei_url: string
+  statusvorlage_id: string | null
   erstellt_von: string
   erstellt_am: string
 }
@@ -111,5 +113,22 @@ export interface MangelKommentar {
   text: string | null
   foto_url: string | null
   erstellt_von: string
+  erstellt_am: string
+}
+
+export interface StatusVorlage {
+  id: string
+  name: string
+  erstellt_von: string
+  erstellt_am: string
+}
+
+export interface StatusVorlageWert {
+  id: string
+  statusvorlage_id: string
+  titel: string
+  farbe: string
+  reihenfolge: number
+  ist_standard: boolean
   erstellt_am: string
 }

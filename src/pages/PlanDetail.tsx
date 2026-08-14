@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { MangelDetails } from '../components/MangelDetails'
-import type { Mangel, MangelPrioritaet, MangelStatus, Plan } from '../types/database'
+import type { Mangel, MangelPrioritaet, MangelStatus, Plan, StatusVorlage, StatusVorlageWert } from '../types/database'
 
 const statusLabel: Record<MangelStatus, string> = {
   offen: 'Offen',
@@ -26,8 +26,26 @@ const statusFarbe: Record<MangelStatus, string> = {
 
 const farbPalette = ['#dc2626', '#ea580c', '#d97706', '#16a34a', '#2563eb', '#9333ea']
 
-function pinFarbe(m: Mangel) {
-  return m.farbe ?? statusFarbe[m.status]
+function pinFarbe(m: Mangel, werte: StatusVorlageWert[]) {
+  if (m.farbe) return m.farbe
+  const wert = werte.find((w) => w.id === m.status_wert_id)
+  if (wert) return wert.farbe
+  return statusFarbe[m.status]
+}
+
+function istLetzterWert(m: Mangel, werte: StatusVorlageWert[]) {
+  if (werte.length === 0) return m.status === 'erledigt'
+  const maxReihenfolge = Math.max(...werte.map((w) => w.reihenfolge))
+  const wert = werte.find((w) => w.id === m.status_wert_id)
+  return wert?.reihenfolge === maxReihenfolge
+}
+
+function klassischerStatusAusWert(wertId: string, werte: StatusVorlageWert[]): MangelStatus {
+  const sortiert = [...werte].sort((a, b) => a.reihenfolge - b.reihenfolge)
+  const index = sortiert.findIndex((w) => w.id === wertId)
+  if (index === sortiert.length - 1) return 'erledigt'
+  if (index <= 0) return 'offen'
+  return 'in_bearbeitung'
 }
 
 function FarbAuswahl({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
@@ -81,6 +99,11 @@ export function PlanDetail() {
   const [editVerantwortlicherId, setEditVerantwortlicherId] = useState('')
   const [editFaelligAm, setEditFaelligAm] = useState('')
   const [editFarbe, setEditFarbe] = useState<string | null>(null)
+  const [editStatusWertId, setEditStatusWertId] = useState('')
+
+  const [statusWertId, setStatusWertId] = useState('')
+  const [alleVorlagen, setAlleVorlagen] = useState<StatusVorlage[]>([])
+  const [werte, setWerte] = useState<StatusVorlageWert[]>([])
 
   const load = async () => {
     if (!planId) return
@@ -90,12 +113,36 @@ export function PlanDetail() {
     ])
     setPlan(planData)
     setPins(pinsData ?? [])
+    if (planData?.statusvorlage_id) {
+      const { data: werteData } = await supabase
+        .from('statusvorlage_werte')
+        .select('*')
+        .eq('statusvorlage_id', planData.statusvorlage_id)
+        .order('reihenfolge')
+      setWerte(werteData ?? [])
+    } else {
+      setWerte([])
+    }
   }
 
   useEffect(() => {
     load()
+    supabase
+      .from('statusvorlagen')
+      .select('*')
+      .order('name')
+      .then(({ data }) => setAlleVorlagen(data ?? []))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId])
+
+  const handleVorlageZuweisen = async (vorlageId: string) => {
+    if (!planId) return
+    await supabase
+      .from('plaene')
+      .update({ statusvorlage_id: vorlageId || null })
+      .eq('id', planId)
+    load()
+  }
 
   const isPdf = Boolean(plan?.datei_url.match(/\.pdf$/i))
 
@@ -138,7 +185,11 @@ export function PlanDetail() {
     setEditVerantwortlicherId(selectedPin.verantwortlicher_id ?? '')
     setEditFaelligAm(selectedPin.faellig_am ?? '')
     setEditFarbe(selectedPin.farbe)
+    setEditStatusWertId(selectedPin.status_wert_id ?? standardWertId())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPin])
+
+  const standardWertId = () => werte.find((w) => w.ist_standard)?.id ?? werte[0]?.id ?? ''
 
   const resetNeuForm = () => {
     setTitel('')
@@ -147,6 +198,7 @@ export function PlanDetail() {
     setVerantwortlicherId('')
     setFaelligAm('')
     setFarbe(null)
+    setStatusWertId(standardWertId())
   }
 
   const handlePlanClick = (e: MouseEvent<HTMLDivElement>) => {
@@ -179,6 +231,8 @@ export function PlanDetail() {
       position_x: pendingPos.x,
       position_y: pendingPos.y,
       farbe,
+      status_wert_id: werte.length > 0 ? statusWertId || null : null,
+      status: werte.length > 0 && statusWertId ? klassischerStatusAusWert(statusWertId, werte) : 'offen',
       erstellt_von: user.id,
     })
     setSaving(false)
@@ -190,10 +244,12 @@ export function PlanDetail() {
   const handleUpdate = async () => {
     if (!selectedPin) return
     setSaving(true)
+    const status = werte.length > 0 && editStatusWertId ? klassischerStatusAusWert(editStatusWertId, werte) : editStatus
     await supabase
       .from('maengel')
       .update({
-        status: editStatus,
+        status,
+        status_wert_id: werte.length > 0 ? editStatusWertId || null : null,
         prioritaet: editPrioritaet,
         verantwortlicher_id: editVerantwortlicherId || null,
         faellig_am: editFaelligAm || null,
@@ -227,7 +283,22 @@ export function PlanDetail() {
       <Link to={`/baustellen/${baustelleId}/plaene`} className="mb-3 inline-block text-sm text-blue-600">
         ← Zurück zu Plänen
       </Link>
-      <h1 className="mb-4 text-xl font-semibold text-gray-900">{plan.name}</h1>
+      <h1 className="mb-1 text-xl font-semibold text-gray-900">{plan.name}</h1>
+      <div className="mb-4 flex items-center gap-2 text-xs text-gray-500">
+        <span>Statusvorlage:</span>
+        <select
+          value={plan.statusvorlage_id ?? ''}
+          onChange={(e) => handleVorlageZuweisen(e.target.value)}
+          className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
+        >
+          <option value="">— Keine (Standardstatus) —</option>
+          {alleVorlagen.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {isPdf && pdfError ? (
         <p className="text-sm text-gray-500">
@@ -267,10 +338,10 @@ export function PlanDetail() {
                 className="absolute -translate-x-1/2 -translate-y-full cursor-pointer"
               >
                 <div
-                  style={{ backgroundColor: pinFarbe(m) }}
+                  style={{ backgroundColor: pinFarbe(m, werte) }}
                   className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white shadow ring-2 ring-white"
                 >
-                  {m.status === 'erledigt' ? '✓' : '!'}
+                  {istLetzterWert(m, werte) ? '✓' : '!'}
                 </div>
               </div>
             ))}
@@ -312,6 +383,22 @@ export function PlanDetail() {
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
+              {werte.length > 0 && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+                  <select
+                    value={statusWertId}
+                    onChange={(e) => setStatusWertId(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    {werte.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.titel}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Priorität</label>
@@ -387,17 +474,31 @@ export function PlanDetail() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
-                  <select
-                    value={editStatus}
-                    onChange={(e) => setEditStatus(e.target.value as MangelStatus)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  >
-                    {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
-                      <option key={s} value={s}>
-                        {statusLabel[s]}
-                      </option>
-                    ))}
-                  </select>
+                  {werte.length > 0 ? (
+                    <select
+                      value={editStatusWertId}
+                      onChange={(e) => setEditStatusWertId(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    >
+                      {werte.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.titel}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value as MangelStatus)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    >
+                      {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
+                        <option key={s} value={s}>
+                          {statusLabel[s]}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Priorität</label>
@@ -475,7 +576,7 @@ export function PlanDetail() {
                     }}
                     className="flex w-full items-center gap-2 text-left hover:text-blue-700"
                   >
-                    <span style={{ backgroundColor: pinFarbe(m) }} className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full" />
+                    <span style={{ backgroundColor: pinFarbe(m, werte) }} className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full" />
                     <span className="truncate">{m.titel}</span>
                     <span className="ml-auto flex-shrink-0 text-xs text-gray-400">{nameOf(m.verantwortlicher_id)}</span>
                   </button>

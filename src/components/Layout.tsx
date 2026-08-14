@@ -1,16 +1,20 @@
 import { NavLink, Outlet, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
-const mainNav = [{ to: '/', label: 'Baustellen', icon: '🏗️' }]
+const mainNav = [
+  { to: '/', label: 'Projekte', icon: '🏗️', end: true },
+  { to: '/statusvorlagen', label: 'Statusvorlagen', icon: '🏷️', end: false },
+]
 
 function baustelleNav(id: string) {
   return [
-    { to: `/baustellen/${id}/termine`, label: 'Termine', icon: '📅' },
-    { to: `/baustellen/${id}/maengel`, label: 'Mängel', icon: '⚠️' },
-    { to: `/baustellen/${id}/plaene`, label: 'Pläne', icon: '🗺️' },
-    { to: `/baustellen/${id}/tagesberichte`, label: 'Tagesberichte', icon: '📋' },
-    { to: `/baustellen/${id}/zeiterfassung`, label: 'Zeiterfassung', icon: '⏱️' },
-    { to: `/baustellen/${id}/kalkulation`, label: 'Kalkulation', icon: '💶' },
+    { to: `/baustellen/${id}`, label: 'Übersicht', icon: '📊', end: true },
+    { to: `/baustellen/${id}/termine`, label: 'Termine', icon: '📅', end: false },
+    { to: `/baustellen/${id}/maengel`, label: 'Mängel', icon: '⚠️', end: false },
+    { to: `/baustellen/${id}/plaene`, label: 'Pläne', icon: '🗺️', end: false },
+    { to: `/baustellen/${id}/tagesberichte`, label: 'Tagesberichte', icon: '📋', end: false },
+    { to: `/baustellen/${id}/zeiterfassung`, label: 'Zeiterfassung', icon: '⏱️', end: false },
+    { to: `/baustellen/${id}/kalkulation`, label: 'Kalkulation', icon: '💶', end: false },
   ]
 }
 
@@ -28,6 +32,7 @@ export function Layout() {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               className={({ isActive }) =>
                 `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium ${
                   isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
@@ -66,6 +71,7 @@ export function Layout() {
           <NavLink
             key={item.to}
             to={item.to}
+            end={item.end}
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${
                 isActive ? 'text-blue-700' : 'text-gray-500'

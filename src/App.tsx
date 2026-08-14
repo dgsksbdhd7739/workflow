@@ -4,6 +4,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
+import { ProjektDashboard } from './pages/ProjektDashboard'
 import { Maengel } from './pages/Maengel'
 import { Plaene } from './pages/Plaene'
 import { PlanDetail } from './pages/PlanDetail'
@@ -11,6 +12,7 @@ import { Tagesberichte } from './pages/Tagesberichte'
 import { Zeiterfassung } from './pages/Zeiterfassung'
 import { Kalkulation } from './pages/Kalkulation'
 import { Termine } from './pages/Termine'
+import { StatusVorlagen } from './pages/StatusVorlagen'
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/statusvorlagen" element={<StatusVorlagen />} />
+              <Route path="/baustellen/:id" element={<ProjektDashboard />} />
               <Route path="/baustellen/:id/maengel" element={<Maengel />} />
               <Route path="/baustellen/:id/plaene" element={<Plaene />} />
               <Route path="/baustellen/:id/plaene/:planId" element={<PlanDetail />} />

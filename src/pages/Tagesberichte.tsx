@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
-import type { Tagesbericht } from '../types/database'
+import { exportTagesberichtePdf } from '../lib/pdf'
+import type { Baustelle, Tagesbericht } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
 
@@ -11,6 +12,7 @@ export function Tagesberichte() {
   const { id: baustelleId } = useParams<{ id: string }>()
   const { user } = useAuth()
   const { nameOf } = useProfiles()
+  const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
   const [berichte, setBerichte] = useState<Tagesbericht[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -27,12 +29,12 @@ export function Tagesberichte() {
   const load = async () => {
     if (!baustelleId) return
     setLoading(true)
-    const { data } = await supabase
-      .from('tagesberichte')
-      .select('*')
-      .eq('baustelle_id', baustelleId)
-      .order('datum', { ascending: false })
+    const [{ data }, { data: baustelleData }] = await Promise.all([
+      supabase.from('tagesberichte').select('*').eq('baustelle_id', baustelleId).order('datum', { ascending: false }),
+      supabase.from('baustellen').select('*').eq('id', baustelleId).single(),
+    ])
     setBerichte(data ?? [])
+    setBaustelle(baustelleData)
     setLoading(false)
   }
 
@@ -75,12 +77,22 @@ export function Tagesberichte() {
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Bautagebuch</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          {showForm ? 'Abbrechen' : '+ Tagesbericht'}
-        </button>
+        <div className="flex gap-2">
+          {baustelle && berichte.length > 0 && (
+            <button
+              onClick={() => exportTagesberichtePdf(baustelle, berichte)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              PDF exportieren
+            </button>
+          )}
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {showForm ? 'Abbrechen' : '+ Tagesbericht'}
+          </button>
+        </div>
       </div>
 
       {fehler && (

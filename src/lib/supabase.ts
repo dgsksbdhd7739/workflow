@@ -9,3 +9,12 @@ export const supabase = createClient(
   supabaseUrl ?? 'https://placeholder.supabase.co',
   supabaseAnonKey ?? 'placeholder-anon-key',
 )
+
+/**
+ * Beide Storage-Buckets sind privat (siehe Migration 0007). Anzeige/Download
+ * funktioniert nur ueber zeitlich begrenzte signierte URLs.
+ */
+export async function getSignedUrl(bucket: 'mangel-fotos' | 'plaene', path: string, expiresInSeconds = 3600) {
+  const { data } = await supabase.storage.from(bucket).createSignedUrl(path, expiresInSeconds)
+  return data?.signedUrl ?? null
+}

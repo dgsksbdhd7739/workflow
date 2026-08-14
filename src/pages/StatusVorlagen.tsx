@@ -64,6 +64,7 @@ export function StatusVorlagen() {
   }
 
   const handleDeleteVorlage = async (id: string) => {
+    if (!window.confirm('Diese Vorlage inklusive aller Statuswerte wirklich löschen?')) return
     setFehler(null)
     if (ausgewaehlteVorlage === id) setAusgewaehlteVorlage(null)
     setVorlagen((prev) => prev.filter((v) => v.id !== id))
@@ -130,6 +131,7 @@ export function StatusVorlagen() {
 
   const deleteWert = async (wertId: string) => {
     if (!ausgewaehlteVorlage) return
+    if (!window.confirm('Diesen Statuswert wirklich löschen?')) return
     setFehler(null)
     setWerte((prev) => prev.filter((w) => w.id !== wertId))
     const { error } = await supabase.from('statusvorlage_werte').delete().eq('id', wertId)

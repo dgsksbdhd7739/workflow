@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { MangelDetails } from '../components/MangelDetails'
@@ -86,6 +86,7 @@ export function PlanDetail() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [pdfReady, setPdfReady] = useState(false)
   const [pdfError, setPdfError] = useState(false)
+  const [datenUrl, setDatenUrl] = useState<string | null>(null)
 
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
@@ -147,10 +148,26 @@ export function PlanDetail() {
     load()
   }
 
-  const isPdf = Boolean(plan?.datei_url.match(/\.pdf$/i))
+  const isPdf = Boolean(plan?.datei_pfad.match(/\.pdf$/i))
 
   useEffect(() => {
-    if (!plan || !isPdf) return
+    if (!plan) {
+      setDatenUrl(null)
+      return
+    }
+    let cancelled = false
+    setDatenUrl(null)
+    getSignedUrl('plaene', plan.datei_pfad).then((url) => {
+      if (!cancelled) setDatenUrl(url)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan?.datei_pfad])
+
+  useEffect(() => {
+    if (!datenUrl || !isPdf) return
     let cancelled = false
     setPdfReady(false)
     setPdfError(false)
@@ -158,7 +175,7 @@ export function PlanDetail() {
     Promise.all([import('pdfjs-dist'), import('pdfjs-dist/build/pdf.worker.min.mjs?url')])
       .then(([pdfjsLib, { default: workerUrl }]) => {
         pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
-        return pdfjsLib.getDocument({ url: plan.datei_url }).promise
+        return pdfjsLib.getDocument({ url: datenUrl }).promise
       })
       .then((pdf) => pdf.getPage(1))
       .then(async (page) => {
@@ -179,7 +196,7 @@ export function PlanDetail() {
     return () => {
       cancelled = true
     }
-  }, [plan, isPdf])
+  }, [datenUrl, isPdf])
 
   useEffect(() => {
     if (!selectedPin) return
@@ -276,6 +293,7 @@ export function PlanDetail() {
 
   const handleUnpin = async () => {
     if (!selectedPin) return
+    if (!window.confirm('Markierung wirklich vom Plan entfernen? Der Mangel bleibt in der Mängel-Liste erhalten.')) return
     setSaving(true)
     setFehler(null)
     const { error } = await supabase
@@ -292,8 +310,9 @@ export function PlanDetail() {
   }
 
   if (!plan) return <p className="p-6 text-sm text-gray-500">Lädt…</p>
+  if (!datenUrl) return <p className="p-6 text-sm text-gray-500">Lädt…</p>
 
-  const isImage = plan.datei_url.match(/\.(png|jpe?g|webp|gif)$/i)
+  const isImage = plan.datei_pfad.match(/\.(png|jpe?g|webp|gif)$/i)
   const canMark = Boolean(isImage) || (isPdf && pdfReady)
 
   return (
@@ -327,11 +346,11 @@ export function PlanDetail() {
 
       {isPdf && pdfError ? (
         <p className="text-sm text-gray-500">
-          PDF konnte nicht geladen werden. <a className="text-blue-600" href={plan.datei_url} target="_blank" rel="noreferrer">Datei öffnen</a>
+          PDF konnte nicht geladen werden. <a className="text-blue-600" href={datenUrl} target="_blank" rel="noreferrer">Datei öffnen</a>
         </p>
       ) : !isImage && !isPdf ? (
         <p className="text-sm text-gray-500">
-          Für dieses Dateiformat ist keine Markierung im Browser möglich. <a className="text-blue-600" href={plan.datei_url} target="_blank" rel="noreferrer">Datei öffnen</a>
+          Für dieses Dateiformat ist keine Markierung im Browser möglich. <a className="text-blue-600" href={datenUrl} target="_blank" rel="noreferrer">Datei öffnen</a>
         </p>
       ) : (
         <>
@@ -347,7 +366,7 @@ export function PlanDetail() {
             {isPdf ? (
               <canvas ref={canvasRef} className="w-full select-none" />
             ) : (
-              <img src={plan.datei_url} alt={plan.name} className="w-full select-none" draggable={false} />
+              <img src={datenUrl} alt={plan.name} className="w-full select-none" draggable={false} />
             )}
             {isPdf && !pdfReady && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-sm text-gray-500">

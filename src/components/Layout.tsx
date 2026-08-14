@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 
 const mainNav = [
   { to: '/', label: 'Projekte', icon: '🏗️', end: true },
@@ -22,6 +23,7 @@ export function Layout() {
   const { signOut, user } = useAuth()
   const { id } = useParams()
   const nav = id ? [...mainNav, ...baustelleNav(id)] : mainNav
+  const online = useOnlineStatus()
 
   return (
     <div className="flex h-screen flex-col md:flex-row bg-gray-50">
@@ -63,6 +65,11 @@ export function Layout() {
       </header>
 
       <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+        {!online && (
+          <div className="bg-amber-100 px-4 py-2 text-center text-xs font-medium text-amber-800">
+            Offline — zuletzt geladene Daten werden angezeigt, Änderungen können erst nach Verbindung gespeichert werden.
+          </div>
+        )}
         <Outlet />
       </main>
 

@@ -25,7 +25,7 @@ export interface Mangel {
   prioritaet: MangelPrioritaet
   verantwortlicher_id: string | null
   faellig_am: string | null
-  foto_url: string | null
+  foto_pfad: string | null
   plan_id: string | null
   position_x: number | null
   position_y: number | null
@@ -39,7 +39,7 @@ export interface Plan {
   id: string
   baustelle_id: string
   name: string
-  datei_url: string
+  datei_pfad: string
   statusvorlage_id: string | null
   erstellt_von: string
   erstellt_am: string
@@ -111,7 +111,7 @@ export interface MangelKommentar {
   id: string
   mangel_id: string
   text: string | null
-  foto_url: string | null
+  foto_pfad: string | null
   erstellt_von: string
   erstellt_am: string
 }

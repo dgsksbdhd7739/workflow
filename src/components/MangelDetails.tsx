@@ -1,7 +1,8 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
+import { SignedImage } from './SignedImage'
 import type { MangelKommentar, MangelPhase, MangelStatus } from '../types/database'
 
 const statusLabel: Record<MangelStatus, string> = {
@@ -98,6 +99,7 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
   }
 
   const deletePhase = async (phaseId: string) => {
+    if (!window.confirm('Diese Baustufe wirklich löschen?')) return
     setFehler(null)
     setPhasen((prev) => prev.filter((p) => p.id !== phaseId))
     const { error } = await supabase.from('mangel_phasen').delete().eq('id', phaseId)
@@ -113,7 +115,7 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
     setKommentarSaving(true)
     setFehler(null)
 
-    let foto_url: string | null = null
+    let foto_pfad: string | null = null
     if (kommentarFoto) {
       const path = `kommentare/${mangelId}/${Date.now()}-${kommentarFoto.name}`
       const { error: uploadError } = await supabase.storage.from('mangel-fotos').upload(path, kommentarFoto)
@@ -122,13 +124,13 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
         setFehler(`Foto-Upload fehlgeschlagen: ${uploadError.message}`)
         return
       }
-      foto_url = supabase.storage.from('mangel-fotos').getPublicUrl(path).data.publicUrl
+      foto_pfad = path
     }
 
     const { error } = await supabase.from('mangel_kommentare').insert({
       mangel_id: mangelId,
       text: kommentarText.trim() || null,
-      foto_url,
+      foto_pfad,
       erstellt_von: user.id,
     })
 
@@ -233,10 +235,21 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
                     <span className="text-xs text-gray-400">{relativZeit(k.erstellt_am)}</span>
                   </div>
                   {k.text && <p className="mt-0.5 text-sm text-gray-700">{k.text}</p>}
-                  {k.foto_url && (
-                    <a href={k.foto_url} target="_blank" rel="noreferrer">
-                      <img src={k.foto_url} alt="" className="mt-1 h-24 w-24 rounded-lg object-cover" />
-                    </a>
+                  {k.foto_pfad && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const url = await getSignedUrl('mangel-fotos', k.foto_pfad!)
+                        if (url) window.open(url, '_blank', 'noreferrer')
+                      }}
+                    >
+                      <SignedImage
+                        bucket="mangel-fotos"
+                        path={k.foto_pfad}
+                        alt=""
+                        className="mt-1 h-24 w-24 rounded-lg object-cover"
+                      />
+                    </button>
                   )}
                 </div>
               </li>

@@ -2,6 +2,7 @@ import { useEffect, useState, type ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { SignedImage } from '../components/SignedImage'
 import type { Plan } from '../types/database'
 
 export function Plaene() {
@@ -43,11 +44,10 @@ export function Plaene() {
       e.target.value = ''
       return
     }
-    const datei_url = supabase.storage.from('plaene').getPublicUrl(path).data.publicUrl
     const { error } = await supabase.from('plaene').insert({
       baustelle_id: baustelleId,
       name: file.name,
-      datei_url,
+      datei_pfad: path,
       erstellt_von: user.id,
     })
     if (error) setFehler(error.message)
@@ -88,8 +88,8 @@ export function Plaene() {
                 className="block overflow-hidden rounded-xl border border-gray-200 bg-white hover:border-blue-300"
               >
                 <div className="aspect-square bg-gray-100">
-                  {p.datei_url.match(/\.(png|jpe?g|webp|gif)$/i) ? (
-                    <img src={p.datei_url} alt={p.name} className="h-full w-full object-cover" />
+                  {p.datei_pfad.match(/\.(png|jpe?g|webp|gif)$/i) ? (
+                    <SignedImage bucket="plaene" path={p.datei_pfad} alt={p.name} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-3xl">📄</div>
                   )}

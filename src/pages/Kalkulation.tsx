@@ -66,6 +66,7 @@ export function Kalkulation() {
   }
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm('Diese Position wirklich entfernen?')) return
     setFehler(null)
     setLeistungen((prev) => prev.filter((l) => l.id !== id))
     const { error } = await supabase.from('leistungen').delete().eq('id', id)

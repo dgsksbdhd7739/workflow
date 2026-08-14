@@ -4,7 +4,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { MangelDetails } from '../components/MangelDetails'
-import type { Mangel, MangelPrioritaet, MangelStatus, StatusVorlageWert } from '../types/database'
+import { SignedImage } from '../components/SignedImage'
+import { exportMaengelPdf } from '../lib/pdf'
+import type { Baustelle, Mangel, MangelPrioritaet, MangelStatus, StatusVorlageWert } from '../types/database'
 
 const statusLabel: Record<MangelStatus, string> = {
   offen: 'Offen',
@@ -28,6 +30,7 @@ export function Maengel() {
   const { id: baustelleId } = useParams<{ id: string }>()
   const { user } = useAuth()
   const { profiles, nameOf } = useProfiles()
+  const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
   const [maengel, setMaengel] = useState<Mangel[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -47,12 +50,12 @@ export function Maengel() {
   const load = async () => {
     if (!baustelleId) return
     setLoading(true)
-    const { data } = await supabase
-      .from('maengel')
-      .select('*')
-      .eq('baustelle_id', baustelleId)
-      .order('erstellt_am', { ascending: false })
+    const [{ data }, { data: baustelleData }] = await Promise.all([
+      supabase.from('maengel').select('*').eq('baustelle_id', baustelleId).order('erstellt_am', { ascending: false }),
+      supabase.from('baustellen').select('*').eq('id', baustelleId).single(),
+    ])
     setMaengel(data ?? [])
+    setBaustelle(baustelleData)
     setLoading(false)
   }
 
@@ -75,7 +78,7 @@ export function Maengel() {
     setSaving(true)
     setFehler(null)
 
-    let foto_url: string | null = null
+    let foto_pfad: string | null = null
     if (foto) {
       const path = `${baustelleId}/${Date.now()}-${foto.name}`
       const { error: uploadError } = await supabase.storage.from('mangel-fotos').upload(path, foto)
@@ -84,7 +87,7 @@ export function Maengel() {
         setFehler(`Foto-Upload fehlgeschlagen: ${uploadError.message}`)
         return
       }
-      foto_url = supabase.storage.from('mangel-fotos').getPublicUrl(path).data.publicUrl
+      foto_pfad = path
     }
 
     const { error } = await supabase.from('maengel').insert({
@@ -94,7 +97,7 @@ export function Maengel() {
       prioritaet,
       verantwortlicher_id: verantwortlicherId || null,
       faellig_am: faelligAm || null,
-      foto_url,
+      foto_pfad,
       erstellt_von: user.id,
     })
 
@@ -129,12 +132,22 @@ export function Maengel() {
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Mängel</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          {showForm ? 'Abbrechen' : '+ Mangel melden'}
-        </button>
+        <div className="flex gap-2">
+          {baustelle && gefiltert.length > 0 && (
+            <button
+              onClick={() => exportMaengelPdf(baustelle, gefiltert, nameOf)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              PDF exportieren
+            </button>
+          )}
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            {showForm ? 'Abbrechen' : '+ Mangel melden'}
+          </button>
+        </div>
       </div>
 
       {fehler && (
@@ -258,8 +271,13 @@ export function Maengel() {
                     {m.faellig_am && <span>Fällig: {m.faellig_am}</span>}
                   </div>
                 </div>
-                {m.foto_url && (
-                  <img src={m.foto_url} alt="" className="h-16 w-16 flex-shrink-0 rounded-lg object-cover" />
+                {m.foto_pfad && (
+                  <SignedImage
+                    bucket="mangel-fotos"
+                    path={m.foto_pfad}
+                    alt=""
+                    className="h-16 w-16 flex-shrink-0 rounded-lg object-cover"
+                  />
                 )}
               </div>
               <div className="mt-3 flex items-center justify-between">

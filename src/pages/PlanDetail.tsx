@@ -159,8 +159,10 @@ export function PlanDetail() {
     }
     let cancelled = false
     setDatenUrl(null)
-    getSignedUrl('plaene', plan.datei_pfad).then((url) => {
-      if (!cancelled) setDatenUrl(url)
+    getSignedUrl('plaene', plan.datei_pfad).then(({ url, error }) => {
+      if (cancelled) return
+      setDatenUrl(url)
+      if (error) setFehler(`Plan konnte nicht geladen werden: ${error}`)
     })
     return () => {
       cancelled = true

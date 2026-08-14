@@ -13,17 +13,32 @@ export function SignedImage({
   className?: string
 }) {
   const [url, setUrl] = useState<string | null>(null)
+  const [fehler, setFehler] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setUrl(null)
-    getSignedUrl(bucket, path).then((signedUrl) => {
-      if (!cancelled) setUrl(signedUrl)
+    setFehler(null)
+    getSignedUrl(bucket, path).then(({ url: signedUrl, error }) => {
+      if (cancelled) return
+      setUrl(signedUrl)
+      setFehler(error)
     })
     return () => {
       cancelled = true
     }
   }, [bucket, path])
+
+  if (fehler) {
+    return (
+      <div
+        title={fehler}
+        className={`${className ?? ''} flex items-center justify-center bg-red-50 text-xs text-red-600`}
+      >
+        ⚠
+      </div>
+    )
+  }
 
   if (!url) {
     return <div className={`${className ?? ''} animate-pulse bg-gray-200`} />

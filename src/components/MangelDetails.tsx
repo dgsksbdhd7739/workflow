@@ -239,7 +239,7 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
                     <button
                       type="button"
                       onClick={async () => {
-                        const url = await getSignedUrl('mangel-fotos', k.foto_pfad!)
+                        const { url } = await getSignedUrl('mangel-fotos', k.foto_pfad!)
                         if (url) window.open(url, '_blank', 'noreferrer')
                       }}
                     >

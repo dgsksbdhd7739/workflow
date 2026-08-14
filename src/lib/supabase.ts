@@ -15,6 +15,9 @@ export const supabase = createClient(
  * funktioniert nur ueber zeitlich begrenzte signierte URLs.
  */
 export async function getSignedUrl(bucket: 'mangel-fotos' | 'plaene', path: string, expiresInSeconds = 3600) {
-  const { data } = await supabase.storage.from(bucket).createSignedUrl(path, expiresInSeconds)
-  return data?.signedUrl ?? null
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresInSeconds)
+  if (error) {
+    console.error(`Signed-URL-Fehler (${bucket}/${path}):`, error.message)
+  }
+  return { url: data?.signedUrl ?? null, error: error?.message ?? null }
 }

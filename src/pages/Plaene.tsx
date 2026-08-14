@@ -10,6 +10,7 @@ export function Plaene() {
   const [plaene, setPlaene] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
     if (!baustelleId) return
@@ -32,19 +33,25 @@ export function Plaene() {
     const file = e.target.files?.[0]
     if (!file || !user || !baustelleId) return
     setUploading(true)
+    setFehler(null)
 
     const path = `${baustelleId}/${Date.now()}-${file.name}`
     const { error: uploadError } = await supabase.storage.from('plaene').upload(path, file)
-    if (!uploadError) {
-      const datei_url = supabase.storage.from('plaene').getPublicUrl(path).data.publicUrl
-      await supabase.from('plaene').insert({
-        baustelle_id: baustelleId,
-        name: file.name,
-        datei_url,
-        erstellt_von: user.id,
-      })
-      load()
+    if (uploadError) {
+      setFehler(uploadError.message)
+      setUploading(false)
+      e.target.value = ''
+      return
     }
+    const datei_url = supabase.storage.from('plaene').getPublicUrl(path).data.publicUrl
+    const { error } = await supabase.from('plaene').insert({
+      baustelle_id: baustelleId,
+      name: file.name,
+      datei_url,
+      erstellt_von: user.id,
+    })
+    if (error) setFehler(error.message)
+    else load()
     setUploading(false)
     e.target.value = ''
   }
@@ -58,6 +65,12 @@ export function Plaene() {
           <input type="file" accept="image/*,.pdf" onChange={handleUpload} className="hidden" disabled={uploading} />
         </label>
       </div>
+
+      {fehler && (
+        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+          Fehler: {fehler}
+        </p>
+      )}
 
       {loading ? (
         <p className="text-sm text-gray-500">Lädt…</p>

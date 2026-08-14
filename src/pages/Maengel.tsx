@@ -35,6 +35,7 @@ export function Maengel() {
   const [filterStatus, setFilterStatus] = useState<MangelStatus | 'alle'>('alle')
   const [geoeffnetId, setGeoeffnetId] = useState<string | null>(null)
   const [werteMap, setWerteMap] = useState<Record<string, StatusVorlageWert>>({})
+  const [fehler, setFehler] = useState<string | null>(null)
 
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
@@ -72,17 +73,21 @@ export function Maengel() {
     e.preventDefault()
     if (!user || !baustelleId) return
     setSaving(true)
+    setFehler(null)
 
     let foto_url: string | null = null
     if (foto) {
       const path = `${baustelleId}/${Date.now()}-${foto.name}`
       const { error: uploadError } = await supabase.storage.from('mangel-fotos').upload(path, foto)
-      if (!uploadError) {
-        foto_url = supabase.storage.from('mangel-fotos').getPublicUrl(path).data.publicUrl
+      if (uploadError) {
+        setSaving(false)
+        setFehler(`Foto-Upload fehlgeschlagen: ${uploadError.message}`)
+        return
       }
+      foto_url = supabase.storage.from('mangel-fotos').getPublicUrl(path).data.publicUrl
     }
 
-    await supabase.from('maengel').insert({
+    const { error } = await supabase.from('maengel').insert({
       baustelle_id: baustelleId,
       titel,
       beschreibung: beschreibung || null,
@@ -94,6 +99,10 @@ export function Maengel() {
     })
 
     setSaving(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
     setTitel('')
     setBeschreibung('')
     setPrioritaet('mittel')
@@ -105,8 +114,13 @@ export function Maengel() {
   }
 
   const updateStatus = async (mangelId: string, status: MangelStatus) => {
+    setFehler(null)
     setMaengel((prev) => prev.map((m) => (m.id === mangelId ? { ...m, status } : m)))
-    await supabase.from('maengel').update({ status }).eq('id', mangelId)
+    const { error } = await supabase.from('maengel').update({ status }).eq('id', mangelId)
+    if (error) {
+      setFehler(error.message)
+      load()
+    }
   }
 
   const gefiltert = filterStatus === 'alle' ? maengel : maengel.filter((m) => m.status === filterStatus)
@@ -122,6 +136,12 @@ export function Maengel() {
           {showForm ? 'Abbrechen' : '+ Mangel melden'}
         </button>
       </div>
+
+      {fehler && (
+        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+          Fehler: {fehler}
+        </p>
+      )}
 
       <div className="mb-4 flex gap-2">
         {(['alle', 'offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (

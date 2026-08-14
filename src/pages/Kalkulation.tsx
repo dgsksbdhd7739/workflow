@@ -13,6 +13,7 @@ export function Kalkulation() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [fehler, setFehler] = useState<string | null>(null)
 
   const [bezeichnung, setBezeichnung] = useState('')
   const [menge, setMenge] = useState('1')
@@ -40,8 +41,9 @@ export function Kalkulation() {
     e.preventDefault()
     if (!user || !baustelleId) return
     setSaving(true)
+    setFehler(null)
     const naechstePosition = leistungen.length > 0 ? Math.max(...leistungen.map((l) => l.position_nr)) + 1 : 1
-    await supabase.from('leistungen').insert({
+    const { error } = await supabase.from('leistungen').insert({
       baustelle_id: baustelleId,
       position_nr: naechstePosition,
       bezeichnung,
@@ -51,6 +53,10 @@ export function Kalkulation() {
       erstellt_von: user.id,
     })
     setSaving(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
     setBezeichnung('')
     setMenge('1')
     setEinheit('Stk')
@@ -60,8 +66,13 @@ export function Kalkulation() {
   }
 
   const handleDelete = async (id: string) => {
+    setFehler(null)
     setLeistungen((prev) => prev.filter((l) => l.id !== id))
-    await supabase.from('leistungen').delete().eq('id', id)
+    const { error } = await supabase.from('leistungen').delete().eq('id', id)
+    if (error) {
+      setFehler(error.message)
+      load()
+    }
   }
 
   const summe = leistungen.reduce((acc, l) => acc + l.menge * l.einzelpreis, 0)
@@ -77,6 +88,12 @@ export function Kalkulation() {
           {showForm ? 'Abbrechen' : '+ Position'}
         </button>
       </div>
+
+      {fehler && (
+        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+          Fehler: {fehler}
+        </p>
+      )}
 
       {showForm && (
         <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white p-4">

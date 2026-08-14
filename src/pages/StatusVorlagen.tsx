@@ -17,6 +17,7 @@ export function StatusVorlagen() {
 
   const [neuerWertTitel, setNeuerWertTitel] = useState('')
   const [neuerWertFarbe, setNeuerWertFarbe] = useState(farbPalette[0])
+  const [fehler, setFehler] = useState<string | null>(null)
 
   const loadVorlagen = async () => {
     setLoading(true)
@@ -46,11 +47,16 @@ export function StatusVorlagen() {
   const handleCreateVorlage = async (e: FormEvent) => {
     e.preventDefault()
     if (!user || !neueVorlageName.trim()) return
-    const { data } = await supabase
+    setFehler(null)
+    const { data, error } = await supabase
       .from('statusvorlagen')
       .insert({ name: neueVorlageName.trim(), erstellt_von: user.id })
       .select()
       .single()
+    if (error) {
+      setFehler(error.message)
+      return
+    }
     setNeueVorlageName('')
     setVorlageFormOffen(false)
     await loadVorlagen()
@@ -58,22 +64,32 @@ export function StatusVorlagen() {
   }
 
   const handleDeleteVorlage = async (id: string) => {
+    setFehler(null)
     if (ausgewaehlteVorlage === id) setAusgewaehlteVorlage(null)
     setVorlagen((prev) => prev.filter((v) => v.id !== id))
-    await supabase.from('statusvorlagen').delete().eq('id', id)
+    const { error } = await supabase.from('statusvorlagen').delete().eq('id', id)
+    if (error) {
+      setFehler(error.message)
+      loadVorlagen()
+    }
   }
 
   const handleAddWert = async (e: FormEvent) => {
     e.preventDefault()
     if (!ausgewaehlteVorlage || !neuerWertTitel.trim()) return
+    setFehler(null)
     const reihenfolge = werte.length > 0 ? Math.max(...werte.map((w) => w.reihenfolge)) + 1 : 1
-    await supabase.from('statusvorlage_werte').insert({
+    const { error } = await supabase.from('statusvorlage_werte').insert({
       statusvorlage_id: ausgewaehlteVorlage,
       titel: neuerWertTitel.trim(),
       farbe: neuerWertFarbe,
       reihenfolge,
       ist_standard: werte.length === 0,
     })
+    if (error) {
+      setFehler(error.message)
+      return
+    }
     setNeuerWertTitel('')
     loadWerte(ausgewaehlteVorlage)
   }
@@ -82,6 +98,7 @@ export function StatusVorlagen() {
     if (!ausgewaehlteVorlage) return
     const zielIndex = index + richtung
     if (zielIndex < 0 || zielIndex >= werte.length) return
+    setFehler(null)
     const a = werte[index]
     const b = werte[zielIndex]
     setWerte((prev) => {
@@ -89,22 +106,37 @@ export function StatusVorlagen() {
       ;[next[index], next[zielIndex]] = [next[zielIndex], next[index]]
       return next
     })
-    await Promise.all([
+    const [r1, r2] = await Promise.all([
       supabase.from('statusvorlage_werte').update({ reihenfolge: b.reihenfolge }).eq('id', a.id),
       supabase.from('statusvorlage_werte').update({ reihenfolge: a.reihenfolge }).eq('id', b.id),
     ])
+    if (r1.error || r2.error) {
+      setFehler((r1.error ?? r2.error)!.message)
+      loadWerte(ausgewaehlteVorlage)
+    }
   }
 
   const setStandard = async (wertId: string) => {
     if (!ausgewaehlteVorlage) return
+    setFehler(null)
     setWerte((prev) => prev.map((w) => ({ ...w, ist_standard: w.id === wertId })))
-    await supabase.from('statusvorlage_werte').update({ ist_standard: false }).eq('statusvorlage_id', ausgewaehlteVorlage)
-    await supabase.from('statusvorlage_werte').update({ ist_standard: true }).eq('id', wertId)
+    const r1 = await supabase.from('statusvorlage_werte').update({ ist_standard: false }).eq('statusvorlage_id', ausgewaehlteVorlage)
+    const r2 = await supabase.from('statusvorlage_werte').update({ ist_standard: true }).eq('id', wertId)
+    if (r1.error || r2.error) {
+      setFehler((r1.error ?? r2.error)!.message)
+      loadWerte(ausgewaehlteVorlage)
+    }
   }
 
   const deleteWert = async (wertId: string) => {
+    if (!ausgewaehlteVorlage) return
+    setFehler(null)
     setWerte((prev) => prev.filter((w) => w.id !== wertId))
-    await supabase.from('statusvorlage_werte').delete().eq('id', wertId)
+    const { error } = await supabase.from('statusvorlage_werte').delete().eq('id', wertId)
+    if (error) {
+      setFehler(error.message)
+      loadWerte(ausgewaehlteVorlage)
+    }
   }
 
   return (
@@ -123,6 +155,12 @@ export function StatusVorlagen() {
           {vorlageFormOffen ? 'Abbrechen' : '+ Vorlage'}
         </button>
       </div>
+
+      {fehler && (
+        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+          Fehler: {fehler}
+        </p>
+      )}
 
       {vorlageFormOffen && (
         <form onSubmit={handleCreateVorlage} className="mb-4 flex gap-2">

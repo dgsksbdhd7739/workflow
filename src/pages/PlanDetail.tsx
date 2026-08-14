@@ -104,6 +104,7 @@ export function PlanDetail() {
   const [statusWertId, setStatusWertId] = useState('')
   const [alleVorlagen, setAlleVorlagen] = useState<StatusVorlage[]>([])
   const [werte, setWerte] = useState<StatusVorlageWert[]>([])
+  const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
     if (!planId) return
@@ -137,10 +138,12 @@ export function PlanDetail() {
 
   const handleVorlageZuweisen = async (vorlageId: string) => {
     if (!planId) return
-    await supabase
+    setFehler(null)
+    const { error } = await supabase
       .from('plaene')
       .update({ statusvorlage_id: vorlageId || null })
       .eq('id', planId)
+    if (error) setFehler(error.message)
     load()
   }
 
@@ -220,7 +223,8 @@ export function PlanDetail() {
     e.preventDefault()
     if (!pendingPos || !user || !baustelleId || !planId) return
     setSaving(true)
-    await supabase.from('maengel').insert({
+    setFehler(null)
+    const { error } = await supabase.from('maengel').insert({
       baustelle_id: baustelleId,
       titel,
       beschreibung: beschreibung || null,
@@ -236,6 +240,10 @@ export function PlanDetail() {
       erstellt_von: user.id,
     })
     setSaving(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
     setPendingPos(null)
     resetNeuForm()
     load()
@@ -244,8 +252,9 @@ export function PlanDetail() {
   const handleUpdate = async () => {
     if (!selectedPin) return
     setSaving(true)
+    setFehler(null)
     const status = werte.length > 0 && editStatusWertId ? klassischerStatusAusWert(editStatusWertId, werte) : editStatus
-    await supabase
+    const { error } = await supabase
       .from('maengel')
       .update({
         status,
@@ -257,6 +266,10 @@ export function PlanDetail() {
       })
       .eq('id', selectedPin.id)
     setSaving(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
     setSelectedPin(null)
     load()
   }
@@ -264,11 +277,16 @@ export function PlanDetail() {
   const handleUnpin = async () => {
     if (!selectedPin) return
     setSaving(true)
-    await supabase
+    setFehler(null)
+    const { error } = await supabase
       .from('maengel')
       .update({ plan_id: null, position_x: null, position_y: null })
       .eq('id', selectedPin.id)
     setSaving(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
     setSelectedPin(null)
     load()
   }
@@ -284,6 +302,13 @@ export function PlanDetail() {
         ← Zurück zu Plänen
       </Link>
       <h1 className="mb-1 text-xl font-semibold text-gray-900">{plan.name}</h1>
+
+      {fehler && (
+        <p className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+          Fehler: {fehler}
+        </p>
+      )}
+
       <div className="mb-4 flex items-center gap-2 text-xs text-gray-500">
         <span>Statusvorlage:</span>
         <select

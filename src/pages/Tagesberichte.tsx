@@ -15,6 +15,7 @@ export function Tagesberichte() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [fehler, setFehler] = useState<string | null>(null)
 
   const [datum, setDatum] = useState(heute())
   const [wetter, setWetter] = useState('')
@@ -44,6 +45,7 @@ export function Tagesberichte() {
     e.preventDefault()
     if (!user || !baustelleId) return
     setSaving(true)
+    setFehler(null)
     const { error } = await supabase.from('tagesberichte').insert({
       baustelle_id: baustelleId,
       datum,
@@ -55,16 +57,18 @@ export function Tagesberichte() {
       erstellt_von: user.id,
     })
     setSaving(false)
-    if (!error) {
-      setDatum(heute())
-      setWetter('')
-      setTemperatur('')
-      setPersonalAnzahl('')
-      setTaetigkeiten('')
-      setBesonderheiten('')
-      setShowForm(false)
-      load()
+    if (error) {
+      setFehler(error.message)
+      return
     }
+    setDatum(heute())
+    setWetter('')
+    setTemperatur('')
+    setPersonalAnzahl('')
+    setTaetigkeiten('')
+    setBesonderheiten('')
+    setShowForm(false)
+    load()
   }
 
   return (
@@ -78,6 +82,12 @@ export function Tagesberichte() {
           {showForm ? 'Abbrechen' : '+ Tagesbericht'}
         </button>
       </div>
+
+      {fehler && (
+        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+          Fehler: {fehler}
+        </p>
+      )}
 
       {showForm && (
         <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white p-4">

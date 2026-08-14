@@ -47,6 +47,7 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
   const [kommentarText, setKommentarText] = useState('')
   const [kommentarFoto, setKommentarFoto] = useState<File | null>(null)
   const [kommentarSaving, setKommentarSaving] = useState(false)
+  const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -68,44 +69,63 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
     e.preventDefault()
     if (!user || !neuePhaseTitel.trim()) return
     setPhaseSaving(true)
+    setFehler(null)
     const reihenfolge = phasen.length > 0 ? Math.max(...phasen.map((p) => p.reihenfolge)) + 1 : 1
-    await supabase.from('mangel_phasen').insert({
+    const { error } = await supabase.from('mangel_phasen').insert({
       mangel_id: mangelId,
       titel: neuePhaseTitel.trim(),
       reihenfolge,
       erstellt_von: user.id,
     })
     setPhaseSaving(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
     setNeuePhaseTitel('')
     setPhaseFormOffen(false)
     load()
   }
 
   const updatePhaseStatus = async (phaseId: string, status: MangelStatus) => {
+    setFehler(null)
     setPhasen((prev) => prev.map((p) => (p.id === phaseId ? { ...p, status } : p)))
-    await supabase.from('mangel_phasen').update({ status }).eq('id', phaseId)
+    const { error } = await supabase.from('mangel_phasen').update({ status }).eq('id', phaseId)
+    if (error) {
+      setFehler(error.message)
+      load()
+    }
   }
 
   const deletePhase = async (phaseId: string) => {
+    setFehler(null)
     setPhasen((prev) => prev.filter((p) => p.id !== phaseId))
-    await supabase.from('mangel_phasen').delete().eq('id', phaseId)
+    const { error } = await supabase.from('mangel_phasen').delete().eq('id', phaseId)
+    if (error) {
+      setFehler(error.message)
+      load()
+    }
   }
 
   const handleKommentarSenden = async (e: FormEvent) => {
     e.preventDefault()
     if (!user || (!kommentarText.trim() && !kommentarFoto)) return
     setKommentarSaving(true)
+    setFehler(null)
 
     let foto_url: string | null = null
     if (kommentarFoto) {
       const path = `kommentare/${mangelId}/${Date.now()}-${kommentarFoto.name}`
       const { error: uploadError } = await supabase.storage.from('mangel-fotos').upload(path, kommentarFoto)
-      if (!uploadError) {
-        foto_url = supabase.storage.from('mangel-fotos').getPublicUrl(path).data.publicUrl
+      if (uploadError) {
+        setKommentarSaving(false)
+        setFehler(`Foto-Upload fehlgeschlagen: ${uploadError.message}`)
+        return
       }
+      foto_url = supabase.storage.from('mangel-fotos').getPublicUrl(path).data.publicUrl
     }
 
-    await supabase.from('mangel_kommentare').insert({
+    const { error } = await supabase.from('mangel_kommentare').insert({
       mangel_id: mangelId,
       text: kommentarText.trim() || null,
       foto_url,
@@ -113,6 +133,10 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
     })
 
     setKommentarSaving(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
     setKommentarText('')
     setKommentarFoto(null)
     load()
@@ -122,6 +146,12 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
 
   return (
     <div className="space-y-5">
+      {fehler && (
+        <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+          Fehler: {fehler}
+        </p>
+      )}
+
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-medium text-gray-900">Fortschritt</h3>

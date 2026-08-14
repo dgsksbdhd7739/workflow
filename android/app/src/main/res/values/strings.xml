@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Baustellenapp</string>
+    <string name="title_activity_main">Baustellenapp</string>
+    <string name="package_name">com.mesut.baustellenapp</string>
+    <string name="custom_url_scheme">com.mesut.baustellenapp</string>
+</resources>

@@ -106,6 +106,7 @@ export function PlanDetail() {
   const [alleVorlagen, setAlleVorlagen] = useState<StatusVorlage[]>([])
   const [werte, setWerte] = useState<StatusVorlageWert[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
+  const [zoom, setZoom] = useState(1)
 
   const load = async () => {
     if (!planId) return
@@ -129,6 +130,7 @@ export function PlanDetail() {
 
   useEffect(() => {
     load()
+    setZoom(1)
     supabase
       .from('statusvorlagen')
       .select('*')
@@ -354,54 +356,87 @@ export function PlanDetail() {
         </p>
       ) : (
         <>
-          <p className="mb-2 text-xs text-gray-500">
-            {canMark
-              ? 'Auf den Plan tippen, um eine Aufgabe zu markieren. Vorhandene Markierung antippen zum Bearbeiten.'
-              : 'PDF wird geladen…'}
-          </p>
-          <div
-            onClick={canMark ? handlePlanClick : undefined}
-            className="relative w-full cursor-crosshair overflow-hidden rounded-xl border border-gray-200 select-none"
-          >
-            {isPdf ? (
-              <canvas ref={canvasRef} className="w-full select-none" />
-            ) : (
-              <img src={datenUrl} alt={plan.name} className="w-full select-none" draggable={false} />
-            )}
-            {isPdf && !pdfReady && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-sm text-gray-500">
-                Lädt…
-              </div>
-            )}
-            {pins.map((m) => (
-              <div
-                key={m.id}
-                title={m.titel}
-                onClick={(e) => handlePinClick(e, m)}
-                style={{ left: `${m.position_x}%`, top: `${m.position_y}%` }}
-                className="absolute -translate-x-1/2 -translate-y-full cursor-pointer"
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs text-gray-500">
+              {canMark
+                ? 'Auf den Plan tippen, um eine Aufgabe zu markieren. Vorhandene Markierung antippen zum Bearbeiten.'
+                : 'PDF wird geladen…'}
+            </p>
+            <div className="flex flex-shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(1, z - 0.5))}
+                disabled={zoom <= 1}
+                className="h-7 w-7 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 disabled:opacity-30"
               >
-                <div
-                  style={{ backgroundColor: pinFarbe(m, werte) }}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white shadow ring-2 ring-white"
-                >
-                  {istLetzterWert(m, werte) ? '✓' : '!'}
-                </div>
-              </div>
-            ))}
-            {pendingPos && (
-              <div
-                style={{ left: `${pendingPos.x}%`, top: `${pendingPos.y}%` }}
-                className="absolute -translate-x-1/2 -translate-y-full"
+                −
+              </button>
+              <span className="w-11 text-center text-xs text-gray-500">{Math.round(zoom * 100)}%</span>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.min(4, z + 0.5))}
+                disabled={zoom >= 4}
+                className="h-7 w-7 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 disabled:opacity-30"
               >
-                <div
-                  style={{ backgroundColor: farbe ?? '#2563eb' }}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white shadow animate-pulse ring-2 ring-white"
+                +
+              </button>
+              {zoom !== 1 && (
+                <button
+                  type="button"
+                  onClick={() => setZoom(1)}
+                  className="ml-1 text-xs font-medium text-blue-600"
                 >
-                  +
+                  Zurücksetzen
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="w-full overflow-x-auto rounded-xl border border-gray-200">
+            <div
+              onClick={canMark ? handlePlanClick : undefined}
+              className="relative cursor-crosshair select-none"
+              style={{ width: `${zoom * 100}%` }}
+            >
+              {isPdf ? (
+                <canvas ref={canvasRef} className="w-full select-none" />
+              ) : (
+                <img src={datenUrl} alt={plan.name} className="w-full select-none" draggable={false} />
+              )}
+              {isPdf && !pdfReady && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-sm text-gray-500">
+                  Lädt…
                 </div>
-              </div>
-            )}
+              )}
+              {pins.map((m) => (
+                <div
+                  key={m.id}
+                  title={m.titel}
+                  onClick={(e) => handlePinClick(e, m)}
+                  style={{ left: `${m.position_x}%`, top: `${m.position_y}%` }}
+                  className="absolute -translate-x-1/2 -translate-y-full cursor-pointer"
+                >
+                  <div
+                    style={{ backgroundColor: pinFarbe(m, werte) }}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white shadow ring-2 ring-white"
+                  >
+                    {istLetzterWert(m, werte) ? '✓' : '!'}
+                  </div>
+                </div>
+              ))}
+              {pendingPos && (
+                <div
+                  style={{ left: `${pendingPos.x}%`, top: `${pendingPos.y}%` }}
+                  className="absolute -translate-x-1/2 -translate-y-full"
+                >
+                  <div
+                    style={{ backgroundColor: farbe ?? '#2563eb' }}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white shadow animate-pulse ring-2 ring-white"
+                  >
+                    +
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {pendingPos && (

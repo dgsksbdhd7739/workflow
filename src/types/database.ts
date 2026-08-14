@@ -93,3 +93,23 @@ export interface Termin {
   erstellt_von: string
   erstellt_am: string
 }
+
+export interface MangelPhase {
+  id: string
+  mangel_id: string
+  titel: string
+  reihenfolge: number
+  status: MangelStatus
+  notiz: string | null
+  erstellt_von: string
+  erstellt_am: string
+}
+
+export interface MangelKommentar {
+  id: string
+  mangel_id: string
+  text: string | null
+  foto_url: string | null
+  erstellt_von: string
+  erstellt_am: string
+}

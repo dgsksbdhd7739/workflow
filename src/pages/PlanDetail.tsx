@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
+import { MangelDetails } from '../components/MangelDetails'
 import type { Mangel, MangelPrioritaet, MangelStatus, Plan } from '../types/database'
 
 const statusLabel: Record<MangelStatus, string> = {
@@ -456,6 +457,9 @@ export function PlanDetail() {
                 >
                   Vom Plan entfernen
                 </button>
+              </div>
+              <div className="border-t border-gray-100 pt-3">
+                <MangelDetails mangelId={selectedPin.id} />
               </div>
             </div>
           )}

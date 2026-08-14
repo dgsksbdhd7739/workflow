@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
+import { MangelDetails } from '../components/MangelDetails'
 import type { Mangel, MangelPrioritaet, MangelStatus } from '../types/database'
 
 const statusLabel: Record<MangelStatus, string> = {
@@ -32,6 +33,7 @@ export function Maengel() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [filterStatus, setFilterStatus] = useState<MangelStatus | 'alle'>('alle')
+  const [geoeffnetId, setGeoeffnetId] = useState<string | null>(null)
 
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
@@ -252,6 +254,17 @@ export function Maengel() {
                 >
                   📍 Position auf Plan ansehen
                 </Link>
+              )}
+              <button
+                onClick={() => setGeoeffnetId((prev) => (prev === m.id ? null : m.id))}
+                className="mt-2 block text-xs font-medium text-blue-600"
+              >
+                {geoeffnetId === m.id ? 'Details ausblenden' : 'Fortschritt & Kommentare'}
+              </button>
+              {geoeffnetId === m.id && (
+                <div className="mt-3 border-t border-gray-100 pt-3">
+                  <MangelDetails mangelId={m.id} />
+                </div>
               )}
             </li>
           ))}

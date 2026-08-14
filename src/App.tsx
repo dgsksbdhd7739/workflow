@@ -14,6 +14,7 @@ import { Kalkulation } from './pages/Kalkulation'
 import { Termine } from './pages/Termine'
 import { StatusVorlagen } from './pages/StatusVorlagen'
 import { Nutzerverwaltung } from './pages/Nutzerverwaltung'
+import { PasswortAendern } from './pages/PasswortAendern'
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="/login" element={<Login />} />
 
           <Route element={<ProtectedRoute />}>
+            <Route path="/passwort-aendern" element={<PasswortAendern />} />
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/statusvorlagen" element={<StatusVorlagen />} />

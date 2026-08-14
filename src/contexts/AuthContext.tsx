@@ -7,6 +7,8 @@ interface AuthContextValue {
   user: User | null
   session: Session | null
   role: Rolle | null
+  mussPasswortAendern: boolean
+  setMussPasswortAendern: (v: boolean) => void
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
@@ -17,6 +19,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [role, setRole] = useState<Rolle | null>(null)
+  const [mussPasswortAendern, setMussPasswortAendern] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -36,14 +39,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userId = session?.user.id
     if (!userId) {
       setRole(null)
+      setMussPasswortAendern(false)
       return
     }
     supabase
       .from('profiles')
-      .select('role')
+      .select('role, muss_passwort_aendern')
       .eq('id', userId)
       .single()
-      .then(({ data }) => setRole(data?.role ?? null))
+      .then(({ data }) => {
+        setRole(data?.role ?? null)
+        setMussPasswortAendern(data?.muss_passwort_aendern ?? false)
+      })
   }, [session?.user.id])
 
   const signIn = async (email: string, password: string) => {
@@ -56,7 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user: session?.user ?? null, session, role, loading, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ user: session?.user ?? null, session, role, mussPasswortAendern, setMussPasswortAendern, loading, signIn, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   )

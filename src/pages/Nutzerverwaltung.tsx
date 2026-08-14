@@ -21,7 +21,7 @@ export function Nutzerverwaltung() {
 
   const [formOffen, setFormOffen] = useState(false)
   const [neuEmail, setNeuEmail] = useState('')
-  const [neuPasswort, setNeuPasswort] = useState('')
+  const [neuPasswort, setNeuPasswort] = useState('abcd.1234')
   const [neuName, setNeuName] = useState('')
   const [neuRolle, setNeuRolle] = useState<Rolle>('techniker')
   const [anlegen, setAnlegen] = useState(false)
@@ -71,7 +71,7 @@ export function Nutzerverwaltung() {
       return
     }
     setNeuEmail('')
-    setNeuPasswort('')
+    setNeuPasswort('abcd.1234')
     setNeuName('')
     setNeuRolle('techniker')
     setFormOffen(false)

@@ -7,6 +7,7 @@ export interface Profile {
   id: string
   full_name: string
   role: Rolle
+  muss_passwort_aendern: boolean
   created_at: string
 }
 

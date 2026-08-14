@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useParams } from 'react-router-dom'
+import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import type { Rolle } from '../types/database'
@@ -59,6 +59,12 @@ export function Layout() {
         </nav>
         <div className="border-t border-gray-200 p-3">
           <div className="mb-2 truncate text-xs text-gray-500">{user?.email}</div>
+          <Link
+            to="/passwort-aendern"
+            className="mb-2 block w-full rounded-lg border border-gray-300 px-3 py-2 text-center text-sm text-gray-700 hover:bg-gray-100"
+          >
+            Passwort ändern
+          </Link>
           <button
             onClick={() => signOut()}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -70,9 +76,14 @@ export function Layout() {
 
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 md:hidden">
         <span className="text-lg font-semibold text-gray-900">Baustellenapp</span>
-        <button onClick={() => signOut()} className="text-sm text-gray-600">
-          Abmelden
-        </button>
+        <div className="flex items-center gap-3">
+          <Link to="/passwort-aendern" className="text-sm text-gray-600">
+            Passwort
+          </Link>
+          <button onClick={() => signOut()} className="text-sm text-gray-600">
+            Abmelden
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto pb-16 md:pb-0">

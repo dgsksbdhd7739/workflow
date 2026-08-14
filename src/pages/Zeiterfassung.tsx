@@ -92,34 +92,27 @@ export function Zeiterfassung() {
 
   if (role === 'kunde') {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <p className="text-sm text-gray-500">Kein Zugriff — die Zeiterfassung ist internen Nutzern vorbehalten.</p>
+      <div className="page">
+        <p className="text-sm text-text-muted">Kein Zugriff — die Zeiterfassung ist internen Nutzern vorbehalten.</p>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="page">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Zeiterfassung</h1>
-        <button
-          onClick={openForm}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
+        <h1 className="text-xl font-semibold text-text">Zeiterfassung</h1>
+        <button onClick={openForm} className="btn-primary">
           {showForm ? 'Abbrechen' : '+ Zeit erfassen'}
         </button>
       </div>
 
-      {fehler && (
-        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
+      {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+        <form onSubmit={handleCreate} className="card mb-6 space-y-3 p-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="field-label">
               Mitarbeiter ({ausgewaehlt.length} ausgewählt)
             </label>
             <div className="flex flex-wrap gap-2">
@@ -130,8 +123,8 @@ export function Zeiterfassung() {
                   onClick={() => toggleMitarbeiter(p.id)}
                   className={`rounded-full border px-3 py-1 text-xs font-medium ${
                     ausgewaehlt.includes(p.id)
-                      ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 text-gray-600'
+                      ? 'border-brand bg-brand-soft text-brand-text'
+                      : 'border-border-strong text-text-muted'
                   }`}
                 >
                   {p.full_name}
@@ -141,84 +134,80 @@ export function Zeiterfassung() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Datum</label>
+              <label className="field-label">Datum</label>
               <input
                 type="date"
                 required
                 value={datum}
                 onChange={(e) => setDatum(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Pause (Minuten)</label>
+              <label className="field-label">Pause (Minuten)</label>
               <input
                 type="number"
                 min={0}
                 value={pauseMinuten}
                 onChange={(e) => setPauseMinuten(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Beginn</label>
+              <label className="field-label">Beginn</label>
               <input
                 type="time"
                 required
                 value={startZeit}
                 onChange={(e) => setStartZeit(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Ende</label>
+              <label className="field-label">Ende</label>
               <input
                 type="time"
                 value={endZeit}
                 onChange={(e) => setEndZeit(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Tätigkeit</label>
+            <label className="field-label">Tätigkeit</label>
             <input
               value={taetigkeit}
               onChange={(e) => setTaetigkeit(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
               placeholder="z. B. Verputzarbeiten OG"
             />
           </div>
-          <button
-            type="submit"
-            disabled={saving || ausgewaehlt.length === 0}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <button type="submit" disabled={saving || ausgewaehlt.length === 0} className="btn-primary">
             {saving ? 'Speichert…' : ausgewaehlt.length > 1 ? `Zeit für ${ausgewaehlt.length} Personen speichern` : 'Zeit speichern'}
           </button>
         </form>
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Lädt…</p>
+        <p className="text-sm text-text-muted">Lädt…</p>
       ) : eintraege.length === 0 ? (
-        <p className="text-sm text-gray-500">Noch keine Zeiten erfasst.</p>
+        <p className="text-sm text-text-muted">Noch keine Zeiten erfasst.</p>
       ) : (
         <ul className="space-y-2">
           {eintraege.map((z) => (
-            <li key={z.id} className="rounded-xl border border-gray-200 bg-white p-4">
+            <li key={z.id} className="card p-4">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-gray-900">{z.datum}</span>
-                <span className="text-xs text-gray-500">{nameOf(z.user_id)}</span>
+                <span className="font-medium text-text">{z.datum}</span>
+                <span className="text-xs text-text-subtle">{nameOf(z.user_id)}</span>
               </div>
-              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-muted">
                 <span>
                   {z.start_zeit.slice(0, 5)} – {z.end_zeit ? z.end_zeit.slice(0, 5) : 'läuft'}
                 </span>
                 <span>Pause: {z.pause_minuten} min</span>
                 <span>Dauer: {dauer(z.start_zeit, z.end_zeit, z.pause_minuten)}</span>
               </div>
-              {z.taetigkeit && <p className="mt-1 text-sm text-gray-700">{z.taetigkeit}</p>}
+              {z.taetigkeit && <p className="mt-1 text-sm text-text-muted">{z.taetigkeit}</p>}
             </li>
           ))}
         </ul>

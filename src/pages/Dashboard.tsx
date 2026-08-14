@@ -55,14 +55,11 @@ export function Dashboard() {
   })
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="page">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Projekte</h1>
+        <h1 className="text-xl font-semibold text-text">Projekte</h1>
         {kannAnlegen && (
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
+          <button onClick={() => setShowForm((v) => !v)} className="btn-primary">
             {showForm ? 'Abbrechen' : '+ Neues Projekt'}
           </button>
         )}
@@ -81,9 +78,9 @@ export function Dashboard() {
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Lädt…</p>
+        <p className="text-sm text-text-muted">Lädt…</p>
       ) : sortiert.length === 0 ? (
-        <p className="text-sm text-gray-500">Noch keine Projekte angelegt.</p>
+        <p className="text-sm text-text-muted">Noch keine Projekte angelegt.</p>
       ) : (
         <ul className="space-y-2">
           {sortiert.map((b) => (
@@ -97,7 +94,7 @@ export function Dashboard() {
               </button>
               <Link
                 to={`/baustellen/${b.id}`}
-                className="flex flex-1 items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 hover:border-blue-300 hover:bg-blue-50/40"
+                className="card flex flex-1 items-center gap-3 p-4 transition-colors hover:border-brand/40 hover:bg-brand-soft/40"
               >
                 {b.logo_pfad && (
                   <SignedImage
@@ -108,9 +105,9 @@ export function Dashboard() {
                   />
                 )}
                 <div className="min-w-0">
-                  <div className="font-medium text-gray-900">{b.name}</div>
+                  <div className="font-medium text-text">{b.name}</div>
                   {formatProjektAdresse(b) && (
-                    <div className="truncate text-sm text-gray-500">{formatProjektAdresse(b)}</div>
+                    <div className="truncate text-sm text-text-muted">{formatProjektAdresse(b)}</div>
                   )}
                 </div>
               </Link>

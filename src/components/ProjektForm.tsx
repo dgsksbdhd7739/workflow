@@ -134,21 +134,19 @@ export function ProjektForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-4">
-      {fehler && (
-        <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">Fehler: {fehler}</p>
-      )}
+    <form onSubmit={handleSubmit} className="card space-y-4 p-4">
+      {fehler && <p className="banner-error">Fehler: {fehler}</p>}
 
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex flex-shrink-0 flex-col items-start gap-2">
-          <div className="h-28 w-28 overflow-hidden rounded-lg bg-gray-100">
+          <div className="h-28 w-28 overflow-hidden rounded-lg bg-surface-hover">
             {logoDatei ? (
               <img src={URL.createObjectURL(logoDatei)} alt="" className="h-full w-full object-cover" />
             ) : logoUrl && !logoEntfernen ? (
               <img src={logoUrl} alt="" className="h-full w-full object-cover" />
             ) : null}
           </div>
-          <label className="cursor-pointer text-xs font-medium text-blue-600">
+          <label className="cursor-pointer text-xs font-medium text-brand">
             Projektlogo hochladen
             <input
               type="file"
@@ -167,7 +165,7 @@ export function ProjektForm({
                 setLogoDatei(null)
                 setLogoEntfernen(true)
               }}
-              className="text-xs font-medium text-red-600"
+              className="text-xs font-medium text-red-600 dark:text-red-400"
             >
               Projektlogo löschen
             </button>
@@ -176,30 +174,30 @@ export function ProjektForm({
 
         <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+            <label className="field-label">Name</label>
             <input
               required
               maxLength={60}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
-            <div className="mt-0.5 text-right text-xs text-gray-400">{name.length}/60</div>
+            <div className="mt-0.5 text-right text-xs text-text-subtle">{name.length}/60</div>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Projektnummer</label>
+            <label className="field-label">Projektnummer</label>
             <input
               value={projektnummer}
               onChange={(e) => setProjektnummer(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Projektleiter</label>
+            <label className="field-label">Projektleiter</label>
             <select
               value={projektleiterId}
               onChange={(e) => setProjektleiterId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             >
               <option value="">— Niemand zugewiesen —</option>
               {profiles.map((p) => (
@@ -210,11 +208,11 @@ export function ProjektForm({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Bauleitender Obermonteur</label>
+            <label className="field-label">Bauleitender Obermonteur</label>
             <select
               value={obermonteurId}
               onChange={(e) => setObermonteurId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             >
               <option value="">— Niemand zugewiesen —</option>
               {profiles.map((p) => (
@@ -229,39 +227,39 @@ export function ProjektForm({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="col-span-2">
-          <label className="mb-1 block text-sm font-medium text-gray-700">Kunde</label>
+          <label className="field-label">Kunde</label>
           <input
             value={kundeName}
             onChange={(e) => setKundeName(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="field-input"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Projektbeginn</label>
+          <label className="field-label">Projektbeginn</label>
           <input
             type="date"
             value={projektBeginn}
             onChange={(e) => setProjektBeginn(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="field-input"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Projektende</label>
+          <label className="field-label">Projektende</label>
           <input
             type="date"
             value={projektEnde}
             onChange={(e) => setProjektEnde(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="field-input"
           />
         </div>
       </div>
 
       <div className="max-w-xs">
-        <label className="mb-1 block text-sm font-medium text-gray-700">Sprache</label>
+        <label className="field-label">Sprache</label>
         <select
           value={sprache}
           onChange={(e) => setSprache(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="field-input"
         >
           {sprachen.map((s) => (
             <option key={s} value={s}>
@@ -272,14 +270,14 @@ export function ProjektForm({
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-gray-900">Projektadresse</h3>
+        <h3 className="mb-2 text-sm font-semibold text-text">Projektadresse</h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Land</label>
+            <label className="field-label">Land</label>
             <select
               value={projektLand}
               onChange={(e) => setProjektLand(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             >
               <option value="">—</option>
               {laender.map((l) => (
@@ -290,57 +288,57 @@ export function ProjektForm({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Straße</label>
+            <label className="field-label">Straße</label>
             <input
               value={projektStrasse}
               onChange={(e) => setProjektStrasse(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Hausnummer</label>
+            <label className="field-label">Hausnummer</label>
             <input
               value={projektHausnummer}
               onChange={(e) => setProjektHausnummer(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Adresszusatz</label>
+            <label className="field-label">Adresszusatz</label>
             <input
               value={projektAdresszusatz}
               onChange={(e) => setProjektAdresszusatz(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Postleitzahl</label>
+            <label className="field-label">Postleitzahl</label>
             <input
               value={projektPlz}
               onChange={(e) => setProjektPlz(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Stadt</label>
+            <label className="field-label">Stadt</label>
             <input
               value={projektStadt}
               onChange={(e) => setProjektStadt(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
         </div>
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-gray-900">Kundenadresse</h3>
+        <h3 className="mb-2 text-sm font-semibold text-text">Kundenadresse</h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Land</label>
+            <label className="field-label">Land</label>
             <select
               value={kundenLand}
               onChange={(e) => setKundenLand(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             >
               <option value="">—</option>
               {laender.map((l) => (
@@ -351,61 +349,53 @@ export function ProjektForm({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Straße</label>
+            <label className="field-label">Straße</label>
             <input
               value={kundenStrasse}
               onChange={(e) => setKundenStrasse(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Hausnummer</label>
+            <label className="field-label">Hausnummer</label>
             <input
               value={kundenHausnummer}
               onChange={(e) => setKundenHausnummer(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Adresszusatz</label>
+            <label className="field-label">Adresszusatz</label>
             <input
               value={kundenAdresszusatz}
               onChange={(e) => setKundenAdresszusatz(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Postleitzahl</label>
+            <label className="field-label">Postleitzahl</label>
             <input
               value={kundenPlz}
               onChange={(e) => setKundenPlz(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Stadt</label>
+            <label className="field-label">Stadt</label>
             <input
               value={kundenStadt}
               onChange={(e) => setKundenStadt(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
         </div>
       </div>
 
       <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
+        <button type="submit" disabled={saving} className="btn-primary">
           {saving ? 'Speichert…' : baustelle ? 'Speichern' : 'Projekt anlegen'}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600"
-        >
+        <button type="button" onClick={onCancel} className="btn-secondary">
           Abbrechen
         </button>
       </div>

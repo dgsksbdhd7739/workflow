@@ -61,7 +61,7 @@ export function ProjektDashboard() {
     })
   }, [baustelleId])
 
-  if (loading) return <p className="p-6 text-sm text-gray-500">Lädt…</p>
+  if (loading) return <p className="p-6 text-sm text-text-muted">Lädt…</p>
 
   const ueberfaellig = termine.filter((t) => t.status !== 'abgeschlossen' && t.end_datum < heute())
   const naechste = termine
@@ -71,8 +71,8 @@ export function ProjektDashboard() {
 
   if (bearbeiten && baustelle) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <h1 className="mb-4 text-xl font-semibold text-gray-900">Projekt bearbeiten</h1>
+      <div className="page">
+        <h1 className="mb-4 text-xl font-semibold text-text">Projekt bearbeiten</h1>
         <ProjektForm
           baustelle={baustelle}
           onSaved={(saved) => {
@@ -86,7 +86,7 @@ export function ProjektDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="page">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           {baustelle?.logo_pfad && (
@@ -98,11 +98,11 @@ export function ProjektDashboard() {
             />
           )}
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">{baustelle?.name}</h1>
+            <h1 className="text-xl font-semibold text-text">{baustelle?.name}</h1>
             {baustelle && formatProjektAdresse(baustelle) && (
-              <p className="text-sm text-gray-500">{formatProjektAdresse(baustelle)}</p>
+              <p className="text-sm text-text-muted">{formatProjektAdresse(baustelle)}</p>
             )}
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-400">
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-text-subtle">
               {baustelle?.projektnummer && <span>Nr. {baustelle.projektnummer}</span>}
               {baustelle?.kunde_name && <span>Kunde: {baustelle.kunde_name}</span>}
               {baustelle?.projektleiter_id && <span>PL: {nameOf(baustelle.projektleiter_id)}</span>}
@@ -113,39 +113,38 @@ export function ProjektDashboard() {
           </div>
         </div>
         {kannBearbeiten && (
-          <button
-            onClick={() => setBearbeiten(true)}
-            className="flex-shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
+          <button onClick={() => setBearbeiten(true)} className="btn-secondary flex-shrink-0">
             Projekt bearbeiten
           </button>
         )}
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <div className="text-2xl font-semibold text-gray-900">{offeneMaengel}</div>
-          <div className="text-xs text-gray-500">Offene Mängel</div>
-          {hochPrioMaengel > 0 && <div className="mt-1 text-xs text-red-600">{hochPrioMaengel} hoch priorisiert</div>}
+        <div className="card p-4">
+          <div className="text-2xl font-semibold text-text">{offeneMaengel}</div>
+          <div className="text-xs text-text-muted">Offene Mängel</div>
+          {hochPrioMaengel > 0 && (
+            <div className="mt-1 text-xs text-red-600 dark:text-red-400">{hochPrioMaengel} hoch priorisiert</div>
+          )}
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <div className="text-2xl font-semibold text-gray-900">{ueberfaellig.length}</div>
-          <div className="text-xs text-gray-500">Verzögerte Termine</div>
+        <div className="card p-4">
+          <div className="text-2xl font-semibold text-text">{ueberfaellig.length}</div>
+          <div className="text-xs text-text-muted">Verzögerte Termine</div>
         </div>
         {kannKalkulationSehen && (
-          <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <div className="text-2xl font-semibold text-gray-900">{euro(kalkulationSumme)}</div>
-            <div className="text-xs text-gray-500">Kalkulationssumme</div>
+          <div className="card p-4">
+            <div className="text-2xl font-semibold text-text">{euro(kalkulationSumme)}</div>
+            <div className="text-xs text-text-muted">Kalkulationssumme</div>
           </div>
         )}
       </div>
 
       {(naechste.length > 0 || ueberfaellig.length > 0) && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
-          <h2 className="mb-2 text-sm font-medium text-gray-900">Termine</h2>
+        <div className="card mb-6 p-4">
+          <h2 className="mb-2 text-sm font-medium text-text">Termine</h2>
           <ul className="space-y-1.5 text-sm">
             {ueberfaellig.map((t) => (
-              <li key={t.id} className="flex items-center justify-between text-red-700">
+              <li key={t.id} className="flex items-center justify-between text-red-700 dark:text-red-400">
                 <span>{t.titel}</span>
                 <span>bis {t.end_datum} — verzögert</span>
               </li>
@@ -153,9 +152,9 @@ export function ProjektDashboard() {
             {naechste
               .filter((t) => !ueberfaellig.includes(t))
               .map((t) => (
-                <li key={t.id} className="flex items-center justify-between text-gray-700">
+                <li key={t.id} className="flex items-center justify-between text-text">
                   <span>{t.titel}</span>
-                  <span className="text-gray-500">
+                  <span className="text-text-muted">
                     {t.start_datum} – {t.end_datum}
                   </span>
                 </li>
@@ -165,9 +164,9 @@ export function ProjektDashboard() {
       )}
 
       {letzterBericht && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
-          <h2 className="mb-1 text-sm font-medium text-gray-900">Letzter Tagesbericht</h2>
-          <p className="text-sm text-gray-600">
+        <div className="card mb-6 p-4">
+          <h2 className="mb-1 text-sm font-medium text-text">Letzter Tagesbericht</h2>
+          <p className="text-sm text-text-muted">
             {letzterBericht.datum}
             {letzterBericht.wetter && ` · ${letzterBericht.wetter}`}
             {letzterBericht.personal_anzahl !== null && ` · ${letzterBericht.personal_anzahl} Personal`}
@@ -182,10 +181,10 @@ export function ProjektDashboard() {
           <Link
             key={l.to}
             to={`/baustellen/${baustelleId}/${l.to}`}
-            className="flex flex-col items-center gap-1 rounded-xl border border-gray-200 bg-white p-4 text-center hover:border-blue-300 hover:bg-blue-50/40"
+            className="card flex flex-col items-center gap-1 p-4 text-center transition-colors hover:border-brand/40 hover:bg-brand-soft/40"
           >
             <span className="text-xl">{l.icon}</span>
-            <span className="text-sm font-medium text-gray-700">{l.label}</span>
+            <span className="text-sm font-medium text-text">{l.label}</span>
           </Link>
         ))}
       </div>

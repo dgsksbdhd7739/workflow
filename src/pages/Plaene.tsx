@@ -58,27 +58,23 @@ export function Plaene() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="page">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Pläne</h1>
+        <h1 className="text-xl font-semibold text-text">Pläne</h1>
         {kannBearbeiten && (
-          <label className="cursor-pointer rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          <label className="btn-primary cursor-pointer">
             {uploading ? 'Lädt hoch…' : '+ Plan hochladen'}
             <input type="file" accept="image/*,.pdf" onChange={handleUpload} className="hidden" disabled={uploading} />
           </label>
         )}
       </div>
 
-      {fehler && (
-        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
+      {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Lädt…</p>
+        <p className="text-sm text-text-muted">Lädt…</p>
       ) : plaene.length === 0 ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-text-muted">
           Noch keine Pläne hochgeladen. Unterstützt werden Bilder und PDFs — auf beiden können Markierungen gesetzt
           werden.
         </p>
@@ -88,16 +84,16 @@ export function Plaene() {
             <li key={p.id}>
               <Link
                 to={`/baustellen/${baustelleId}/plaene/${p.id}`}
-                className="block overflow-hidden rounded-xl border border-gray-200 bg-white hover:border-blue-300"
+                className="card block overflow-hidden transition-colors hover:border-brand/40"
               >
-                <div className="aspect-square bg-gray-100">
+                <div className="aspect-square bg-surface-hover">
                   {p.datei_pfad.match(/\.(png|jpe?g|webp|gif)$/i) ? (
                     <SignedImage bucket="plaene" path={p.datei_pfad} alt={p.name} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-3xl">📄</div>
                   )}
                 </div>
-                <div className="truncate px-2 py-2 text-xs text-gray-700">{p.name}</div>
+                <div className="truncate px-2 py-2 text-xs text-text-muted">{p.name}</div>
               </Link>
             </li>
           ))}

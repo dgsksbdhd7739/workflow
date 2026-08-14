@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'Baustellenapp',
         short_name: 'Baustellen',
         description: 'Mängelmanagement, Pläne, Bautagebuch und Zeiterfassung für Baustellen',
-        theme_color: '#2563eb',
-        background_color: '#f9fafb',
+        theme_color: '#ea580c',
+        background_color: '#f8fafc',
         display: 'standalone',
         start_url: '/',
         icons: [

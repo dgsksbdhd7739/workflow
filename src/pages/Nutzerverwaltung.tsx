@@ -98,76 +98,69 @@ export function Nutzerverwaltung() {
 
   if (role && role !== 'admin') {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <p className="text-sm text-gray-500">Kein Zugriff — nur Admins können Nutzerrollen verwalten.</p>
+      <div className="page">
+        <p className="text-sm text-text-muted">Kein Zugriff — nur Admins können Nutzerrollen verwalten.</p>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="page">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Nutzerverwaltung</h1>
-          <p className="text-xs text-gray-500">
+          <h1 className="text-xl font-semibold text-text">Nutzerverwaltung</h1>
+          <p className="text-xs text-text-muted">
             Rollen steuern, was ein Nutzer sehen und bearbeiten darf. Admin: alles. Planer: fast alles außer
             Nutzerverwaltung. Techniker: Baustellenarbeit ohne Kalkulation. Kunde: nur lesen, keine
             Kalkulation/Zeiterfassung — und nur für ausdrücklich zugewiesene Projekte.
           </p>
         </div>
-        <button
-          onClick={() => setFormOffen((v) => !v)}
-          className="flex-shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
+        <button onClick={() => setFormOffen((v) => !v)} className="btn-primary flex-shrink-0">
           {formOffen ? 'Abbrechen' : '+ Nutzer anlegen'}
         </button>
       </div>
 
-      {fehler && (
-        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
+      {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
 
       {formOffen && (
-        <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+        <form onSubmit={handleCreate} className="card mb-6 space-y-3 p-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+            <label className="field-label">Name</label>
             <input
               value={neuName}
               onChange={(e) => setNeuName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
               placeholder="Vor- und Nachname"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">E-Mail</label>
+            <label className="field-label">E-Mail</label>
             <input
               type="email"
               required
               value={neuEmail}
               onChange={(e) => setNeuEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Passwort</label>
+            <label className="field-label">Passwort</label>
             <input
               type="text"
               required
               minLength={6}
               value={neuPasswort}
               onChange={(e) => setNeuPasswort(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
               placeholder="Mindestens 6 Zeichen"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Rolle</label>
+            <label className="field-label">Rolle</label>
             <select
               value={neuRolle}
               onChange={(e) => setNeuRolle(e.target.value as Rolle)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             >
               {(Object.keys(rollenLabel) as Rolle[]).map((r) => (
                 <option key={r} value={r}>
@@ -176,31 +169,27 @@ export function Nutzerverwaltung() {
               ))}
             </select>
           </div>
-          <button
-            type="submit"
-            disabled={anlegen}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <button type="submit" disabled={anlegen} className="btn-primary">
             {anlegen ? 'Legt an…' : 'Nutzer anlegen'}
           </button>
         </form>
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Lädt…</p>
+        <p className="text-sm text-text-muted">Lädt…</p>
       ) : (
         <ul className="space-y-2">
           {profile.map((p) => (
-            <li key={p.id} className="rounded-xl border border-gray-200 bg-white p-4">
+            <li key={p.id} className="card p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-medium text-gray-900">{p.full_name || '—'}</div>
-                  {p.id === user?.id && <div className="text-xs text-gray-400">Das bist du</div>}
+                  <div className="font-medium text-text">{p.full_name || '—'}</div>
+                  {p.id === user?.id && <div className="text-xs text-text-subtle">Das bist du</div>}
                 </div>
                 <select
                   value={p.role}
                   onChange={(e) => updateRolle(p.id, e.target.value as Rolle)}
-                  className="flex-shrink-0 rounded-lg border border-gray-300 px-2 py-1 text-sm"
+                  className="flex-shrink-0 rounded-lg border border-border-strong bg-surface px-2 py-1 text-sm text-text"
                 >
                   {(Object.keys(rollenLabel) as Rolle[]).map((r) => (
                     <option key={r} value={r}>
@@ -214,19 +203,19 @@ export function Nutzerverwaltung() {
                 <>
                   <button
                     onClick={() => setOffenerNutzer((prev) => (prev === p.id ? null : p.id))}
-                    className="mt-2 text-xs font-medium text-blue-600"
+                    className="mt-2 text-xs font-medium text-brand"
                   >
                     {offenerNutzer === p.id
                       ? 'Projekte ausblenden'
                       : `Zugewiesene Projekte (${zuweisungen[p.id]?.size ?? 0})`}
                   </button>
                   {offenerNutzer === p.id && (
-                    <div className="mt-2 space-y-1 border-t border-gray-100 pt-2">
+                    <div className="mt-2 space-y-1 border-t border-border pt-2">
                       {baustellen.length === 0 ? (
-                        <p className="text-xs text-gray-400">Noch keine Projekte angelegt.</p>
+                        <p className="text-xs text-text-subtle">Noch keine Projekte angelegt.</p>
                       ) : (
                         baustellen.map((b) => (
-                          <label key={b.id} className="flex items-center gap-2 text-sm text-gray-700">
+                          <label key={b.id} className="flex items-center gap-2 text-sm text-text-muted">
                             <input
                               type="checkbox"
                               checked={zuweisungen[p.id]?.has(b.id) ?? false}

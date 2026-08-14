@@ -55,7 +55,7 @@ function FarbAuswahl({ value, onChange }: { value: string | null; onChange: (v: 
         type="button"
         onClick={() => onChange(null)}
         className={`rounded-full border px-2 py-1 text-xs ${
-          value === null ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600'
+          value === null ? 'border-brand bg-brand-soft text-brand-text' : 'border-border-strong text-text-muted'
         }`}
       >
         Automatisch (Status)
@@ -67,7 +67,7 @@ function FarbAuswahl({ value, onChange }: { value: string | null; onChange: (v: 
           aria-label={c}
           onClick={() => onChange(c)}
           style={{ backgroundColor: c }}
-          className={`h-6 w-6 rounded-full ${value === c ? 'ring-2 ring-offset-2 ring-gray-900' : ''}`}
+          className={`h-6 w-6 rounded-full ${value === c ? 'ring-2 ring-offset-2 ring-offset-surface ring-text' : ''}`}
         />
       ))}
     </div>
@@ -315,32 +315,28 @@ export function PlanDetail() {
     load()
   }
 
-  if (!plan) return <p className="p-6 text-sm text-gray-500">Lädt…</p>
-  if (!datenUrl) return <p className="p-6 text-sm text-gray-500">Lädt…</p>
+  if (!plan) return <p className="p-6 text-sm text-text-muted">Lädt…</p>
+  if (!datenUrl) return <p className="p-6 text-sm text-text-muted">Lädt…</p>
 
   const isImage = plan.datei_pfad.match(/\.(png|jpe?g|webp|gif)$/i)
   const canMark = kannBearbeiten && (Boolean(isImage) || (isPdf && pdfReady))
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      <Link to={`/baustellen/${baustelleId}/plaene`} className="mb-3 inline-block text-sm text-blue-600">
+    <div className="page">
+      <Link to={`/baustellen/${baustelleId}/plaene`} className="mb-3 inline-block text-sm text-brand">
         ← Zurück zu Plänen
       </Link>
-      <h1 className="mb-1 text-xl font-semibold text-gray-900">{plan.name}</h1>
+      <h1 className="mb-1 text-xl font-semibold text-text">{plan.name}</h1>
 
-      {fehler && (
-        <p className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
+      {fehler && <p className="banner-error mb-3">Fehler: {fehler}</p>}
 
-      <div className="mb-4 flex items-center gap-2 text-xs text-gray-500">
+      <div className="mb-4 flex items-center gap-2 text-xs text-text-muted">
         <span>Statusvorlage:</span>
         {kannVorlageZuweisen ? (
           <select
             value={plan.statusvorlage_id ?? ''}
             onChange={(e) => handleVorlageZuweisen(e.target.value)}
-            className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
+            className="rounded-lg border border-border-strong bg-surface px-2 py-1 text-xs text-text"
           >
             <option value="">— Keine (Standardstatus) —</option>
             {alleVorlagen.map((v) => (
@@ -355,17 +351,17 @@ export function PlanDetail() {
       </div>
 
       {isPdf && pdfError ? (
-        <p className="text-sm text-gray-500">
-          PDF konnte nicht geladen werden. <a className="text-blue-600" href={datenUrl} target="_blank" rel="noreferrer">Datei öffnen</a>
+        <p className="text-sm text-text-muted">
+          PDF konnte nicht geladen werden. <a className="text-brand" href={datenUrl} target="_blank" rel="noreferrer">Datei öffnen</a>
         </p>
       ) : !isImage && !isPdf ? (
-        <p className="text-sm text-gray-500">
-          Für dieses Dateiformat ist keine Markierung im Browser möglich. <a className="text-blue-600" href={datenUrl} target="_blank" rel="noreferrer">Datei öffnen</a>
+        <p className="text-sm text-text-muted">
+          Für dieses Dateiformat ist keine Markierung im Browser möglich. <a className="text-brand" href={datenUrl} target="_blank" rel="noreferrer">Datei öffnen</a>
         </p>
       ) : (
         <>
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-text-muted">
               {canMark
                 ? 'Auf den Plan tippen, um eine Aufgabe zu markieren. Vorhandene Markierung antippen zum Bearbeiten.'
                 : 'PDF wird geladen…'}
@@ -375,16 +371,16 @@ export function PlanDetail() {
                 type="button"
                 onClick={() => setZoom((z) => Math.max(1, z - 0.5))}
                 disabled={zoom <= 1}
-                className="h-7 w-7 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 disabled:opacity-30"
+                className="h-7 w-7 rounded-lg border border-border-strong text-sm font-medium text-text disabled:opacity-30"
               >
                 −
               </button>
-              <span className="w-11 text-center text-xs text-gray-500">{Math.round(zoom * 100)}%</span>
+              <span className="w-11 text-center text-xs text-text-muted">{Math.round(zoom * 100)}%</span>
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.min(4, z + 0.5))}
                 disabled={zoom >= 4}
-                className="h-7 w-7 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 disabled:opacity-30"
+                className="h-7 w-7 rounded-lg border border-border-strong text-sm font-medium text-text disabled:opacity-30"
               >
                 +
               </button>
@@ -392,14 +388,14 @@ export function PlanDetail() {
                 <button
                   type="button"
                   onClick={() => setZoom(1)}
-                  className="ml-1 text-xs font-medium text-blue-600"
+                  className="ml-1 text-xs font-medium text-brand"
                 >
                   Zurücksetzen
                 </button>
               )}
             </div>
           </div>
-          <div className="w-full overflow-x-auto rounded-xl border border-gray-200">
+          <div className="w-full overflow-x-auto rounded-xl border border-border">
             <div
               onClick={canMark ? handlePlanClick : undefined}
               className="relative cursor-crosshair select-none"
@@ -411,7 +407,7 @@ export function PlanDetail() {
                 <img src={datenUrl} alt={plan.name} className="w-full select-none" draggable={false} />
               )}
               {isPdf && !pdfReady && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-sm text-gray-500">
+                <div className="absolute inset-0 flex items-center justify-center bg-surface-hover text-sm text-text-muted">
                   Lädt…
                 </div>
               )}
@@ -448,35 +444,35 @@ export function PlanDetail() {
           </div>
 
           {pendingPos && (
-            <form onSubmit={handleCreate} className="mt-3 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
-              <div className="text-sm font-medium text-gray-900">Neue Aufgabe an dieser Position</div>
+            <form onSubmit={handleCreate} className="card mt-3 space-y-3 p-4">
+              <div className="text-sm font-medium text-text">Neue Aufgabe an dieser Position</div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Titel</label>
+                <label className="field-label">Titel</label>
                 <input
                   required
                   autoFocus
                   value={titel}
                   onChange={(e) => setTitel(e.target.value)}
                   placeholder="z. B. Tür einbauen"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  className="field-input"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Beschreibung</label>
+                <label className="field-label">Beschreibung</label>
                 <textarea
                   value={beschreibung}
                   onChange={(e) => setBeschreibung(e.target.value)}
                   rows={2}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  className="field-input"
                 />
               </div>
               {werte.length > 0 && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+                  <label className="field-label">Status</label>
                   <select
                     value={statusWertId}
                     onChange={(e) => setStatusWertId(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    className="field-input"
                   >
                     {werte.map((w) => (
                       <option key={w.id} value={w.id}>
@@ -488,11 +484,11 @@ export function PlanDetail() {
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Priorität</label>
+                  <label className="field-label">Priorität</label>
                   <select
                     value={prioritaet}
                     onChange={(e) => setPrioritaet(e.target.value as MangelPrioritaet)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    className="field-input"
                   >
                     {(['niedrig', 'mittel', 'hoch'] as const).map((p) => (
                       <option key={p} value={p}>
@@ -502,21 +498,21 @@ export function PlanDetail() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Fällig am</label>
+                  <label className="field-label">Fällig am</label>
                   <input
                     type="date"
                     value={faelligAm}
                     onChange={(e) => setFaelligAm(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    className="field-input"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Verantwortlich</label>
+                <label className="field-label">Verantwortlich</label>
                 <select
                   value={verantwortlicherId}
                   onChange={(e) => setVerantwortlicherId(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  className="field-input"
                 >
                   <option value="">— Niemand zugewiesen —</option>
                   {profiles.map((p) => (
@@ -527,22 +523,14 @@ export function PlanDetail() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Farbe</label>
+                <label className="field-label">Farbe</label>
                 <FarbAuswahl value={farbe} onChange={setFarbe} />
               </div>
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
+                <button type="submit" disabled={saving} className="btn-primary">
                   {saving ? 'Speichert…' : 'Aufgabe anlegen'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPendingPos(null)}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600"
-                >
+                <button type="button" onClick={() => setPendingPos(null)} className="btn-secondary">
                   Abbrechen
                 </button>
               </div>
@@ -550,16 +538,16 @@ export function PlanDetail() {
           )}
 
           {selectedPin && (
-            <div className="mt-3 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+            <div className="card mt-3 space-y-3 p-4">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-medium text-gray-900">{selectedPin.titel}</div>
-                <button onClick={() => setSelectedPin(null)} className="text-xs text-gray-500">
+                <div className="text-sm font-medium text-text">{selectedPin.titel}</div>
+                <button onClick={() => setSelectedPin(null)} className="text-xs text-text-muted">
                   Schließen
                 </button>
               </div>
-              {selectedPin.beschreibung && <p className="text-sm text-gray-600">{selectedPin.beschreibung}</p>}
+              {selectedPin.beschreibung && <p className="text-sm text-text-muted">{selectedPin.beschreibung}</p>}
               {!kannBearbeiten ? (
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
                   <span>Priorität: {prioritaetLabel[selectedPin.prioritaet]}</span>
                   <span>Verantwortlich: {nameOf(selectedPin.verantwortlicher_id)}</span>
                   {selectedPin.faellig_am && <span>Fällig: {selectedPin.faellig_am}</span>}
@@ -568,12 +556,12 @@ export function PlanDetail() {
               <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+                  <label className="field-label">Status</label>
                   {werte.length > 0 ? (
                     <select
                       value={editStatusWertId}
                       onChange={(e) => setEditStatusWertId(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="field-input"
                     >
                       {werte.map((w) => (
                         <option key={w.id} value={w.id}>
@@ -585,7 +573,7 @@ export function PlanDetail() {
                     <select
                       value={editStatus}
                       onChange={(e) => setEditStatus(e.target.value as MangelStatus)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="field-input"
                     >
                       {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
                         <option key={s} value={s}>
@@ -596,11 +584,11 @@ export function PlanDetail() {
                   )}
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Priorität</label>
+                  <label className="field-label">Priorität</label>
                   <select
                     value={editPrioritaet}
                     onChange={(e) => setEditPrioritaet(e.target.value as MangelPrioritaet)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    className="field-input"
                   >
                     {(['niedrig', 'mittel', 'hoch'] as const).map((p) => (
                       <option key={p} value={p}>
@@ -610,11 +598,11 @@ export function PlanDetail() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Verantwortlich</label>
+                  <label className="field-label">Verantwortlich</label>
                   <select
                     value={editVerantwortlicherId}
                     onChange={(e) => setEditVerantwortlicherId(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    className="field-input"
                   >
                     <option value="">— Niemand zugewiesen —</option>
                     {profiles.map((p) => (
@@ -625,45 +613,37 @@ export function PlanDetail() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Fällig am</label>
+                  <label className="field-label">Fällig am</label>
                   <input
                     type="date"
                     value={editFaelligAm}
                     onChange={(e) => setEditFaelligAm(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    className="field-input"
                   />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Farbe</label>
+                <label className="field-label">Farbe</label>
                 <FarbAuswahl value={editFarbe} onChange={setEditFarbe} />
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={handleUpdate}
-                  disabled={saving}
-                  className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
+                <button onClick={handleUpdate} disabled={saving} className="btn-primary">
                   {saving ? 'Speichert…' : 'Speichern'}
                 </button>
-                <button
-                  onClick={handleUnpin}
-                  disabled={saving}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 disabled:opacity-50"
-                >
+                <button onClick={handleUnpin} disabled={saving} className="btn-secondary">
                   Vom Plan entfernen
                 </button>
               </div>
               </>
               )}
-              <div className="border-t border-gray-100 pt-3">
+              <div className="border-t border-border pt-3">
                 <MangelDetails mangelId={selectedPin.id} />
               </div>
             </div>
           )}
 
           {pins.length > 0 && (
-            <ul className="mt-4 space-y-1 text-sm text-gray-700">
+            <ul className="mt-4 space-y-1 text-sm text-text">
               {pins.map((m) => (
                 <li key={m.id}>
                   <button
@@ -671,11 +651,11 @@ export function PlanDetail() {
                       setPendingPos(null)
                       setSelectedPin(m)
                     }}
-                    className="flex w-full items-center gap-2 text-left hover:text-blue-700"
+                    className="flex w-full items-center gap-2 text-left hover:text-brand"
                   >
                     <span style={{ backgroundColor: pinFarbe(m, werte) }} className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full" />
                     <span className="truncate">{m.titel}</span>
-                    <span className="ml-auto flex-shrink-0 text-xs text-gray-400">{nameOf(m.verantwortlicher_id)}</span>
+                    <span className="ml-auto flex-shrink-0 text-xs text-text-subtle">{nameOf(m.verantwortlicher_id)}</span>
                   </button>
                 </li>
               ))}

@@ -80,66 +80,59 @@ export function Kalkulation() {
 
   if (role && role !== 'admin' && role !== 'planer') {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <p className="text-sm text-gray-500">Kein Zugriff — die Kalkulation ist Admin und Planer vorbehalten.</p>
+      <div className="page">
+        <p className="text-sm text-text-muted">Kein Zugriff — die Kalkulation ist Admin und Planer vorbehalten.</p>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="page">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Kalkulation</h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
+        <h1 className="text-xl font-semibold text-text">Kalkulation</h1>
+        <button onClick={() => setShowForm((v) => !v)} className="btn-primary">
           {showForm ? 'Abbrechen' : '+ Position'}
         </button>
       </div>
 
-      {fehler && (
-        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
+      {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+        <form onSubmit={handleCreate} className="card mb-6 space-y-3 p-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Bezeichnung</label>
+            <label className="field-label">Bezeichnung</label>
             <input
               required
               autoFocus
               value={bezeichnung}
               onChange={(e) => setBezeichnung(e.target.value)}
               placeholder="z. B. Trockenbauwand, 12,5mm"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Menge</label>
+              <label className="field-label">Menge</label>
               <input
                 type="number"
                 step="0.01"
                 min={0}
                 value={menge}
                 onChange={(e) => setMenge(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Einheit</label>
+              <label className="field-label">Einheit</label>
               <input
                 value={einheit}
                 onChange={(e) => setEinheit(e.target.value)}
                 placeholder="m², Stk, h …"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Einzelpreis (€)</label>
+              <label className="field-label">Einzelpreis (€)</label>
               <input
                 type="number"
                 step="0.01"
@@ -147,29 +140,25 @@ export function Kalkulation() {
                 required
                 value={einzelpreis}
                 onChange={(e) => setEinzelpreis(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <button type="submit" disabled={saving} className="btn-primary">
             {saving ? 'Speichert…' : 'Position speichern'}
           </button>
         </form>
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Lädt…</p>
+        <p className="text-sm text-text-muted">Lädt…</p>
       ) : leistungen.length === 0 ? (
-        <p className="text-sm text-gray-500">Noch keine Positionen erfasst.</p>
+        <p className="text-sm text-text-muted">Noch keine Positionen erfasst.</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
+              <tr className="border-b border-border text-left text-xs text-text-muted">
                 <th className="px-3 py-2 font-medium">Pos.</th>
                 <th className="px-3 py-2 font-medium">Bezeichnung</th>
                 <th className="px-3 py-2 text-right font-medium">Menge</th>
@@ -181,15 +170,18 @@ export function Kalkulation() {
             </thead>
             <tbody>
               {leistungen.map((l) => (
-                <tr key={l.id} className="border-b border-gray-100 last:border-0">
-                  <td className="px-3 py-2 text-gray-500">{l.position_nr}</td>
-                  <td className="px-3 py-2 text-gray-900">{l.bezeichnung}</td>
-                  <td className="px-3 py-2 text-right text-gray-700">{l.menge.toLocaleString('de-DE')}</td>
-                  <td className="px-3 py-2 text-gray-700">{l.einheit}</td>
-                  <td className="px-3 py-2 text-right text-gray-700">{euro(l.einzelpreis)}</td>
-                  <td className="px-3 py-2 text-right font-medium text-gray-900">{euro(l.menge * l.einzelpreis)}</td>
+                <tr key={l.id} className="border-b border-border last:border-0">
+                  <td className="px-3 py-2 text-text-subtle">{l.position_nr}</td>
+                  <td className="px-3 py-2 text-text">{l.bezeichnung}</td>
+                  <td className="px-3 py-2 text-right text-text-muted">{l.menge.toLocaleString('de-DE')}</td>
+                  <td className="px-3 py-2 text-text-muted">{l.einheit}</td>
+                  <td className="px-3 py-2 text-right text-text-muted">{euro(l.einzelpreis)}</td>
+                  <td className="px-3 py-2 text-right font-medium text-text">{euro(l.menge * l.einzelpreis)}</td>
                   <td className="px-3 py-2 text-right">
-                    <button onClick={() => handleDelete(l.id)} className="text-xs text-red-600">
+                    <button
+                      onClick={() => handleDelete(l.id)}
+                      className="text-xs text-red-600 dark:text-red-400"
+                    >
                       Entfernen
                     </button>
                   </td>
@@ -198,10 +190,10 @@ export function Kalkulation() {
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={5} className="px-3 py-3 text-right text-sm font-medium text-gray-700">
+                <td colSpan={5} className="px-3 py-3 text-right text-sm font-medium text-text-muted">
                   Gesamtsumme
                 </td>
-                <td className="px-3 py-3 text-right text-sm font-semibold text-gray-900">{euro(summe)}</td>
+                <td className="px-3 py-3 text-right text-sm font-semibold text-text">{euro(summe)}</td>
                 <td />
               </tr>
             </tfoot>

@@ -1,5 +1,37 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-text: #0f172a;
+  --color-text-muted: #475569;
+  --color-text-subtle: #94a3b8;
+  --color-brand: #ea580c;
+  --color-brand-hover: #c2410c;
+  --color-brand-soft: #ffedd5;
+  --color-brand-text: #9a3412;
+}
+
+.dark {
+  --color-bg: #0b1120;
+  --color-surface: #151f32;
+  --color-surface-hover: #1e293b;
+  --color-border: #263349;
+  --color-border-strong: #334155;
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  --color-text-subtle: #64748b;
+  --color-brand: #fb923c;
+  --color-brand-hover: #fdba74;
+  --color-brand-soft: rgba(251, 146, 60, 0.16);
+  --color-brand-text: #fdba74;
+}
+
 html, body, #root {
   height: 100%;
 }
@@ -7,4 +39,33 @@ html, body, #root {
 body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+@layer components {
+  .page {
+    @apply mx-auto max-w-3xl px-4 py-6;
+  }
+  .card {
+    @apply rounded-2xl border border-border bg-surface shadow-sm shadow-slate-950/[0.03] dark:shadow-black/20;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-strong px-3 py-2 text-sm font-medium text-text transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .field-label {
+    @apply mb-1 block text-sm font-medium text-text-muted;
+  }
+  .field-input {
+    @apply w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20;
+  }
+  .banner-error {
+    @apply rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300;
+  }
 }

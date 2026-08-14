@@ -12,15 +12,15 @@ const statusLabel: Record<MangelStatus, string> = {
 }
 
 const statusColor: Record<MangelStatus, string> = {
-  offen: 'border-red-400 bg-red-50',
-  in_bearbeitung: 'border-amber-400 bg-amber-50',
-  erledigt: 'border-green-400 bg-green-50',
+  offen: 'border-red-400 bg-red-50 dark:bg-red-950/30',
+  in_bearbeitung: 'border-amber-400 bg-amber-50 dark:bg-amber-950/30',
+  erledigt: 'border-green-400 bg-green-50 dark:bg-green-950/30',
 }
 
 const statusTextColor: Record<MangelStatus, string> = {
-  offen: 'text-red-700',
-  in_bearbeitung: 'text-amber-700',
-  erledigt: 'text-green-700',
+  offen: 'text-red-700 dark:text-red-400',
+  in_bearbeitung: 'text-amber-700 dark:text-amber-400',
+  erledigt: 'text-green-700 dark:text-green-400',
 }
 
 function relativZeit(iso: string) {
@@ -145,23 +145,19 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
     load()
   }
 
-  if (loading) return <p className="text-sm text-gray-500">Lädt…</p>
+  if (loading) return <p className="text-sm text-text-muted">Lädt…</p>
 
   return (
     <div className="space-y-5">
-      {fehler && (
-        <p className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
+      {fehler && <p className="banner-error">Fehler: {fehler}</p>}
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-900">Fortschritt</h3>
+          <h3 className="text-sm font-medium text-text">Fortschritt</h3>
           {kannBearbeiten && (
             <button
               onClick={() => setPhaseFormOffen((v) => !v)}
-              className="text-xs font-medium text-blue-600"
+              className="text-xs font-medium text-brand"
             >
               {phaseFormOffen ? 'Abbrechen' : '+ Baustufe'}
             </button>
@@ -175,20 +171,16 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
               value={neuePhaseTitel}
               onChange={(e) => setNeuePhaseTitel(e.target.value)}
               placeholder="z. B. Verdrahtung"
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input flex-1"
             />
-            <button
-              type="submit"
-              disabled={phaseSaving}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
+            <button type="submit" disabled={phaseSaving} className="btn-primary">
               Hinzufügen
             </button>
           </form>
         )}
 
         {phasen.length === 0 ? (
-          <p className="text-xs text-gray-400">Noch keine Baustufen erfasst.</p>
+          <p className="text-xs text-text-subtle">Noch keine Baustufen erfasst.</p>
         ) : (
           <ul className="space-y-1.5">
             {phasen.map((p) => (
@@ -197,7 +189,7 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
                 className={`flex items-center justify-between gap-2 rounded-lg border-l-4 px-3 py-2 ${statusColor[p.status]}`}
               >
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-gray-900">{p.titel}</div>
+                  <div className="truncate text-sm font-medium text-text">{p.titel}</div>
                   <div className={`text-xs italic ${statusTextColor[p.status]}`}>{statusLabel[p.status]}</div>
                 </div>
                 {kannBearbeiten && (
@@ -205,7 +197,7 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
                     <select
                       value={p.status}
                       onChange={(e) => updatePhaseStatus(p.id, e.target.value as MangelStatus)}
-                      className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
+                      className="rounded-lg border border-border-strong bg-surface px-2 py-1 text-xs text-text"
                     >
                       {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
                         <option key={s} value={s}>
@@ -213,7 +205,10 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
                         </option>
                       ))}
                     </select>
-                    <button onClick={() => deletePhase(p.id)} className="text-xs text-gray-400 hover:text-red-600">
+                    <button
+                      onClick={() => deletePhase(p.id)}
+                      className="text-xs text-text-subtle hover:text-red-600 dark:hover:text-red-400"
+                    >
                       ✕
                     </button>
                   </div>
@@ -225,21 +220,21 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
       </div>
 
       <div>
-        <h3 className="mb-2 text-sm font-medium text-gray-900">Kommentare ({kommentare.length})</h3>
+        <h3 className="mb-2 text-sm font-medium text-text">Kommentare ({kommentare.length})</h3>
 
         {kommentare.length > 0 && (
           <ul className="mb-3 space-y-3">
             {kommentare.map((k) => (
               <li key={k.id} className="flex gap-2">
-                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-600">
+                <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-surface-hover text-xs font-medium text-text-muted">
                   {nameOf(k.erstellt_von).slice(0, 1).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-medium text-gray-900">{nameOf(k.erstellt_von)}</span>
-                    <span className="text-xs text-gray-400">{relativZeit(k.erstellt_am)}</span>
+                    <span className="text-xs font-medium text-text">{nameOf(k.erstellt_von)}</span>
+                    <span className="text-xs text-text-subtle">{relativZeit(k.erstellt_am)}</span>
                   </div>
-                  {k.text && <p className="mt-0.5 text-sm text-gray-700">{k.text}</p>}
+                  {k.text && <p className="mt-0.5 text-sm text-text-muted">{k.text}</p>}
                   {k.foto_pfad && (
                     <button
                       type="button"
@@ -269,7 +264,7 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
               onChange={(e) => setKommentarText(e.target.value)}
               rows={2}
               placeholder="Kommentar schreiben…"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
             <div className="flex items-center justify-between gap-2">
               <input
@@ -277,12 +272,12 @@ export function MangelDetails({ mangelId }: { mangelId: string }) {
                 accept="image/*"
                 capture="environment"
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setKommentarFoto(e.target.files?.[0] ?? null)}
-                className="text-xs"
+                className="text-xs text-text-muted"
               />
               <button
                 type="submit"
                 disabled={kommentarSaving || (!kommentarText.trim() && !kommentarFoto)}
-                className="flex-shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="btn-primary flex-shrink-0"
               >
                 {kommentarSaving ? 'Sendet…' : 'Kommentieren'}
               </button>

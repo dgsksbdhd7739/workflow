@@ -33,7 +33,7 @@ export function SignedImage({
     return (
       <div
         title={fehler}
-        className={`${className ?? ''} flex items-center justify-center bg-red-50 text-xs text-red-600`}
+        className={`${className ?? ''} flex items-center justify-center bg-red-50 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-400`}
       >
         ⚠
       </div>
@@ -41,7 +41,7 @@ export function SignedImage({
   }
 
   if (!url) {
-    return <div className={`${className ?? ''} animate-pulse bg-gray-200`} />
+    return <div className={`${className ?? ''} animate-pulse bg-surface-hover`} />
   }
 
   return <img src={url} alt={alt} className={className} />

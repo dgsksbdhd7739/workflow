@@ -75,125 +75,111 @@ export function Tagesberichte() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="page">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Bautagebuch</h1>
+        <h1 className="text-xl font-semibold text-text">Bautagebuch</h1>
         <div className="flex gap-2">
           {baustelle && berichte.length > 0 && (
-            <button
-              onClick={() => exportTagesberichtePdf(baustelle, berichte)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
+            <button onClick={() => exportTagesberichtePdf(baustelle, berichte)} className="btn-secondary">
               PDF exportieren
             </button>
           )}
           {kannBearbeiten && (
-            <button
-              onClick={() => setShowForm((v) => !v)}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
+            <button onClick={() => setShowForm((v) => !v)} className="btn-primary">
               {showForm ? 'Abbrechen' : '+ Tagesbericht'}
             </button>
           )}
         </div>
       </div>
 
-      {fehler && (
-        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
+      {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+        <form onSubmit={handleCreate} className="card mb-6 space-y-3 p-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Datum</label>
+              <label className="field-label">Datum</label>
               <input
                 type="date"
                 required
                 value={datum}
                 onChange={(e) => setDatum(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Personal (Anzahl)</label>
+              <label className="field-label">Personal (Anzahl)</label>
               <input
                 type="number"
                 min={0}
                 value={personalAnzahl}
                 onChange={(e) => setPersonalAnzahl(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Wetter</label>
+              <label className="field-label">Wetter</label>
               <input
                 value={wetter}
                 onChange={(e) => setWetter(e.target.value)}
                 placeholder="z. B. sonnig, 18°C"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Temperatur (°C)</label>
+              <label className="field-label">Temperatur (°C)</label>
               <input
                 type="number"
                 value={temperatur}
                 onChange={(e) => setTemperatur(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Tätigkeiten</label>
+            <label className="field-label">Tätigkeiten</label>
             <textarea
               value={taetigkeiten}
               onChange={(e) => setTaetigkeiten(e.target.value)}
               rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Besonderheiten</label>
+            <label className="field-label">Besonderheiten</label>
             <textarea
               value={besonderheiten}
               onChange={(e) => setBesonderheiten(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <button type="submit" disabled={saving} className="btn-primary">
             {saving ? 'Speichert…' : 'Tagesbericht speichern'}
           </button>
         </form>
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Lädt…</p>
+        <p className="text-sm text-text-muted">Lädt…</p>
       ) : berichte.length === 0 ? (
-        <p className="text-sm text-gray-500">Noch keine Tagesberichte.</p>
+        <p className="text-sm text-text-muted">Noch keine Tagesberichte.</p>
       ) : (
         <ul className="space-y-3">
           {berichte.map((b) => (
-            <li key={b.id} className="rounded-xl border border-gray-200 bg-white p-4">
+            <li key={b.id} className="card p-4">
               <div className="mb-1 flex items-center justify-between">
-                <span className="font-medium text-gray-900">{b.datum}</span>
-                <span className="text-xs text-gray-500">{nameOf(b.erstellt_von)}</span>
+                <span className="font-medium text-text">{b.datum}</span>
+                <span className="text-xs text-text-subtle">{nameOf(b.erstellt_von)}</span>
               </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
                 {b.wetter && <span>Wetter: {b.wetter}</span>}
                 {b.temperatur !== null && <span>{b.temperatur}°C</span>}
                 {b.personal_anzahl !== null && <span>Personal: {b.personal_anzahl}</span>}
               </div>
-              {b.taetigkeiten && <p className="mt-2 text-sm text-gray-700">{b.taetigkeiten}</p>}
+              {b.taetigkeiten && <p className="mt-2 text-sm text-text-muted">{b.taetigkeiten}</p>}
               {b.besonderheiten && (
-                <p className="mt-1 text-sm text-amber-700">⚠ {b.besonderheiten}</p>
+                <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">⚠ {b.besonderheiten}</p>
               )}
             </li>
           ))}

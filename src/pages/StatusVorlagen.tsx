@@ -143,34 +143,27 @@ export function StatusVorlagen() {
 
   if (role && role !== 'admin' && role !== 'planer') {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <p className="text-sm text-gray-500">Kein Zugriff — Statusvorlagen sind Admin und Planer vorbehalten.</p>
+      <div className="page">
+        <p className="text-sm text-text-muted">Kein Zugriff — Statusvorlagen sind Admin und Planer vorbehalten.</p>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="page">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Statusvorlagen</h1>
-          <p className="text-xs text-gray-500">
+          <h1 className="text-xl font-semibold text-text">Statusvorlagen</h1>
+          <p className="text-xs text-text-muted">
             Eigene Statuswerte mit Farbe definieren, z. B. je Gewerk. Einem Plan zuweisbar.
           </p>
         </div>
-        <button
-          onClick={() => setVorlageFormOffen((v) => !v)}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
+        <button onClick={() => setVorlageFormOffen((v) => !v)} className="btn-primary">
           {vorlageFormOffen ? 'Abbrechen' : '+ Vorlage'}
         </button>
       </div>
 
-      {fehler && (
-        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
+      {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
 
       {vorlageFormOffen && (
         <form onSubmit={handleCreateVorlage} className="mb-4 flex gap-2">
@@ -179,18 +172,18 @@ export function StatusVorlagen() {
             value={neueVorlageName}
             onChange={(e) => setNeueVorlageName(e.target.value)}
             placeholder="z. B. Elektroinstallation"
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="field-input flex-1"
           />
-          <button type="submit" className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          <button type="submit" className="btn-primary">
             Anlegen
           </button>
         </form>
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Lädt…</p>
+        <p className="text-sm text-text-muted">Lädt…</p>
       ) : vorlagen.length === 0 ? (
-        <p className="text-sm text-gray-500">Noch keine Statusvorlagen angelegt.</p>
+        <p className="text-sm text-text-muted">Noch keine Statusvorlagen angelegt.</p>
       ) : (
         <div className="mb-4 flex flex-wrap gap-2">
           {vorlagen.map((v) => (
@@ -199,8 +192,8 @@ export function StatusVorlagen() {
                 onClick={() => setAusgewaehlteVorlage(v.id)}
                 className={`rounded-l-full border px-3 py-1 text-xs font-medium ${
                   ausgewaehlteVorlage === v.id
-                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                    : 'border-gray-300 text-gray-600'
+                    ? 'border-brand bg-brand-soft text-brand-text'
+                    : 'border-border-strong text-text-muted'
                 }`}
               >
                 {v.name}
@@ -208,7 +201,7 @@ export function StatusVorlagen() {
               <button
                 onClick={() => handleDeleteVorlage(v.id)}
                 className={`rounded-r-full border border-l-0 px-2 py-1 text-xs ${
-                  ausgewaehlteVorlage === v.id ? 'border-blue-600 text-blue-400' : 'border-gray-300 text-gray-400'
+                  ausgewaehlteVorlage === v.id ? 'border-brand text-brand/60' : 'border-border-strong text-text-subtle'
                 }`}
               >
                 ✕
@@ -219,9 +212,9 @@ export function StatusVorlagen() {
       )}
 
       {ausgewaehlteVorlage && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="card p-4">
           {werte.length === 0 ? (
-            <p className="mb-3 text-sm text-gray-500">Noch keine Statuswerte in dieser Vorlage.</p>
+            <p className="mb-3 text-sm text-text-muted">Noch keine Statuswerte in dieser Vorlage.</p>
           ) : (
             <ul className="mb-3 space-y-2">
               {werte.map((w, i) => (
@@ -230,29 +223,32 @@ export function StatusVorlagen() {
                     <button
                       onClick={() => moveWert(i, -1)}
                       disabled={i === 0}
-                      className="leading-none text-gray-400 disabled:opacity-20"
+                      className="leading-none text-text-subtle disabled:opacity-20"
                     >
                       ▲
                     </button>
                     <button
                       onClick={() => moveWert(i, 1)}
                       disabled={i === werte.length - 1}
-                      className="leading-none text-gray-400 disabled:opacity-20"
+                      className="leading-none text-text-subtle disabled:opacity-20"
                     >
                       ▼
                     </button>
                   </div>
                   <span style={{ backgroundColor: w.farbe }} className="h-4 w-4 flex-shrink-0 rounded-full" />
-                  <span className="flex-1 truncate text-sm text-gray-900">{w.titel}</span>
+                  <span className="flex-1 truncate text-sm text-text">{w.titel}</span>
                   <button
                     onClick={() => setStandard(w.id)}
                     className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-xs ${
-                      w.ist_standard ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-500'
+                      w.ist_standard ? 'border-brand bg-brand-soft text-brand-text' : 'border-border-strong text-text-muted'
                     }`}
                   >
                     {w.ist_standard ? 'Standard' : 'Als Standard'}
                   </button>
-                  <button onClick={() => deleteWert(w.id)} className="flex-shrink-0 text-xs text-gray-400 hover:text-red-600">
+                  <button
+                    onClick={() => deleteWert(w.id)}
+                    className="flex-shrink-0 text-xs text-text-subtle hover:text-red-600 dark:hover:text-red-400"
+                  >
                     ✕
                   </button>
                 </li>
@@ -260,12 +256,12 @@ export function StatusVorlagen() {
             </ul>
           )}
 
-          <form onSubmit={handleAddWert} className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+          <form onSubmit={handleAddWert} className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <input
               value={neuerWertTitel}
               onChange={(e) => setNeuerWertTitel(e.target.value)}
               placeholder="z. B. Grobinstallation fertig"
-              className="min-w-[10rem] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input min-w-[10rem] flex-1"
             />
             <div className="flex items-center gap-1.5">
               {farbPalette.map((c) => (
@@ -275,14 +271,11 @@ export function StatusVorlagen() {
                   aria-label={c}
                   onClick={() => setNeuerWertFarbe(c)}
                   style={{ backgroundColor: c }}
-                  className={`h-5 w-5 rounded-full ${neuerWertFarbe === c ? 'ring-2 ring-offset-1 ring-gray-900' : ''}`}
+                  className={`h-5 w-5 rounded-full ${neuerWertFarbe === c ? 'ring-2 ring-offset-1 ring-offset-surface ring-text' : ''}`}
                 />
               ))}
             </div>
-            <button
-              type="submit"
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
+            <button type="submit" className="btn-primary">
               Hinzufügen
             </button>
           </form>

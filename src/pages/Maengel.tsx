@@ -15,9 +15,9 @@ const statusLabel: Record<MangelStatus, string> = {
 }
 
 const statusColor: Record<MangelStatus, string> = {
-  offen: 'bg-red-100 text-red-700',
-  in_bearbeitung: 'bg-amber-100 text-amber-700',
-  erledigt: 'bg-green-100 text-green-700',
+  offen: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300',
+  in_bearbeitung: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
+  erledigt: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300',
 }
 
 const prioritaetLabel: Record<MangelPrioritaet, string> = {
@@ -130,42 +130,32 @@ export function Maengel() {
   const gefiltert = filterStatus === 'alle' ? maengel : maengel.filter((m) => m.status === filterStatus)
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="page">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Mängel</h1>
+        <h1 className="text-xl font-semibold text-text">Mängel</h1>
         <div className="flex gap-2">
           {baustelle && gefiltert.length > 0 && (
-            <button
-              onClick={() => exportMaengelPdf(baustelle, gefiltert, nameOf)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
+            <button onClick={() => exportMaengelPdf(baustelle, gefiltert, nameOf)} className="btn-secondary">
               PDF exportieren
             </button>
           )}
           {kannBearbeiten && (
-            <button
-              onClick={() => setShowForm((v) => !v)}
-              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
+            <button onClick={() => setShowForm((v) => !v)} className="btn-primary">
               {showForm ? 'Abbrechen' : '+ Mangel melden'}
             </button>
           )}
         </div>
       </div>
 
-      {fehler && (
-        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
+      {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
 
       <div className="mb-4 flex gap-2">
         {(['alle', 'offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
           <button
             key={s}
             onClick={() => setFilterStatus(s)}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              filterStatus === s ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              filterStatus === s ? 'bg-brand text-white' : 'bg-surface-hover text-text-muted'
             }`}
           >
             {s === 'alle' ? 'Alle' : statusLabel[s]}
@@ -174,33 +164,33 @@ export function Maengel() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+        <form onSubmit={handleCreate} className="card mb-6 space-y-3 p-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Titel</label>
+            <label className="field-label">Titel</label>
             <input
               required
               value={titel}
               onChange={(e) => setTitel(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
               placeholder="z. B. Riss in der Kellerwand"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Beschreibung</label>
+            <label className="field-label">Beschreibung</label>
             <textarea
               value={beschreibung}
               onChange={(e) => setBeschreibung(e.target.value)}
               rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Priorität</label>
+              <label className="field-label">Priorität</label>
               <select
                 value={prioritaet}
                 onChange={(e) => setPrioritaet(e.target.value as MangelPrioritaet)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               >
                 {(['niedrig', 'mittel', 'hoch'] as const).map((p) => (
                   <option key={p} value={p}>
@@ -210,21 +200,21 @@ export function Maengel() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Fällig am</label>
+              <label className="field-label">Fällig am</label>
               <input
                 type="date"
                 value={faelligAm}
                 onChange={(e) => setFaelligAm(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Verantwortlich</label>
+            <label className="field-label">Verantwortlich</label>
             <select
               value={verantwortlicherId}
               onChange={(e) => setVerantwortlicherId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             >
               <option value="">— Niemand zugewiesen —</option>
               {profiles.map((p) => (
@@ -235,40 +225,36 @@ export function Maengel() {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Foto</label>
+            <label className="field-label">Foto</label>
             <input
               type="file"
               accept="image/*"
               capture="environment"
               onChange={(e) => setFoto(e.target.files?.[0] ?? null)}
-              className="w-full text-sm"
+              className="w-full text-sm text-text-muted"
             />
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <button type="submit" disabled={saving} className="btn-primary">
             {saving ? 'Speichert…' : 'Mangel speichern'}
           </button>
         </form>
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Lädt…</p>
+        <p className="text-sm text-text-muted">Lädt…</p>
       ) : gefiltert.length === 0 ? (
-        <p className="text-sm text-gray-500">Keine Mängel in dieser Ansicht.</p>
+        <p className="text-sm text-text-muted">Keine Mängel in dieser Ansicht.</p>
       ) : (
         <ul className="space-y-3">
           {gefiltert.map((m) => {
             const wert = m.status_wert_id ? werteMap[m.status_wert_id] : undefined
             return (
-            <li key={m.id} className="rounded-xl border border-gray-200 bg-white p-4">
+            <li key={m.id} className="card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-medium text-gray-900">{m.titel}</div>
-                  {m.beschreibung && <div className="mt-1 text-sm text-gray-600">{m.beschreibung}</div>}
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                  <div className="font-medium text-text">{m.titel}</div>
+                  {m.beschreibung && <div className="mt-1 text-sm text-text-muted">{m.beschreibung}</div>}
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-subtle">
                     <span>Priorität: {prioritaetLabel[m.prioritaet]}</span>
                     <span>Verantwortlich: {nameOf(m.verantwortlicher_id)}</span>
                     {m.faellig_am && <span>Fällig: {m.faellig_am}</span>}
@@ -300,7 +286,7 @@ export function Maengel() {
                   <select
                     value={m.status}
                     onChange={(e) => updateStatus(m.id, e.target.value as MangelStatus)}
-                    className="rounded-lg border border-gray-300 px-2 py-1 text-xs"
+                    className="rounded-lg border border-border-strong bg-surface px-2 py-1 text-xs text-text"
                   >
                     {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
                       <option key={s} value={s}>
@@ -313,19 +299,19 @@ export function Maengel() {
               {m.plan_id && (
                 <Link
                   to={`/baustellen/${baustelleId}/plaene/${m.plan_id}`}
-                  className="mt-2 inline-block text-xs text-blue-600"
+                  className="mt-2 inline-block text-xs text-brand"
                 >
                   📍 Position auf Plan ansehen
                 </Link>
               )}
               <button
                 onClick={() => setGeoeffnetId((prev) => (prev === m.id ? null : m.id))}
-                className="mt-2 block text-xs font-medium text-blue-600"
+                className="mt-2 block text-xs font-medium text-brand"
               >
                 {geoeffnetId === m.id ? 'Details ausblenden' : 'Fortschritt & Kommentare'}
               </button>
               {geoeffnetId === m.id && (
-                <div className="mt-3 border-t border-gray-100 pt-3">
+                <div className="mt-3 border-t border-border pt-3">
                   <MangelDetails mangelId={m.id} />
                 </div>
               )}

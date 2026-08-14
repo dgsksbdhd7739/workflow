@@ -38,10 +38,10 @@ export function PasswortAendern() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm border border-gray-200">
-        <h1 className="mb-1 text-xl font-semibold text-gray-900">Passwort ändern</h1>
-        <p className="mb-6 text-sm text-gray-500">
+    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
+      <div className="card w-full max-w-sm p-8">
+        <h1 className="mb-1 text-xl font-semibold text-text">Passwort ändern</h1>
+        <p className="mb-6 text-sm text-text-muted">
           {mussPasswortAendern
             ? 'Dein Konto wurde mit einem Standardpasswort angelegt. Bitte vergib jetzt ein eigenes Passwort, bevor du fortfährst.'
             : 'Vergib ein neues Passwort für dein Konto.'}
@@ -49,46 +49,42 @@ export function PasswortAendern() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Neues Passwort</label>
+            <label className="field-label">Neues Passwort</label>
             <input
               type="password"
               required
               minLength={6}
               value={neuesPasswort}
               onChange={(e) => setNeuesPasswort(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Passwort bestätigen</label>
+            <label className="field-label">Passwort bestätigen</label>
             <input
               type="password"
               required
               minLength={6}
               value={bestaetigung}
               onChange={(e) => setBestaetigung(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="field-input"
             />
           </div>
 
-          {fehler && <p className="text-sm text-red-600">{fehler}</p>}
+          {fehler && <p className="text-sm text-red-600 dark:text-red-400">{fehler}</p>}
 
-          <button
-            type="submit"
-            disabled={speichert}
-            className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <button type="submit" disabled={speichert} className="btn-primary w-full">
             {speichert ? 'Speichert…' : 'Passwort speichern'}
           </button>
         </form>
 
         <div className="mt-4 flex items-center justify-between text-sm">
           {!mussPasswortAendern && (
-            <button onClick={() => navigate(-1)} className="text-gray-500">
+            <button onClick={() => navigate(-1)} className="text-text-subtle">
               Zurück
             </button>
           )}
-          <button onClick={() => signOut()} className="ml-auto text-gray-500">
+          <button onClick={() => signOut()} className="ml-auto text-text-subtle">
             Abmelden
           </button>
         </div>

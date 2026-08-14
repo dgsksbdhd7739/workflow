@@ -12,17 +12,17 @@ const statusLabel: Record<TerminStatus, string> = {
 }
 
 const statusBalken: Record<TerminStatus, string> = {
-  geplant: 'bg-gray-400',
-  laufend: 'bg-blue-500',
+  geplant: 'bg-slate-400 dark:bg-slate-500',
+  laufend: 'bg-brand',
   abgeschlossen: 'bg-green-500',
   verzoegert: 'bg-red-500',
 }
 
 const statusBadge: Record<TerminStatus, string> = {
-  geplant: 'bg-gray-100 text-gray-700',
-  laufend: 'bg-blue-100 text-blue-700',
-  abgeschlossen: 'bg-green-100 text-green-700',
-  verzoegert: 'bg-red-100 text-red-700',
+  geplant: 'bg-surface-hover text-text-muted',
+  laufend: 'bg-brand-soft text-brand-text',
+  abgeschlossen: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300',
+  verzoegert: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300',
 }
 
 const heute = () => new Date().toISOString().slice(0, 10)
@@ -104,67 +104,60 @@ export function Termine() {
   const spanne = Math.max(maxTag - minTag, 1)
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="page">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">Termine</h1>
+        <h1 className="text-xl font-semibold text-text">Termine</h1>
         {kannBearbeiten && (
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
+          <button onClick={() => setShowForm((v) => !v)} className="btn-primary">
             {showForm ? 'Abbrechen' : '+ Meilenstein'}
           </button>
         )}
       </div>
 
-      {fehler && (
-        <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
-          Fehler: {fehler}
-        </p>
-      )}
+      {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
 
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+        <form onSubmit={handleCreate} className="card mb-6 space-y-3 p-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Titel</label>
+            <label className="field-label">Titel</label>
             <input
               required
               autoFocus
               value={titel}
               onChange={(e) => setTitel(e.target.value)}
               placeholder="z. B. Estrich verlegen"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Start</label>
+              <label className="field-label">Start</label>
               <input
                 type="date"
                 required
                 value={startDatum}
                 onChange={(e) => setStartDatum(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Ende</label>
+              <label className="field-label">Ende</label>
               <input
                 type="date"
                 required
                 min={startDatum}
                 value={endDatum}
                 onChange={(e) => setEndDatum(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
               />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Vorgänger (Abhängigkeit)</label>
+            <label className="field-label">Vorgänger (Abhängigkeit)</label>
             <select
               value={vorgaengerId}
               onChange={(e) => setVorgaengerId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             >
               <option value="">— Keiner —</option>
               {termine.map((t) => (
@@ -174,23 +167,19 @@ export function Termine() {
               ))}
             </select>
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <button type="submit" disabled={saving} className="btn-primary">
             {saving ? 'Speichert…' : 'Meilenstein speichern'}
           </button>
         </form>
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Lädt…</p>
+        <p className="text-sm text-text-muted">Lädt…</p>
       ) : termine.length === 0 ? (
-        <p className="text-sm text-gray-500">Noch keine Termine geplant.</p>
+        <p className="text-sm text-text-muted">Noch keine Termine geplant.</p>
       ) : (
         <div className="space-y-4">
-          <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-4">
+          <div className="card space-y-2 p-4">
             {termine.map((t) => {
               const status = anzeigeStatus(t)
               const left = ((tageSeitEpoch(t.start_datum) - minTag) / spanne) * 100
@@ -198,20 +187,20 @@ export function Termine() {
               const vorgaenger = t.vorgaenger_id ? termine.find((v) => v.id === t.vorgaenger_id) : null
               return (
                 <div key={t.id}>
-                  <div className="mb-1 flex items-center justify-between text-xs text-gray-600">
-                    <span className="truncate font-medium text-gray-900">{t.titel}</span>
+                  <div className="mb-1 flex items-center justify-between text-xs text-text-muted">
+                    <span className="truncate font-medium text-text">{t.titel}</span>
                     <span>
                       {t.start_datum} – {t.end_datum}
                     </span>
                   </div>
-                  <div className="relative h-4 w-full rounded bg-gray-100">
+                  <div className="relative h-4 w-full rounded bg-surface-hover">
                     <div
                       style={{ left: `${left}%`, width: `${width}%` }}
                       className={`absolute h-4 rounded ${statusBalken[status]}`}
                       title={`${t.titel}: ${t.start_datum} – ${t.end_datum}`}
                     />
                   </div>
-                  {vorgaenger && <p className="mt-1 text-xs text-gray-400">nach: {vorgaenger.titel}</p>}
+                  {vorgaenger && <p className="mt-1 text-xs text-text-subtle">nach: {vorgaenger.titel}</p>}
                 </div>
               )
             })}
@@ -221,11 +210,11 @@ export function Termine() {
             {termine.map((t) => {
               const status = anzeigeStatus(t)
               return (
-                <li key={t.id} className="rounded-xl border border-gray-200 bg-white p-4">
+                <li key={t.id} className="card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-medium text-gray-900">{t.titel}</div>
-                      <div className="mt-1 text-xs text-gray-500">
+                      <div className="font-medium text-text">{t.titel}</div>
+                      <div className="mt-1 text-xs text-text-subtle">
                         {t.start_datum} – {t.end_datum}
                       </div>
                     </div>
@@ -237,7 +226,7 @@ export function Termine() {
                     <select
                       value={t.status}
                       onChange={(e) => updateStatus(t.id, e.target.value as TerminStatus)}
-                      className="mt-2 rounded-lg border border-gray-300 px-2 py-1 text-xs"
+                      className="mt-2 rounded-lg border border-border-strong bg-surface px-2 py-1 text-xs text-text"
                     >
                       {(['geplant', 'laufend', 'abgeschlossen'] as const).map((s) => (
                         <option key={s} value={s}>

@@ -1,12 +1,49 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { CloudSun, Loader2 } from 'lucide-react'
+import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
+import { SignedImage } from '../components/SignedImage'
 import { exportTagesberichtePdf } from '../lib/pdf'
-import type { Baustelle, Tagesbericht } from '../types/database'
+import { formatDatum } from '../lib/datum'
+import { holeWetterFuerBaustelle, projektOrt } from '../lib/wetter'
+import { standVonMangel } from '../lib/mangelStand'
+import type {
+  Baustelle,
+  Mangel,
+  MangelKommentar,
+  MangelMaterial,
+  MangelPrioritaet,
+  StatusVorlageWert,
+  Tagesbericht,
+  TagesberichtTuer,
+  Zeiterfassung,
+} from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
+
+const prioritaetLabel: Record<MangelPrioritaet, string> = {
+  niedrig: 'Niedrig',
+  mittel: 'Mittel',
+  hoch: 'Hoch',
+}
+
+function minutenVonZeit(zeit: string) {
+  const [h, m] = zeit.split(':').map(Number)
+  return h * 60 + m
+}
+
+function formatDauer(minuten: number) {
+  const h = Math.floor(minuten / 60)
+  const m = minuten % 60
+  return `${h}h ${m}min`
+}
+
+function eintragMinuten(z: Zeiterfassung) {
+  if (!z.end_zeit) return 0
+  return Math.max(0, minutenVonZeit(z.end_zeit) - minutenVonZeit(z.start_zeit) - z.pause_minuten)
+}
 
 export function Tagesberichte() {
   const { id: baustelleId } = useParams<{ id: string }>()
@@ -15,9 +52,18 @@ export function Tagesberichte() {
   const { nameOf } = useProfiles()
   const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
   const [berichte, setBerichte] = useState<Tagesbericht[]>([])
+  const [zeiten, setZeiten] = useState<Zeiterfassung[]>([])
+  const [maengel, setMaengel] = useState<Mangel[]>([])
+  const [material, setMaterial] = useState<MangelMaterial[]>([])
+  const [kommentare, setKommentare] = useState<MangelKommentar[]>([])
+  const [tueren, setTueren] = useState<TagesberichtTuer[]>([])
+  const [werteMap, setWerteMap] = useState<Record<string, StatusVorlageWert>>({})
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [autoSaving, setAutoSaving] = useState(false)
+  const [pdfExportiert, setPdfExportiert] = useState(false)
+  const [wetterLaedt, setWetterLaedt] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
 
   const [datum, setDatum] = useState(heute())
@@ -30,13 +76,60 @@ export function Tagesberichte() {
   const load = async () => {
     if (!baustelleId) return
     setLoading(true)
-    const [{ data }, { data: baustelleData }] = await Promise.all([
-      supabase.from('tagesberichte').select('*').eq('baustelle_id', baustelleId).order('datum', { ascending: false }),
-      supabase.from('baustellen').select('*').eq('id', baustelleId).single(),
-    ])
+    const [{ data }, { data: baustelleData }, { data: zeitenData }, { data: maengelData }, { data: werteData }] =
+      await Promise.all([
+        supabase.from('tagesberichte').select('*').eq('baustelle_id', baustelleId).order('datum', { ascending: false }),
+        supabase.from('baustellen').select('*').eq('id', baustelleId).single(),
+        supabase.from('zeiterfassung').select('*').eq('baustelle_id', baustelleId).order('start_zeit'),
+        supabase.from('maengel').select('*').eq('baustelle_id', baustelleId),
+        supabase.from('statusvorlage_werte').select('*'),
+      ])
     setBerichte(data ?? [])
     setBaustelle(baustelleData)
+    setZeiten(zeitenData ?? [])
+    setMaengel(maengelData ?? [])
+    const wMap: Record<string, StatusVorlageWert> = {}
+    for (const w of werteData ?? []) wMap[w.id] = w
+    setWerteMap(wMap)
+
+    const mangelIds = (maengelData ?? []).map((m) => m.id)
+    if (mangelIds.length > 0) {
+      const [{ data: materialData }, { data: kommentareData }] = await Promise.all([
+        supabase.from('mangel_material').select('*').in('mangel_id', mangelIds),
+        supabase.from('mangel_kommentare').select('*').in('mangel_id', mangelIds),
+      ])
+      setMaterial(materialData ?? [])
+      setKommentare(kommentareData ?? [])
+    } else {
+      setMaterial([])
+      setKommentare([])
+    }
+
+    const berichtIds = (data ?? []).map((b) => b.id)
+    if (berichtIds.length > 0) {
+      const { data: tuerenData } = await supabase
+        .from('tagesbericht_tueren')
+        .select('*')
+        .in('tagesbericht_id', berichtIds)
+        .order('reihenfolge')
+      setTueren(tuerenData ?? [])
+    } else {
+      setTueren([])
+    }
+
     setLoading(false)
+  }
+
+  const tuerenSnapshotEinfuegen = async (tagesberichtId: string) => {
+    if (maengel.length === 0) return
+    const zeilen = maengel.map((m, i) => ({
+      tagesbericht_id: tagesberichtId,
+      mangel_id: m.id,
+      titel: m.titel,
+      stand: standVonMangel(m, werteMap),
+      reihenfolge: i,
+    }))
+    await supabase.from('tagesbericht_tueren').insert(zeilen)
   }
 
   useEffect(() => {
@@ -49,21 +142,26 @@ export function Tagesberichte() {
     if (!user || !baustelleId) return
     setSaving(true)
     setFehler(null)
-    const { error } = await supabase.from('tagesberichte').insert({
-      baustelle_id: baustelleId,
-      datum,
-      wetter: wetter || null,
-      temperatur: temperatur ? Number(temperatur) : null,
-      personal_anzahl: personalAnzahl ? Number(personalAnzahl) : null,
-      taetigkeiten: taetigkeiten || null,
-      besonderheiten: besonderheiten || null,
-      erstellt_von: user.id,
-    })
+    const { data: neuerBericht, error } = await supabase
+      .from('tagesberichte')
+      .insert({
+        baustelle_id: baustelleId,
+        datum,
+        wetter: wetter || null,
+        temperatur: temperatur ? Number(temperatur) : null,
+        personal_anzahl: personalAnzahl ? Number(personalAnzahl) : null,
+        taetigkeiten: taetigkeiten || null,
+        besonderheiten: besonderheiten || null,
+        erstellt_von: user.id,
+      })
+      .select()
+      .single()
     setSaving(false)
     if (error) {
       setFehler(error.message)
       return
     }
+    if (neuerBericht) await tuerenSnapshotEinfuegen(neuerBericht.id)
     setDatum(heute())
     setWetter('')
     setTemperatur('')
@@ -74,19 +172,109 @@ export function Tagesberichte() {
     load()
   }
 
+  const handleAutoErstellen = async () => {
+    if (!user || !baustelleId) return
+    setAutoSaving(true)
+    setFehler(null)
+
+    const heuteDatum = heute()
+    const zeitenHeute = zeiten.filter((z) => z.datum === heuteDatum)
+
+    const nachAufgabe = new Map<string, Zeiterfassung[]>()
+    for (const z of zeitenHeute) {
+      if (!z.mangel_id) continue
+      const liste = nachAufgabe.get(z.mangel_id) ?? []
+      liste.push(z)
+      nachAufgabe.set(z.mangel_id, liste)
+    }
+
+    const erledigtZeilen: string[] = []
+    for (const [mangelId, eintraege] of nachAufgabe) {
+      const m = maengel.find((x) => x.id === mangelId)
+      if (!m || m.status !== 'erledigt') continue
+      const technikerNamen = [...new Set(eintraege.map((e) => nameOf(e.user_id)))].join(', ')
+      const minuten = eintraege.reduce((sum, e) => sum + eintragMinuten(e), 0)
+      erledigtZeilen.push(`- ${m.titel} (${technikerNamen}, ${formatDauer(minuten)})`)
+    }
+
+    const offenZeilen = maengel
+      .filter((m) => m.status !== 'erledigt')
+      .map((m) => `- ${m.titel} (${prioritaetLabel[m.prioritaet]})`)
+
+    let text = ''
+    if (erledigtZeilen.length > 0) text += `Heute erledigt:\n${erledigtZeilen.join('\n')}`
+    if (offenZeilen.length > 0) text += `${text ? '\n\n' : ''}Noch offen:\n${offenZeilen.join('\n')}`
+    if (!text) text = 'Keine Aktivität erfasst.'
+
+    const technikerAnzahl = new Set(zeitenHeute.map((z) => z.user_id)).size
+
+    const { data: neuerBericht, error } = await supabase
+      .from('tagesberichte')
+      .insert({
+        baustelle_id: baustelleId,
+        datum: heuteDatum,
+        personal_anzahl: technikerAnzahl || null,
+        taetigkeiten: text,
+        erstellt_von: user.id,
+      })
+      .select()
+      .single()
+    setAutoSaving(false)
+    if (error) {
+      setFehler(
+        /duplicate key|unique/i.test(error.message)
+          ? 'Du hast heute für dieses Projekt bereits einen Tagesbericht erstellt.'
+          : error.message,
+      )
+      return
+    }
+    if (neuerBericht) await tuerenSnapshotEinfuegen(neuerBericht.id)
+    load()
+  }
+
+  const handleWetterAbrufen = async () => {
+    if (!baustelle || !datum) return
+    setWetterLaedt(true)
+    setFehler(null)
+    const ergebnis = await holeWetterFuerBaustelle(baustelle, datum)
+    setWetterLaedt(false)
+    if (!ergebnis) {
+      setFehler('Wetter konnte nicht ermittelt werden. Bitte manuell eintragen.')
+      return
+    }
+    setWetter(ergebnis.wetter)
+    setTemperatur(String(ergebnis.temperatur))
+  }
+
+  const handleExport = async () => {
+    if (!baustelle) return
+    setPdfExportiert(true)
+    try {
+      await exportTagesberichtePdf(baustelle, berichte, zeiten, maengel, material, kommentare, tueren, werteMap, nameOf)
+    } catch (err) {
+      setFehler(err instanceof Error ? err.message : 'PDF-Export fehlgeschlagen.')
+    }
+    setPdfExportiert(false)
+  }
+
   return (
     <div className="page">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-text">Bautagebuch</h1>
         <div className="flex gap-2">
           {baustelle && berichte.length > 0 && (
-            <button onClick={() => exportTagesberichtePdf(baustelle, berichte)} className="btn-secondary">
-              PDF exportieren
+            <button onClick={handleExport} disabled={pdfExportiert} className="btn-secondary">
+              {pdfExportiert ? 'Exportiert…' : 'PDF exportieren'}
             </button>
           )}
           {kannBearbeiten && (
-            <button onClick={() => setShowForm((v) => !v)} className="btn-primary">
-              {showForm ? 'Abbrechen' : '+ Tagesbericht'}
+            <button onClick={handleAutoErstellen} disabled={autoSaving} className="btn-primary">
+              {autoSaving ? 'Erstellt…' : '📋 Bericht für heute erstellen'}
+            </button>
+          )}
+          {kannBearbeiten && (
+            <button onClick={() => setShowForm((v) => !v)} className="btn-secondary">
+              {showForm ? 'Abbrechen' : '+ Manuell'}
             </button>
           )}
         </div>
@@ -118,7 +306,24 @@ export function Tagesberichte() {
               />
             </div>
             <div>
-              <label className="field-label">Wetter</label>
+              <div className="mb-1 flex items-center justify-between gap-1">
+                <label className="field-label mb-0">Wetter</label>
+                {baustelle && projektOrt(baustelle) && (
+                  <button
+                    type="button"
+                    onClick={handleWetterAbrufen}
+                    disabled={wetterLaedt || !datum}
+                    className="flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand disabled:opacity-50"
+                  >
+                    {wetterLaedt ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.25} />
+                    ) : (
+                      <CloudSun className="h-3.5 w-3.5" strokeWidth={2.25} />
+                    )}
+                    Abrufen
+                  </button>
+                )}
+              </div>
               <input
                 value={wetter}
                 onChange={(e) => setWetter(e.target.value)}
@@ -166,10 +371,14 @@ export function Tagesberichte() {
         <p className="text-sm text-text-muted">Noch keine Tagesberichte.</p>
       ) : (
         <ul className="space-y-3">
-          {berichte.map((b) => (
+          {berichte.map((b) => {
+            const tagesZeiten = zeiten.filter((z) => z.datum === b.datum)
+            const tagesMinuten = tagesZeiten.reduce((acc, z) => acc + eintragMinuten(z), 0)
+            const tuerenDesBerichts = tueren.filter((t) => t.tagesbericht_id === b.id)
+            return (
             <li key={b.id} className="card p-4">
               <div className="mb-1 flex items-center justify-between">
-                <span className="font-medium text-text">{b.datum}</span>
+                <span className="font-medium text-text">{formatDatum(b.datum)}</span>
                 <span className="text-xs text-text-subtle">{nameOf(b.erstellt_von)}</span>
               </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
@@ -181,8 +390,64 @@ export function Tagesberichte() {
               {b.besonderheiten && (
                 <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">⚠ {b.besonderheiten}</p>
               )}
+              {tuerenDesBerichts.length > 0 && (
+                <div className="mt-3 border-t border-border pt-2">
+                  <span className="text-xs font-medium text-text">Türen-Stand ({tuerenDesBerichts.length})</span>
+                  <ul className="mt-1 space-y-1">
+                    {tuerenDesBerichts.map((t) => (
+                      <li key={t.id} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="min-w-0 truncate text-text-muted">{t.titel}</span>
+                        <span className="flex-shrink-0 rounded-full bg-brand-soft px-2 py-0.5 font-medium text-brand-text">
+                          {t.stand}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {tagesZeiten.length > 0 && (
+                <div className="mt-3 border-t border-border pt-2">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-xs font-medium text-text">Zeiterfassung</span>
+                    <span className="text-xs text-text-subtle">Gesamt: {formatDauer(tagesMinuten)}</span>
+                  </div>
+                  <ul className="space-y-1">
+                    {tagesZeiten.map((z) => (
+                      <li key={z.id} className="flex items-center justify-between gap-2 text-xs text-text-muted">
+                        <span className="min-w-0 truncate">
+                          {nameOf(z.user_id)} —{' '}
+                          {z.mangel_id ? (maengel.find((m) => m.id === z.mangel_id)?.titel ?? 'Aufgabe') : 'Allgemein'}
+                        </span>
+                        <div className="flex flex-shrink-0 items-center gap-2">
+                          {z.foto_pfad && (
+                            <button
+                              type="button"
+                              title="Foto vom IST-Stand"
+                              onClick={async () => {
+                                const { url } = await getSignedUrl('mangel-fotos', z.foto_pfad!)
+                                if (url) window.open(url, '_blank', 'noreferrer')
+                              }}
+                            >
+                              <SignedImage
+                                bucket="mangel-fotos"
+                                path={z.foto_pfad}
+                                alt="IST-Stand"
+                                className="h-8 w-8 rounded object-cover"
+                              />
+                            </button>
+                          )}
+                          <span className="text-text-subtle">
+                            {z.end_zeit ? formatDauer(eintragMinuten(z)) : 'läuft noch'}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </li>
-          ))}
+            )
+          })}
         </ul>
       )}
     </div>

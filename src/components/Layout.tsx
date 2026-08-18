@@ -1,132 +1,173 @@
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
+import {
+  Archive,
+  Boxes,
+  CalendarDays,
+  ClipboardList,
+  Clock,
+  FileText,
+  HardHat,
+  Home,
+  LayoutDashboard,
+  ListChecks,
+  Map as MapIcon,
+  MessageCircle,
+  MessageSquare,
+  Package,
+  Settings,
+  Users,
+  WifiOff,
+  type LucideIcon,
+} from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
-import { useTheme } from '../hooks/useTheme'
 import type { Rolle } from '../types/database'
 
-type NavItem = { to: string; label: string; icon: string; end: boolean; roles?: Rolle[] }
+type NavItem = { to: string; label: string; icon: LucideIcon; end: boolean; roles?: Rolle[]; primary?: boolean }
 
 const mainNav: NavItem[] = [
-  { to: '/', label: 'Projekte', icon: '🏗️', end: true },
-  { to: '/statusvorlagen', label: 'Statusvorlagen', icon: '🏷️', end: false, roles: ['admin', 'planer'] },
-  { to: '/nutzer', label: 'Nutzer', icon: '👤', end: false, roles: ['admin'] },
+  { to: '/', label: 'Home', icon: Home, end: true },
+  {
+    to: '/team-chat',
+    label: 'Team-Chat',
+    icon: MessageSquare,
+    end: false,
+    roles: ['admin', 'planer', 'techniker'],
+  },
+  {
+    to: '/projekt-chat',
+    label: 'Projekt-Chat',
+    icon: MessageCircle,
+    end: false,
+    roles: ['admin', 'planer', 'techniker'],
+  },
+  { to: '/archiv', label: 'Archiv', icon: Archive, end: false, roles: ['admin', 'planer'] },
+  { to: '/material-stamm', label: 'Materialstamm', icon: Boxes, end: false, roles: ['admin', 'planer'] },
+  { to: '/nutzer', label: 'Nutzer', icon: Users, end: false, roles: ['admin'] },
+  { to: '/einstellungen', label: 'Einstellungen', icon: Settings, end: false },
 ]
 
 function baustelleNav(id: string): NavItem[] {
   return [
-    { to: `/baustellen/${id}`, label: 'Übersicht', icon: '📊', end: true },
-    { to: `/baustellen/${id}/termine`, label: 'Termine', icon: '📅', end: false },
-    { to: `/baustellen/${id}/maengel`, label: 'Mängel', icon: '⚠️', end: false },
-    { to: `/baustellen/${id}/plaene`, label: 'Pläne', icon: '🗺️', end: false },
-    { to: `/baustellen/${id}/tagesberichte`, label: 'Tagesberichte', icon: '📋', end: false },
+    { to: `/baustellen/${id}`, label: 'Übersicht', icon: LayoutDashboard, end: true, primary: true },
+    { to: `/baustellen/${id}/plaene`, label: 'Pläne', icon: MapIcon, end: false, primary: true },
+    { to: `/baustellen/${id}/dokumente`, label: 'Dokumente', icon: FileText, end: false },
+    { to: `/baustellen/${id}/maengel`, label: 'Aufgaben', icon: ListChecks, end: false, primary: true },
+    { to: `/baustellen/${id}/tagesberichte`, label: 'Tagesberichte', icon: ClipboardList, end: false },
+    { to: `/baustellen/${id}/material`, label: 'Material', icon: Package, end: false },
+    { to: `/baustellen/${id}/termine`, label: 'Termine', icon: CalendarDays, end: false },
     {
       to: `/baustellen/${id}/zeiterfassung`,
       label: 'Zeiterfassung',
-      icon: '⏱️',
+      icon: Clock,
       end: false,
       roles: ['admin', 'planer', 'techniker'],
+      primary: true,
     },
-    { to: `/baustellen/${id}/kalkulation`, label: 'Kalkulation', icon: '💶', end: false, roles: ['admin', 'planer'] },
   ]
 }
 
-function ThemeToggle({ theme, onToggle, className }: { theme: string; onToggle: () => void; className?: string }) {
-  return (
-    <button
-      onClick={onToggle}
-      aria-label="Farbschema wechseln"
-      className={`flex items-center justify-center rounded-lg border border-border-strong text-text-muted transition-colors hover:bg-surface-hover ${className ?? ''}`}
-    >
-      {theme === 'dark' ? '☀️' : '🌙'}
-    </button>
-  )
+function passtZurRolle(item: NavItem, role: Rolle | null) {
+  return !item.roles || (role && item.roles.includes(role))
 }
 
 export function Layout() {
-  const { signOut, user, role } = useAuth()
+  const { user, role } = useAuth()
   const { id } = useParams()
-  const alleItems = id ? [...mainNav, ...baustelleNav(id)] : mainNav
-  const nav = alleItems.filter((item) => !item.roles || (role && item.roles.includes(role)))
   const online = useOnlineStatus()
-  const { theme, toggleTheme } = useTheme()
+
+  const navHaupt = mainNav.filter((item) => passtZurRolle(item, role))
+  const navProjekt = id ? baustelleNav(id).filter((item) => passtZurRolle(item, role)) : []
+  const navUnten = id ? [mainNav[0], ...navProjekt.filter((item) => item.primary)] : navHaupt
 
   return (
     <div className="flex h-screen flex-col bg-bg md:flex-row">
-      <aside className="hidden md:flex md:w-60 md:flex-col border-r border-border bg-surface">
-        <div className="flex items-center justify-between px-4 py-4">
-          <span className="text-lg font-semibold text-text">
-            Baustellen<span className="text-brand">app</span>
+      <aside className="hidden md:flex md:w-64 md:flex-col border-r border-border bg-surface">
+        <Link to="/" className="flex items-center gap-2.5 px-5 py-5">
+          <div className="logo-tile h-8 w-8 shrink-0">
+            <HardHat className="h-4 w-4" strokeWidth={2.25} />
+          </div>
+          <span className="text-lg font-extrabold tracking-tight text-text">
+            Work<span className="brand-text">Flow</span>
           </span>
-        </div>
-        <nav className="flex-1 space-y-1 px-2">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-brand-soft text-brand-text' : 'text-text-muted hover:bg-surface-hover'
-                }`
-              }
-            >
-              <span>{item.icon}</span>
-              {item.label}
-            </NavLink>
+        </Link>
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3">
+          {navHaupt.map((item) => (
+            <div key={item.to}>
+              <NavLink
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-brand-soft text-brand-text shadow-[inset_3px_0_0_0_var(--color-brand)]'
+                      : 'text-text-muted hover:bg-surface-hover hover:text-text'
+                  }`
+                }
+              >
+                <item.icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                {item.label}
+              </NavLink>
+              {item.to === '/' && navProjekt.length > 0 && (
+                <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
+                  {navProjekt.map((sub) => (
+                    <NavLink
+                      key={sub.to}
+                      to={sub.to}
+                      end={sub.end}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                          isActive ? 'bg-brand-soft text-brand-text' : 'text-text-muted hover:bg-surface-hover hover:text-text'
+                        }`
+                      }
+                    >
+                      <sub.icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                      {sub.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
         <div className="border-t border-border p-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="min-w-0 truncate text-xs text-text-subtle">{user?.email}</div>
-            <ThemeToggle theme={theme} onToggle={toggleTheme} className="h-7 w-7 flex-shrink-0 text-sm" />
-          </div>
-          <Link to="/passwort-aendern" className="btn-secondary mb-2 w-full">
-            Passwort ändern
-          </Link>
-          <button onClick={() => signOut()} className="btn-secondary w-full">
-            Abmelden
-          </button>
+          <div className="truncate px-1 text-xs text-text-subtle">{user?.email}</div>
         </div>
       </aside>
 
       <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-3 md:hidden">
-        <span className="text-lg font-semibold text-text">
-          Baustellen<span className="text-brand">app</span>
-        </span>
-        <div className="flex items-center gap-3">
-          <ThemeToggle theme={theme} onToggle={toggleTheme} className="h-8 w-8 text-sm" />
-          <Link to="/passwort-aendern" className="text-sm text-text-muted">
-            Passwort
-          </Link>
-          <button onClick={() => signOut()} className="text-sm text-text-muted">
-            Abmelden
-          </button>
-        </div>
+        <Link to="/" className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-text">
+          <div className="logo-tile h-7 w-7 shrink-0">
+            <HardHat className="h-3.5 w-3.5" strokeWidth={2.25} />
+          </div>
+          Work<span className="brand-text">Flow</span>
+        </Link>
       </header>
 
       <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
         {!online && (
-          <div className="bg-amber-100 px-4 py-2 text-center text-xs font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <div className="flex items-center justify-center gap-1.5 bg-amber-100 px-4 py-2 text-center text-xs font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+            <WifiOff className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
             Offline — zuletzt geladene Daten werden angezeigt, Änderungen können erst nach Verbindung gespeichert werden.
           </div>
         )}
         <Outlet />
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 flex border-t border-border bg-surface md:hidden">
-        {nav.map((item) => (
+      <nav className="fixed bottom-0 left-0 right-0 flex overflow-x-auto border-t border-border bg-surface md:hidden">
+        {navUnten.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${
+              `flex min-w-16 flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
                 isActive ? 'text-brand' : 'text-text-subtle'
               }`
             }
           >
-            <span className="text-base">{item.icon}</span>
-            {item.label}
+            <item.icon className="h-5 w-5" strokeWidth={2.25} />
+            <span className="truncate px-0.5">{item.label}</span>
           </NavLink>
         ))}
       </nav>

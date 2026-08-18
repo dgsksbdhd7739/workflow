@@ -1,4 +1,4 @@
-package com.mesut.baustellenapp;
+package com.mesut.workflow;
 
 import com.getcapacitor.BridgeActivity;
 

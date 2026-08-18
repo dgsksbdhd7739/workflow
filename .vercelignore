@@ -1,0 +1,8 @@
+android
+src-tauri
+supabase
+landing
+scripts
+node_modules
+dist
+.git

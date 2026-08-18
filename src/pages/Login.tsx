@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
+import { HardHat } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { isSupabaseConfigured } from '../lib/supabase'
 
@@ -24,9 +25,11 @@ export function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="card w-full max-w-sm p-8">
-        <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-xl bg-brand text-xl">🏗️</div>
-        <h1 className="mb-1 text-xl font-semibold text-text">
-          Baustellen<span className="text-brand">app</span>
+        <div className="logo-tile mb-6 h-11 w-11">
+          <HardHat className="h-6 w-6" strokeWidth={2.25} />
+        </div>
+        <h1 className="mb-1 text-2xl font-extrabold tracking-tight text-text">
+          Work<span className="brand-text">Flow</span>
         </h1>
         <p className="mb-6 text-sm text-text-muted">Anmelden, um fortzufahren</p>
 

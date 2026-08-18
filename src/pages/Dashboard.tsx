@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { ProjektForm } from '../components/ProjektForm'
 import { SignedImage } from '../components/SignedImage'
-import { formatProjektAdresse } from '../lib/adresse'
+import { formatProjektAdresse, kartenUrl } from '../lib/adresse'
 import type { Baustelle } from '../types/database'
 
 export function Dashboard() {
@@ -19,7 +19,7 @@ export function Dashboard() {
     if (!user) return
     setLoading(true)
     const [{ data: baustellenData }, { data: favoritenData }] = await Promise.all([
-      supabase.from('baustellen').select('*').order('created_at', { ascending: false }),
+      supabase.from('baustellen').select('*').eq('archiviert', false).order('created_at', { ascending: false }),
       supabase.from('favoriten').select('baustelle_id').eq('user_id', user.id),
     ])
     setBaustellen(baustellenData ?? [])
@@ -105,9 +105,19 @@ export function Dashboard() {
                   />
                 )}
                 <div className="min-w-0">
-                  <div className="font-medium text-text">{b.name}</div>
+                  <div className="truncate font-medium text-text">{b.name}</div>
                   {formatProjektAdresse(b) && (
-                    <div className="truncate text-sm text-text-muted">{formatProjektAdresse(b)}</div>
+                    <span
+                      role="link"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        window.open(kartenUrl(formatProjektAdresse(b)!), '_blank', 'noreferrer')
+                      }}
+                      className="block truncate text-sm text-text-muted hover:text-brand hover:underline"
+                    >
+                      📍 {formatProjektAdresse(b)}
+                    </span>
                   )}
                 </div>
               </Link>

@@ -1,20 +1,26 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'))
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Baustellenapp',
-        short_name: 'Baustellen',
-        description: 'Mängelmanagement, Pläne, Bautagebuch und Zeiterfassung für Baustellen',
-        theme_color: '#ea580c',
+        name: 'WorkFlow',
+        short_name: 'WorkFlow',
+        description: 'Aufgabenmanagement, Pläne, Bautagebuch und Zeiterfassung für Baustellen',
+        theme_color: '#2563eb',
         background_color: '#f8fafc',
         display: 'standalone',
         start_url: '/',

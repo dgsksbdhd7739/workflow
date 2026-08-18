@@ -11,36 +11,51 @@
   --color-text: #0f172a;
   --color-text-muted: #475569;
   --color-text-subtle: #94a3b8;
-  --color-brand: #ea580c;
-  --color-brand-hover: #c2410c;
-  --color-brand-soft: #ffedd5;
-  --color-brand-text: #9a3412;
+  --color-brand: #4f46e5;
+  --color-brand-hover: #4338ca;
+  --color-brand-soft: #eef2ff;
+  --color-brand-text: #4338ca;
+  --color-brand-2: #2563eb;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 .dark {
-  --color-bg: #0b1120;
-  --color-surface: #151f32;
-  --color-surface-hover: #1e293b;
-  --color-border: #263349;
-  --color-border-strong: #334155;
+  --color-bg: #0a0e1a;
+  --color-surface: #131a2b;
+  --color-surface-hover: #1b2438;
+  --color-border: #232e46;
+  --color-border-strong: #313f5c;
   --color-text: #f1f5f9;
   --color-text-muted: #94a3b8;
   --color-text-subtle: #64748b;
-  --color-brand: #fb923c;
-  --color-brand-hover: #fdba74;
-  --color-brand-soft: rgba(251, 146, 60, 0.16);
-  --color-brand-text: #fdba74;
+  --color-brand: #818cf8;
+  --color-brand-hover: #a5b4fc;
+  --color-brand-soft: rgba(99, 102, 241, 0.18);
+  --color-brand-text: #a5b4fc;
+  --color-brand-2: #60a5fa;
 }
 
 html, body, #root {
   height: 100%;
 }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 body {
   margin: 0;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   background-color: var(--color-bg);
+  background-image: radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--color-brand) 8%, transparent), transparent);
+  background-attachment: fixed;
   color: var(--color-text);
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.02em;
 }
 
 @layer components {
@@ -48,13 +63,13 @@ body {
     @apply mx-auto max-w-3xl px-4 py-6;
   }
   .card {
-    @apply rounded-2xl border border-border bg-surface shadow-sm shadow-slate-950/[0.03] dark:shadow-black/20;
+    @apply rounded-xl border border-border bg-surface shadow-sm transition-shadow duration-200 dark:shadow-none dark:hover:border-border-strong;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-br from-brand to-brand-2 px-3 py-2 text-sm font-semibold text-white shadow-[0_2px_10px_-2px_rgba(79,70,229,0.45)] transition-all duration-150 hover:shadow-[0_6px_20px_-4px_rgba(79,70,229,0.55)] hover:brightness-110 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none dark:shadow-[0_2px_12px_-2px_rgba(129,140,248,0.35)] dark:hover:shadow-[0_6px_22px_-4px_rgba(129,140,248,0.45)];
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-strong px-3 py-2 text-sm font-medium text-text transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm font-medium text-text shadow-xs transition-colors hover:border-brand/40 hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50;
@@ -63,9 +78,15 @@ body {
     @apply mb-1 block text-sm font-medium text-text-muted;
   }
   .field-input {
-    @apply w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text placeholder:text-text-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20;
+    @apply w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm text-text placeholder:text-text-subtle transition-shadow duration-150 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15;
   }
   .banner-error {
     @apply rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300;
+  }
+  .brand-text {
+    @apply bg-gradient-to-r from-brand to-brand-2 bg-clip-text text-transparent;
+  }
+  .logo-tile {
+    @apply flex items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-2 text-white shadow-[0_4px_16px_-4px_rgba(79,70,229,0.5)] dark:shadow-[0_4px_16px_-4px_rgba(129,140,248,0.4)];
   }
 }

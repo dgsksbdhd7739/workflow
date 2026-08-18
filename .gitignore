@@ -33,3 +33,6 @@ src-tauri/target/
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+.env*

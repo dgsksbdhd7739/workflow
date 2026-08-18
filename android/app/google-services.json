@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "169609822728",
+    "project_id": "workflow-app-70cf3",
+    "storage_bucket": "workflow-app-70cf3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:169609822728:android:033bf06117f0e26e3c47bd",
+        "android_client_info": {
+          "package_name": "com.mesut.workflow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrv6ATnqtO219BOPDy_51lTZnxVB84FLs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

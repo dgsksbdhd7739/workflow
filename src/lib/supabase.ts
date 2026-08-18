@@ -15,7 +15,7 @@ export const supabase = createClient(
  * Download funktioniert nur ueber zeitlich begrenzte signierte URLs.
  */
 export async function getSignedUrl(
-  bucket: 'mangel-fotos' | 'plaene' | 'projekt-logos',
+  bucket: 'mangel-fotos' | 'plaene' | 'projekt-logos' | 'dokumente' | 'unternehmen-logos',
   path: string,
   expiresInSeconds = 3600,
 ) {

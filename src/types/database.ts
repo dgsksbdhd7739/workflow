@@ -8,7 +8,40 @@ export interface Profile {
   full_name: string
   role: Rolle
   muss_passwort_aendern: boolean
+  deaktiviert: boolean
+  unternehmen_id: string
   created_at: string
+}
+
+export interface Unternehmen {
+  id: string
+  name: string
+  logo_pfad: string | null
+  strasse: string | null
+  hausnummer: string | null
+  plz: string | null
+  stadt: string | null
+  land: string | null
+  telefon: string | null
+  email: string | null
+  website: string | null
+  erstellt_am: string
+}
+
+export interface ChatNachricht {
+  id: string
+  unternehmen_id: string
+  user_id: string
+  text: string
+  erstellt_am: string
+}
+
+export interface ProjektChatNachricht {
+  id: string
+  baustelle_id: string
+  user_id: string
+  text: string
+  erstellt_am: string
 }
 
 export interface Baustelle {
@@ -35,6 +68,7 @@ export interface Baustelle {
   kunden_adresszusatz: string | null
   kunden_plz: string | null
   kunden_stadt: string | null
+  archiviert: boolean
   created_by: string
   created_at: string
 }
@@ -52,8 +86,11 @@ export interface Mangel {
   plan_id: string | null
   position_x: number | null
   position_y: number | null
+  position_x2: number | null
+  position_y2: number | null
   farbe: string | null
   status_wert_id: string | null
+  abnahme_nummer: string | null
   erstellt_von: string
   erstellt_am: string
 }
@@ -90,18 +127,8 @@ export interface Zeiterfassung {
   end_zeit: string | null
   pause_minuten: number
   taetigkeit: string | null
-  erstellt_am: string
-}
-
-export interface Leistung {
-  id: string
-  baustelle_id: string
-  position_nr: number
-  bezeichnung: string
-  menge: number
-  einheit: string
-  einzelpreis: number
-  erstellt_von: string
+  mangel_id: string | null
+  foto_pfad: string | null
   erstellt_am: string
 }
 
@@ -130,6 +157,28 @@ export interface MangelPhase {
   erstellt_am: string
 }
 
+export interface MangelMaterial {
+  id: string
+  mangel_id: string
+  bezeichnung: string
+  menge: number
+  einheit: string | null
+  erledigt: boolean
+  reihenfolge: number
+  material_stamm_id: string | null
+  erstellt_von: string
+  erstellt_am: string
+}
+
+export interface MaterialStamm {
+  id: string
+  unternehmen_id: string
+  bezeichnung: string
+  einheit: string | null
+  erstellt_von: string
+  erstellt_am: string
+}
+
 export interface MangelKommentar {
   id: string
   mangel_id: string
@@ -142,6 +191,20 @@ export interface MangelKommentar {
 export interface StatusVorlage {
   id: string
   name: string
+  ist_standard: boolean
+  erstellt_von: string
+  erstellt_am: string
+}
+
+export type DokumentKategorie = 'projekt' | 'aufgabe'
+
+export interface Dokument {
+  id: string
+  baustelle_id: string
+  mangel_id: string | null
+  kategorie: DokumentKategorie
+  name: string
+  datei_pfad: string
   erstellt_von: string
   erstellt_am: string
 }
@@ -153,5 +216,15 @@ export interface StatusVorlageWert {
   farbe: string
   reihenfolge: number
   ist_standard: boolean
+  erstellt_am: string
+}
+
+export interface TagesberichtTuer {
+  id: string
+  tagesbericht_id: string
+  mangel_id: string | null
+  titel: string
+  stand: string
+  reihenfolge: number
   erstellt_am: string
 }

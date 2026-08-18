@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
+import { formatDatum } from '../lib/datum'
 import type { Zeiterfassung as ZeiterfassungEntry } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
@@ -197,7 +198,7 @@ export function Zeiterfassung() {
           {eintraege.map((z) => (
             <li key={z.id} className="card p-4">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-text">{z.datum}</span>
+                <span className="font-medium text-text">{formatDatum(z.datum)}</span>
                 <span className="text-xs text-text-subtle">{nameOf(z.user_id)}</span>
               </div>
               <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-text-muted">

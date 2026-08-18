@@ -26,6 +26,10 @@ export function Nutzerverwaltung() {
   const [neuRolle, setNeuRolle] = useState<Rolle>('techniker')
   const [anlegen, setAnlegen] = useState(false)
 
+  const [pwResetOffen, setPwResetOffen] = useState<string | null>(null)
+  const [neuesPasswort, setNeuesPasswort] = useState('abcd.1234')
+  const [aktionLaeuft, setAktionLaeuft] = useState<string | null>(null)
+
   const load = async () => {
     setLoading(true)
     const [{ data: profileData }, { data: baustellenData }, { data: zuweisungenData }] = await Promise.all([
@@ -78,6 +82,57 @@ export function Nutzerverwaltung() {
     load()
   }
 
+  const handleResetPassword = async (e: FormEvent, profileId: string) => {
+    e.preventDefault()
+    setFehler(null)
+    setAktionLaeuft(profileId)
+    const { data, error } = await supabase.functions.invoke('reset-user-password', {
+      body: { user_id: profileId, password: neuesPasswort },
+    })
+    setAktionLaeuft(null)
+    if (error || data?.error) {
+      setFehler(data?.error ?? error?.message ?? 'Passwort konnte nicht zurückgesetzt werden.')
+      return
+    }
+    setPwResetOffen(null)
+    setNeuesPasswort('abcd.1234')
+  }
+
+  const handleToggleAktiv = async (profileId: string, aktivSetzen: boolean) => {
+    setFehler(null)
+    if (
+      !aktivSetzen &&
+      !window.confirm('Nutzer wirklich deaktivieren? Er kann sich danach nicht mehr anmelden, bleibt aber in allen Datensätzen erhalten.')
+    ) {
+      return
+    }
+    setAktionLaeuft(profileId)
+    const { data, error } = await supabase.functions.invoke('set-user-active', {
+      body: { user_id: profileId, aktiv: aktivSetzen },
+    })
+    setAktionLaeuft(null)
+    if (error || data?.error) {
+      setFehler(data?.error ?? error?.message ?? 'Status konnte nicht geändert werden.')
+      return
+    }
+    load()
+  }
+
+  const handleDeleteUser = async (profileId: string) => {
+    setFehler(null)
+    if (!window.confirm('Nutzer wirklich unwiderruflich löschen?')) return
+    setAktionLaeuft(profileId)
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { user_id: profileId },
+    })
+    setAktionLaeuft(null)
+    if (error || data?.error) {
+      setFehler(data?.error ?? error?.message ?? 'Nutzer konnte nicht gelöscht werden.')
+      return
+    }
+    load()
+  }
+
   const toggleProjektZugriff = async (userId: string, baustelleId: string) => {
     setFehler(null)
     const hatZugriff = zuweisungen[userId]?.has(baustelleId) ?? false
@@ -111,8 +166,8 @@ export function Nutzerverwaltung() {
           <h1 className="text-xl font-semibold text-text">Nutzerverwaltung</h1>
           <p className="text-xs text-text-muted">
             Rollen steuern, was ein Nutzer sehen und bearbeiten darf. Admin: alles. Planer: fast alles außer
-            Nutzerverwaltung. Techniker: Baustellenarbeit ohne Kalkulation. Kunde: nur lesen, keine
-            Kalkulation/Zeiterfassung — und nur für ausdrücklich zugewiesene Projekte.
+            Nutzerverwaltung. Techniker: Baustellenarbeit inkl. Zeiterfassung. Kunde: nur lesen, keine
+            Zeiterfassung — und nur für ausdrücklich zugewiesene Projekte.
           </p>
         </div>
         <button onClick={() => setFormOffen((v) => !v)} className="btn-primary flex-shrink-0">
@@ -183,7 +238,14 @@ export function Nutzerverwaltung() {
             <li key={p.id} className="card p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-medium text-text">{p.full_name || '—'}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="font-medium text-text">{p.full_name || '—'}</div>
+                    {p.deaktiviert && (
+                      <span className="flex-shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-400">
+                        Deaktiviert
+                      </span>
+                    )}
+                  </div>
                   {p.id === user?.id && <div className="text-xs text-text-subtle">Das bist du</div>}
                 </div>
                 <select
@@ -198,6 +260,57 @@ export function Nutzerverwaltung() {
                   ))}
                 </select>
               </div>
+
+              {p.id !== user?.id && (
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-2 text-xs font-medium">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPwResetOffen((prev) => (prev === p.id ? null : p.id))
+                      setNeuesPasswort('abcd.1234')
+                    }}
+                    className="text-brand"
+                  >
+                    {pwResetOffen === p.id ? 'Abbrechen' : 'Passwort zurücksetzen'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={aktionLaeuft === p.id}
+                    onClick={() => handleToggleAktiv(p.id, Boolean(p.deaktiviert))}
+                    className="text-text-muted disabled:opacity-50"
+                  >
+                    {p.deaktiviert ? 'Aktivieren' : 'Deaktivieren'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={aktionLaeuft === p.id}
+                    onClick={() => handleDeleteUser(p.id)}
+                    className="text-red-600 disabled:opacity-50 dark:text-red-400"
+                  >
+                    Löschen
+                  </button>
+                </div>
+              )}
+
+              {pwResetOffen === p.id && (
+                <form onSubmit={(e) => handleResetPassword(e, p.id)} className="mt-2 flex items-end gap-2 border-t border-border pt-2">
+                  <div className="flex-1">
+                    <label className="field-label">Neues Passwort</label>
+                    <input
+                      type="text"
+                      required
+                      minLength={6}
+                      value={neuesPasswort}
+                      onChange={(e) => setNeuesPasswort(e.target.value)}
+                      className="field-input"
+                      placeholder="Mindestens 6 Zeichen"
+                    />
+                  </div>
+                  <button type="submit" disabled={aktionLaeuft === p.id} className="btn-primary flex-shrink-0">
+                    {aktionLaeuft === p.id ? 'Setzt…' : 'Setzen'}
+                  </button>
+                </form>
+              )}
 
               {p.role === 'kunde' && (
                 <>

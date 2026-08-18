@@ -1,4 +1,4 @@
--- Baustellenapp: initiales Schema
+-- WorkFlow: initiales Schema
 -- Vereinfachtes Berechtigungsmodell fuer v1: jeder eingeloggte Nutzer (ein Firmen-Team)
 -- sieht und bearbeitet alle Daten. Feingranulare Rechte pro Baustelle sind fuer eine
 -- spaetere Version vorgesehen.

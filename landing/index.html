@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="description" content="WorkFlow — Aufgabenmanagement, Pläne mit Markierungen, Bautagebuch, Zeiterfassung und Team-Chat für Baustellen. Als Web-App und Android-App." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&display=swap"
+      rel="stylesheet"
+    />
+    <title>WorkFlow — Baustellenmanagement</title>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface-hover: #f1f5f9;
+        --border: #e2e8f0;
+        --text: #0f172a;
+        --text-muted: #475569;
+        --text-subtle: #94a3b8;
+        --brand: #4f46e5;
+        --brand-2: #2563eb;
+        --brand-soft: #eef2ff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0a0e1a;
+          --surface: #131a2b;
+          --surface-hover: #1b2438;
+          --border: #232e46;
+          --text: #f1f5f9;
+          --text-muted: #94a3b8;
+          --text-subtle: #64748b;
+          --brand: #818cf8;
+          --brand-2: #60a5fa;
+          --brand-soft: rgba(99, 102, 241, 0.16);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: color-mix(in srgb, var(--bg) 85%, transparent);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--border);
+      }
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 0;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-weight: 800;
+        font-size: 1.15rem;
+        letter-spacing: -0.02em;
+      }
+      .logo-tile {
+        display: flex;
+        height: 2.1rem;
+        width: 2.1rem;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.6rem;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        box-shadow: 0 4px 14px -4px rgba(79, 70, 229, 0.5);
+      }
+      .brand-text {
+        background: linear-gradient(90deg, var(--brand), var(--brand-2));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 1.75rem;
+      }
+      .nav-links a:not(.btn) {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-muted);
+      }
+      .nav-links a:not(.btn):hover {
+        color: var(--text);
+      }
+      @media (max-width: 560px) {
+        .nav-links a:not(.btn) {
+          display: none;
+        }
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border-radius: 0.6rem;
+        padding: 0.7rem 1.3rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: filter 0.15s, box-shadow 0.15s, transform 0.15s;
+        white-space: nowrap;
+      }
+      .btn-primary {
+        color: #fff;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        box-shadow: 0 4px 16px -4px rgba(79, 70, 229, 0.5);
+      }
+      .btn-primary:hover {
+        filter: brightness(1.08);
+        transform: translateY(-1px);
+      }
+      .btn-secondary {
+        color: var(--text);
+        background: var(--surface);
+        border-color: var(--border);
+      }
+      .btn-secondary:hover {
+        background: var(--surface-hover);
+      }
+      .btn-sm {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+      }
+      .hero {
+        padding: 5rem 0 4rem;
+        position: relative;
+      }
+      .hero::before {
+        content: '';
+        position: absolute;
+        top: -10rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60rem;
+        height: 40rem;
+        background: radial-gradient(ellipse at center, color-mix(in srgb, var(--brand) 14%, transparent), transparent 70%);
+        pointer-events: none;
+        z-index: -1;
+      }
+      .hero-inner {
+        text-align: center;
+        max-width: 700px;
+        margin: 0 auto;
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.85rem;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand-2);
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+      }
+      h1 {
+        font-size: clamp(2.1rem, 5vw, 3.2rem);
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+        font-weight: 800;
+        margin: 0 0 1.1rem;
+      }
+      .hero p.lead {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin: 0 0 2.2rem;
+      }
+      .hero-actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+      }
+      .hero-note {
+        font-size: 0.8rem;
+        color: var(--text-subtle);
+      }
+      .hero-shot {
+        margin-top: 4rem;
+        display: flex;
+        justify-content: center;
+      }
+      .hero-shot img {
+        max-width: 100%;
+        width: 900px;
+        border-radius: 1rem;
+        border: 1px solid var(--border);
+        box-shadow: 0 30px 60px -20px rgba(15, 23, 42, 0.25);
+      }
+      section.features {
+        padding: 5rem 0;
+      }
+      .section-head {
+        text-align: center;
+        max-width: 600px;
+        margin: 0 auto 3rem;
+      }
+      .section-head h2 {
+        font-size: clamp(1.6rem, 3vw, 2.2rem);
+        letter-spacing: -0.02em;
+        margin: 0 0 0.75rem;
+        font-weight: 800;
+      }
+      .section-head p {
+        color: var(--text-muted);
+        margin: 0;
+        line-height: 1.6;
+      }
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+      }
+      @media (max-width: 800px) {
+        .feature-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (max-width: 560px) {
+        .feature-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .feature-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        padding: 1.5rem;
+      }
+      .feature-icon {
+        display: flex;
+        height: 2.6rem;
+        width: 2.6rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.65rem;
+        background: var(--brand-soft);
+        color: var(--brand-2);
+        margin-bottom: 1rem;
+      }
+      .feature-card h3 {
+        font-size: 1rem;
+        margin: 0 0 0.4rem;
+        font-weight: 700;
+      }
+      .feature-card p {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0;
+      }
+      section.showcase {
+        padding: 4rem 0 6rem;
+      }
+      .showcase-inner {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        align-items: center;
+      }
+      @media (max-width: 800px) {
+        .showcase-inner {
+          grid-template-columns: 1fr;
+          text-align: center;
+        }
+        .showcase-inner .showcase-copy {
+          order: 2;
+        }
+      }
+      .showcase-copy h2 {
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        letter-spacing: -0.02em;
+        font-weight: 800;
+        margin: 0 0 1rem;
+      }
+      .showcase-copy p {
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin: 0 0 1.5rem;
+      }
+      .showcase-img {
+        display: flex;
+        justify-content: center;
+      }
+      .showcase-img img {
+        max-width: 280px;
+        width: 100%;
+        border-radius: 1.5rem;
+        border: 1px solid var(--border);
+        box-shadow: 0 30px 60px -20px rgba(15, 23, 42, 0.25);
+      }
+      .check-list {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+      .check-list li {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 0.92rem;
+        color: var(--text);
+      }
+      @media (max-width: 800px) {
+        .check-list li {
+          justify-content: center;
+        }
+      }
+      .check-list svg {
+        flex-shrink: 0;
+        color: var(--brand-2);
+      }
+      section.cta {
+        padding: 4rem 0 6rem;
+      }
+      .cta-card {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        border-radius: 1.5rem;
+        padding: 3.5rem 2rem;
+        text-align: center;
+        color: #fff;
+      }
+      .cta-card h2 {
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        letter-spacing: -0.02em;
+        margin: 0 0 0.75rem;
+        font-weight: 800;
+      }
+      .cta-card p {
+        opacity: 0.9;
+        margin: 0 0 2rem;
+      }
+      .cta-card .btn-primary {
+        background: #fff;
+        color: var(--brand);
+        box-shadow: none;
+      }
+      .cta-card .btn-primary:hover {
+        filter: none;
+        background: #f8fafc;
+      }
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 2.5rem 0;
+      }
+      .footer-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        font-size: 0.85rem;
+        color: var(--text-subtle);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap nav">
+        <div class="logo">
+          <div class="logo-tile">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 18a8 8 0 0 1 16 0Z" />
+              <path d="M4 18h16" />
+              <path d="M12 10v-3" />
+            </svg>
+          </div>
+          <span>Work<span class="brand-text">Flow</span></span>
+        </div>
+        <div class="nav-links">
+          <a href="#funktionen">Funktionen</a>
+          <a href="#download">Download</a>
+          <a href="https://app.workflow-app.de" class="btn btn-secondary btn-sm">Zur App</a>
+        </div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="wrap hero-inner">
+        <span class="eyebrow">Für Baustellen &amp; Handwerksbetriebe</span>
+        <h1>Baustellenmanagement, das mit dir mitläuft</h1>
+        <p class="lead">
+          Aufgaben, Pläne mit Markierungen, Bautagebuch, Zeiterfassung und Team-Chat — an einem Ort,
+          auf jedem Gerät. Als Web-App im Browser und als Android-App.
+        </p>
+        <div class="hero-actions">
+          <a href="#download" class="btn btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v12" />
+              <path d="m7 10 5 5 5-5" />
+              <path d="M5 21h14" />
+            </svg>
+            App herunterladen
+          </a>
+          <a href="https://app.workflow-app.de" class="btn btn-secondary">Im Browser öffnen</a>
+        </div>
+        <p class="hero-note">Kostenlos für dein Team · Android-App direkt zum Installieren, kein Play-Store-Umweg nötig</p>
+        <div class="hero-shot">
+          <img src="/assets/screenshot-board.png" alt="WorkFlow Aufgaben-Board" loading="lazy" />
+        </div>
+      </div>
+    </section>
+
+    <section class="features" id="funktionen">
+      <div class="wrap">
+        <div class="section-head">
+          <h2>Alles, was eine Baustelle braucht</h2>
+          <p>Keine losen Zettel, keine verstreuten Chats — ein System für das ganze Team.</p>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+            </div>
+            <h3>Aufgaben &amp; Mängel</h3>
+            <p>Listen- oder Kanban-Ansicht, Fälligkeiten mit Überfällig-Warnung, Fotos, Kommentare und Fortschrittsstufen je Gewerk.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>
+            </div>
+            <h3>Pläne mit Markierungen</h3>
+            <p>PDF- und Bildpläne hochladen, Markierungen setzen, bis zu 1000 % heranzoomen und Markierungen direkt auf dem Plan suchen.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            </div>
+            <h3>Team-Chat</h3>
+            <p>Gruppenchat fürs ganze Team mit Push-Benachrichtigung bei neuen Nachrichten — bleibt im eigenen Unternehmen.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12h-1a4 4 0 0 1-4-4V4a2 2 0 0 1 2-2h.5"/><path d="M22 19a2 2 0 0 1-2 2h-3v-4h3a2 2 0 0 1 2 2Z"/><path d="M4.017 15.316A2 2 0 0 0 2 17v2a2 2 0 0 0 2 2h.017"/><rect width="8" height="14" x="7" y="7" rx="1"/></svg>
+            </div>
+            <h3>Bautagebuch</h3>
+            <p>Tagesberichte inkl. automatischem Wetterabruf, Personalstand und PDF-Export für die Dokumentation.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <h3>Zeiterfassung</h3>
+            <p>Stoppuhr direkt an der Aufgabe, inklusive Foto vom Ist-Stand — fließt automatisch in den Tagesbericht ein.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </div>
+            <h3>Läuft immer aktuell</h3>
+            <p>Neue Funktionen kommen automatisch aufs Gerät — kein manuelles Aktualisieren nötig.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="showcase">
+      <div class="wrap showcase-inner">
+        <div class="showcase-copy">
+          <h2>Auch unterwegs immer griffbereit</h2>
+          <p>Die Android-App läuft auf jedem Handy und Tablet auf der Baustelle — offline nutzbar, synchronisiert automatisch sobald wieder Netz da ist.</p>
+          <ul class="check-list">
+            <li>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Für Handy und Tablet optimiert
+            </li>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Funktioniert auch ohne Internetverbindung
+            </li>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              Helles und dunkles Farbschema
+            </li>
+          </ul>
+          <a href="#download" class="btn btn-primary">App herunterladen</a>
+        </div>
+        <div class="showcase-img">
+          <img src="/assets/screenshot-mobile.png" alt="WorkFlow auf dem Handy" loading="lazy" />
+        </div>
+      </div>
+    </section>
+
+    <section class="cta" id="download">
+      <div class="wrap">
+        <div class="cta-card">
+          <h2>Bereit für dein Team?</h2>
+          <p>Android-App direkt herunterladen oder im Browser starten.</p>
+          <div class="hero-actions" style="margin-bottom: 0">
+            <a href="/assets/workflow.apk" class="btn btn-primary" download>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v12" />
+                <path d="m7 10 5 5 5-5" />
+                <path d="M5 21h14" />
+              </svg>
+              WorkFlow für Android (.apk)
+            </a>
+            <a href="https://app.workflow-app.de" class="btn" style="background: rgba(255,255,255,0.15); color: #fff;">Im Browser öffnen</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap footer-inner">
+        <div class="logo" style="font-size: 0.95rem;">
+          <div class="logo-tile" style="height: 1.6rem; width: 1.6rem; border-radius: 0.4rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 18a8 8 0 0 1 16 0Z" />
+              <path d="M4 18h16" />
+              <path d="M12 10v-3" />
+            </svg>
+          </div>
+          <span>Work<span class="brand-text">Flow</span></span>
+        </div>
+        <span>© 2026 WorkFlow — Baustellenmanagement</span>
+      </div>
+    </footer>
+  </body>
+</html>

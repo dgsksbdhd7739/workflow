@@ -7,6 +7,7 @@ interface AuthContextValue {
   user: User | null
   session: Session | null
   role: Rolle | null
+  unternehmenId: string | null
   mussPasswortAendern: boolean
   setMussPasswortAendern: (v: boolean) => void
   loading: boolean
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [role, setRole] = useState<Rolle | null>(null)
+  const [unternehmenId, setUnternehmenId] = useState<string | null>(null)
   const [mussPasswortAendern, setMussPasswortAendern] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -39,16 +41,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userId = session?.user.id
     if (!userId) {
       setRole(null)
+      setUnternehmenId(null)
       setMussPasswortAendern(false)
       return
     }
     supabase
       .from('profiles')
-      .select('role, muss_passwort_aendern')
+      .select('role, muss_passwort_aendern, unternehmen_id')
       .eq('id', userId)
       .single()
       .then(({ data }) => {
         setRole(data?.role ?? null)
+        setUnternehmenId(data?.unternehmen_id ?? null)
         setMussPasswortAendern(data?.muss_passwort_aendern ?? false)
       })
   }, [session?.user.id])
@@ -64,7 +68,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user: session?.user ?? null, session, role, mussPasswortAendern, setMussPasswortAendern, loading, signIn, signOut }}
+      value={{
+        user: session?.user ?? null,
+        session,
+        role,
+        unternehmenId,
+        mussPasswortAendern,
+        setMussPasswortAendern,
+        loading,
+        signIn,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>

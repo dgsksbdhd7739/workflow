@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { formatDatum } from '../lib/datum'
 import type { Termin, TerminStatus } from '../types/database'
 
 const statusLabel: Record<TerminStatus, string> = {
@@ -14,14 +15,14 @@ const statusLabel: Record<TerminStatus, string> = {
 const statusBalken: Record<TerminStatus, string> = {
   geplant: 'bg-slate-400 dark:bg-slate-500',
   laufend: 'bg-brand',
-  abgeschlossen: 'bg-green-500',
+  abgeschlossen: 'bg-emerald-500',
   verzoegert: 'bg-red-500',
 }
 
 const statusBadge: Record<TerminStatus, string> = {
   geplant: 'bg-surface-hover text-text-muted',
   laufend: 'bg-brand-soft text-brand-text',
-  abgeschlossen: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300',
+  abgeschlossen: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
   verzoegert: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300',
 }
 
@@ -190,14 +191,14 @@ export function Termine() {
                   <div className="mb-1 flex items-center justify-between text-xs text-text-muted">
                     <span className="truncate font-medium text-text">{t.titel}</span>
                     <span>
-                      {t.start_datum} – {t.end_datum}
+                      {formatDatum(t.start_datum)} – {formatDatum(t.end_datum)}
                     </span>
                   </div>
                   <div className="relative h-4 w-full rounded bg-surface-hover">
                     <div
                       style={{ left: `${left}%`, width: `${width}%` }}
                       className={`absolute h-4 rounded ${statusBalken[status]}`}
-                      title={`${t.titel}: ${t.start_datum} – ${t.end_datum}`}
+                      title={`${t.titel}: ${formatDatum(t.start_datum)} – ${formatDatum(t.end_datum)}`}
                     />
                   </div>
                   {vorgaenger && <p className="mt-1 text-xs text-text-subtle">nach: {vorgaenger.titel}</p>}
@@ -215,7 +216,7 @@ export function Termine() {
                     <div>
                       <div className="font-medium text-text">{t.titel}</div>
                       <div className="mt-1 text-xs text-text-subtle">
-                        {t.start_datum} – {t.end_datum}
+                        {formatDatum(t.start_datum)} – {formatDatum(t.end_datum)}
                       </div>
                     </div>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge[status]}`}>

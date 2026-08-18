@@ -52,6 +52,8 @@ interface MangelKarteProps {
   nameOf: (id: string | null) => string
   draggable?: boolean
   onDragStart?: () => void
+  ausgewaehlt: boolean
+  onToggleAuswahl: () => void
 }
 
 function MangelKarte({
@@ -68,12 +70,23 @@ function MangelKarte({
   nameOf,
   draggable,
   onDragStart,
+  ausgewaehlt,
+  onToggleAuswahl,
 }: MangelKarteProps) {
   const ueberfaellig = istUeberfaellig(m)
   return (
-    <div className="card p-4" draggable={draggable} onDragStart={onDragStart}>
+    <div className={`card p-4 ${ausgewaehlt ? 'ring-2 ring-brand' : ''}`} draggable={draggable} onDragStart={onDragStart}>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        {kannLoeschen && (
+          <input
+            type="checkbox"
+            checked={ausgewaehlt}
+            onChange={onToggleAuswahl}
+            aria-label={`"${m.titel}" auswählen`}
+            className="mt-1 h-4 w-4 flex-shrink-0"
+          />
+        )}
+        <div className="min-w-0 flex-1">
           <div className="font-medium text-text">{m.titel}</div>
           {m.beschreibung && <div className="mt-1 text-sm text-text-muted">{m.beschreibung}</div>}
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-subtle">
@@ -175,6 +188,7 @@ export function Maengel() {
   const [geoeffnetId, setGeoeffnetId] = useState<string | null>(null)
   const [werteMap, setWerteMap] = useState<Record<string, StatusVorlageWert>>({})
   const [fehler, setFehler] = useState<string | null>(null)
+  const [ausgewaehlt, setAusgewaehlt] = useState<Set<string>>(new Set())
 
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
@@ -197,6 +211,7 @@ export function Maengel() {
 
   useEffect(() => {
     load()
+    setAusgewaehlt(new Set())
     supabase
       .from('statusvorlage_werte')
       .select('*')
@@ -274,6 +289,31 @@ export function Maengel() {
     load()
   }
 
+  const toggleAuswahl = (id: string) => {
+    setAusgewaehlt((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(ausgewaehlt)
+    if (ids.length === 0) return
+    if (!window.confirm(`${ids.length} Aufgabe${ids.length === 1 ? '' : 'n'} wirklich endgültig löschen? Das kann nicht rückgängig gemacht werden.`)) {
+      return
+    }
+    setFehler(null)
+    const { error } = await supabase.from('maengel').delete().in('id', ids)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
+    setAusgewaehlt(new Set())
+    load()
+  }
+
   const nachStatus =
     filterStatus === 'alle'
       ? maengel
@@ -336,6 +376,24 @@ export function Maengel() {
       </div>
 
       {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
+
+      {kannLoeschen && ausgewaehlt.size > 0 && (
+        <div className="card mb-4 flex flex-wrap items-center gap-3 p-3">
+          <span className="text-sm font-medium text-text">{ausgewaehlt.size} ausgewählt</span>
+          <button
+            onClick={() => setAusgewaehlt(new Set(gefiltert.map((m) => m.id)))}
+            className="text-xs font-medium text-brand"
+          >
+            Alle in dieser Ansicht auswählen
+          </button>
+          <button onClick={() => setAusgewaehlt(new Set())} className="text-xs font-medium text-text-muted">
+            Auswahl aufheben
+          </button>
+          <button onClick={handleBulkDelete} className="btn-secondary ml-auto text-xs text-red-600 dark:text-red-400">
+            {ausgewaehlt.size} Aufgabe{ausgewaehlt.size === 1 ? '' : 'n'} löschen
+          </button>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {(['alle', 'offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
@@ -468,6 +526,8 @@ export function Maengel() {
                 onDelete={() => handleDelete(m)}
                 onDetailsChange={load}
                 nameOf={nameOf}
+                ausgewaehlt={ausgewaehlt.has(m.id)}
+                onToggleAuswahl={() => toggleAuswahl(m.id)}
               />
             </li>
           ))}
@@ -515,6 +575,8 @@ export function Maengel() {
                       nameOf={nameOf}
                       draggable={kannBearbeiten}
                       onDragStart={() => setZiehtId(m.id)}
+                      ausgewaehlt={ausgewaehlt.has(m.id)}
+                      onToggleAuswahl={() => toggleAuswahl(m.id)}
                     />
                   </div>
                 ))}

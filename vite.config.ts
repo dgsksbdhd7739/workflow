@@ -25,9 +25,9 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         icons: [
-          { src: '/pwa-icon.svg', sizes: '192x192', type: 'image/svg+xml' },
-          { src: '/pwa-icon.svg', sizes: '512x512', type: 'image/svg+xml' },
-          { src: '/pwa-icon.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'maskable' },
+          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
@@ -35,7 +35,7 @@ export default defineConfig({
         // ohne Netz sofort startet. Supabase-Leseanfragen werden nach
         // "stale-while-revalidate" behandelt: zuletzt geladene Daten bleiben
         // offline sichtbar, aktualisieren sich aber sofort bei Netz.
-        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/rest/v1/'),

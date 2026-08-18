@@ -1,14 +1,15 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
-import { CloudSun, Loader2 } from 'lucide-react'
+import { CalendarDays, CloudSun, Loader2, Search, X } from 'lucide-react'
 import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { SignedImage } from '../components/SignedImage'
-import { exportTagesberichtePdf } from '../lib/pdf'
+import { exportEinzelnenTagesberichtPdf, exportTagesberichtePdf } from '../lib/pdf'
 import { formatDatum } from '../lib/datum'
 import { holeWetterFuerBaustelle, projektOrt } from '../lib/wetter'
 import { standVonMangel } from '../lib/mangelStand'
+import { tagesberichtName, tagesberichtNummern } from '../lib/tagesberichtName'
 import type {
   Baustelle,
   Mangel,
@@ -63,8 +64,11 @@ export function Tagesberichte() {
   const [saving, setSaving] = useState(false)
   const [autoSaving, setAutoSaving] = useState(false)
   const [pdfExportiert, setPdfExportiert] = useState(false)
+  const [oeffnendId, setOeffnendId] = useState<string | null>(null)
   const [wetterLaedt, setWetterLaedt] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
+  const [suche, setSuche] = useState('')
+  const [datumsFilter, setDatumsFilter] = useState('')
 
   const [datum, setDatum] = useState(heute())
   const [wetter, setWetter] = useState('')
@@ -257,6 +261,49 @@ export function Tagesberichte() {
     setPdfExportiert(false)
   }
 
+  const nummern = useMemo(() => tagesberichtNummern(berichte), [berichte])
+
+  const handleOeffnen = async (b: Tagesbericht) => {
+    if (!baustelle) return
+    setOeffnendId(b.id)
+    setFehler(null)
+    try {
+      const url = await exportEinzelnenTagesberichtPdf(
+        baustelle,
+        b,
+        zeiten,
+        maengel,
+        material,
+        kommentare,
+        tueren,
+        werteMap,
+        nameOf,
+        tagesberichtName(baustelle, b, nummern[b.id]),
+      )
+      window.open(url, '_blank', 'noreferrer')
+    } catch (err) {
+      setFehler(err instanceof Error ? err.message : 'PDF konnte nicht geöffnet werden.')
+    }
+    setOeffnendId(null)
+  }
+
+  const gefilterteBerichte = useMemo(() => {
+    return berichte.filter((b) => {
+      if (datumsFilter && b.datum !== datumsFilter) return false
+      if (suche.trim()) {
+        const q = suche.trim().toLowerCase()
+        const name = tagesberichtName(baustelle ?? ({ name: '' } as Baustelle), b, nummern[b.id]).toLowerCase()
+        const treffer =
+          name.includes(q) ||
+          formatDatum(b.datum).toLowerCase().includes(q) ||
+          (b.taetigkeiten ?? '').toLowerCase().includes(q) ||
+          (b.besonderheiten ?? '').toLowerCase().includes(q)
+        if (!treffer) return false
+      }
+      return true
+    })
+  }, [berichte, datumsFilter, suche, baustelle, nummern])
+
   return (
     <div className="page">
       <div className="mb-4 flex items-center justify-between">
@@ -281,6 +328,42 @@ export function Tagesberichte() {
       </div>
 
       {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
+
+      {!loading && berichte.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[180px] flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" strokeWidth={2.25} />
+            <input
+              value={suche}
+              onChange={(e) => setSuche(e.target.value)}
+              placeholder="Suche nach Name, Datum, Inhalt…"
+              className="field-input w-full pl-8"
+            />
+          </div>
+          <div className="relative flex-shrink-0">
+            <CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" strokeWidth={2.25} />
+            <input
+              type="date"
+              value={datumsFilter}
+              onChange={(e) => setDatumsFilter(e.target.value)}
+              className="field-input pl-8"
+            />
+          </div>
+          {(suche || datumsFilter) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSuche('')
+                setDatumsFilter('')
+              }}
+              aria-label="Filter zurücksetzen"
+              className="flex-shrink-0 rounded-lg p-2 text-text-subtle hover:bg-surface-hover hover:text-text"
+            >
+              <X className="h-4 w-4" strokeWidth={2.25} />
+            </button>
+          )}
+        </div>
+      )}
 
       {showForm && (
         <form onSubmit={handleCreate} className="card mb-6 space-y-3 p-4">
@@ -369,18 +452,33 @@ export function Tagesberichte() {
         <p className="text-sm text-text-muted">Lädt…</p>
       ) : berichte.length === 0 ? (
         <p className="text-sm text-text-muted">Noch keine Tagesberichte.</p>
+      ) : gefilterteBerichte.length === 0 ? (
+        <p className="text-sm text-text-muted">Keine Tagesberichte gefunden.</p>
       ) : (
         <ul className="space-y-3">
-          {berichte.map((b) => {
+          {gefilterteBerichte.map((b) => {
             const tagesZeiten = zeiten.filter((z) => z.datum === b.datum)
             const tagesMinuten = tagesZeiten.reduce((acc, z) => acc + eintragMinuten(z), 0)
             const tuerenDesBerichts = tueren.filter((t) => t.tagesbericht_id === b.id)
             return (
             <li key={b.id} className="card p-4">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="font-medium text-text">{formatDatum(b.datum)}</span>
-                <span className="text-xs text-text-subtle">{nameOf(b.erstellt_von)}</span>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOeffnen(b)}
+                  disabled={oeffnendId === b.id}
+                  className="min-w-0 truncate text-left font-medium text-brand hover:underline disabled:opacity-60"
+                  title="Als PDF öffnen"
+                >
+                  {oeffnendId === b.id
+                    ? 'Öffnet…'
+                    : baustelle
+                      ? tagesberichtName(baustelle, b, nummern[b.id])
+                      : formatDatum(b.datum)}
+                </button>
+                <span className="flex-shrink-0 text-xs text-text-subtle">{nameOf(b.erstellt_von)}</span>
               </div>
+              <div className="mb-1 text-xs text-text-subtle">{formatDatum(b.datum)}</div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
                 {b.wetter && <span>Wetter: {b.wetter}</span>}
                 {b.temperatur !== null && <span>{b.temperatur}°C</span>}

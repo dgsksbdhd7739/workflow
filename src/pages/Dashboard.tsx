@@ -1,17 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ClipboardList } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { ProjektForm } from '../components/ProjektForm'
 import { SignedImage } from '../components/SignedImage'
 import { formatProjektAdresse, kartenUrl } from '../lib/adresse'
-import type { Baustelle } from '../types/database'
+import { formatDatum } from '../lib/datum'
+import type { Baustelle, Tagesbericht } from '../types/database'
+
+interface TagesberichtMitProjekt extends Tagesbericht {
+  baustelle_name: string
+}
 
 export function Dashboard() {
   const { user, role } = useAuth()
   const kannAnlegen = role === 'admin' || role === 'planer'
+  const kannUebersichtSehen = role === 'admin' || role === 'planer'
   const [baustellen, setBaustellen] = useState<Baustelle[]>([])
   const [favoritenIds, setFavoritenIds] = useState<Set<string>>(new Set())
+  const [neuesteTagesberichte, setNeuesteTagesberichte] = useState<TagesberichtMitProjekt[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
 
@@ -24,6 +32,26 @@ export function Dashboard() {
     ])
     setBaustellen(baustellenData ?? [])
     setFavoritenIds(new Set((favoritenData ?? []).map((f) => f.baustelle_id)))
+
+    if (kannUebersichtSehen) {
+      const ids = (baustellenData ?? []).map((b) => b.id)
+      if (ids.length > 0) {
+        const { data: tagesberichteData } = await supabase
+          .from('tagesberichte')
+          .select('*')
+          .in('baustelle_id', ids)
+          .order('datum', { ascending: false })
+          .order('erstellt_am', { ascending: false })
+          .limit(8)
+        const namenMap = Object.fromEntries((baustellenData ?? []).map((b) => [b.id, b.name]))
+        setNeuesteTagesberichte(
+          (tagesberichteData ?? []).map((t) => ({ ...t, baustelle_name: namenMap[t.baustelle_id] ?? '—' })),
+        )
+      } else {
+        setNeuesteTagesberichte([])
+      }
+    }
+
     setLoading(false)
   }
 
@@ -56,6 +84,33 @@ export function Dashboard() {
 
   return (
     <div className="page">
+      {kannUebersichtSehen && !loading && neuesteTagesberichte.length > 0 && (
+        <div className="mb-6">
+          <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-text">
+            <ClipboardList className="h-4 w-4 text-brand" strokeWidth={2.25} />
+            Neueste Tagesberichte
+          </h2>
+          <ul className="space-y-1.5">
+            {neuesteTagesberichte.map((t) => (
+              <li key={t.id}>
+                <Link
+                  to={`/baustellen/${t.baustelle_id}/tagesberichte`}
+                  className="card flex items-center justify-between gap-3 p-3 text-sm transition-colors hover:border-brand/40 hover:bg-brand-soft/40"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-text">{t.baustelle_name}</div>
+                    {t.besonderheiten && (
+                      <div className="truncate text-xs text-amber-700 dark:text-amber-400">⚠ {t.besonderheiten}</div>
+                    )}
+                  </div>
+                  <span className="flex-shrink-0 text-xs text-text-subtle">{formatDatum(t.datum)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-text">Projekte</h1>
         {kannAnlegen && (

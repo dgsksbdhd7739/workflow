@@ -67,6 +67,15 @@ export function Einstellungen() {
       {kannVerwalten && (
         <section className="card mb-4 p-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Verwaltung</h2>
+          {role === 'admin' && (
+            <Link
+              to="/nutzer"
+              className="flex items-center justify-between rounded-lg px-1 py-1 text-sm text-text-muted hover:text-brand"
+            >
+              <span>👥 Nutzer</span>
+              <span aria-hidden>›</span>
+            </Link>
+          )}
           <Link
             to="/statusvorlagen"
             className="flex items-center justify-between rounded-lg px-1 py-1 text-sm text-text-muted hover:text-brand"

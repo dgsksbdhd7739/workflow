@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable'
 import { getSignedUrl, supabase } from './supabase'
 import { formatKundenAdresse, formatProjektAdresse, formatUnternehmenAdresse } from './adresse'
 import { formatDatum } from './datum'
+import { tagesberichtName, tagesberichtNummern } from './tagesberichtName'
 import type {
   Baustelle,
   Mangel,
@@ -316,9 +317,16 @@ export async function exportMaterialPdf(
   doc.save(`${baustelle.name}-materialliste.pdf`)
 }
 
-export async function exportTagesberichtePdf(
-  baustelle: Baustelle,
-  berichte: Tagesbericht[],
+// Rendert einen einzelnen Tagesbericht-Block (Datum, Wetter, Tueren-Stand,
+// Zeiterfassung je Aufgabe mit Fortschritt, Material, Kommentaren, Fotos).
+// Wird sowohl fuer den Sammel-Export (alle Berichte) als auch fuer das
+// Oeffnen/Exportieren eines einzelnen Berichts verwendet.
+async function zeichneTagesberichtTag(
+  doc: jsPDF,
+  yStart: number,
+  seitenEnde: number,
+  b: Tagesbericht,
+  dokName: string,
   zeiten: Zeiterfassung[],
   maengel: Mangel[],
   material: MangelMaterial[],
@@ -326,29 +334,25 @@ export async function exportTagesberichtePdf(
   tueren: TagesberichtTuer[],
   werteMap: Record<string, StatusVorlageWert>,
   nameOf: (id: string | null) => string,
-) {
-  const doc = new jsPDF()
-  const unternehmen = await holeUnternehmen()
-  let y = await kopfzeile(doc, 'Bautagebuch', baustelle, unternehmen)
-  const seitenEnde = 278
+): Promise<number> {
+  let y = yStart
 
-  for (const b of berichte) {
-    if (y > seitenEnde - 20) {
-      doc.addPage()
-      y = 20
-    }
-
-    doc.setFillColor(...FARBE.marke)
-    doc.circle(15.3, y - 1.4, 1.1, 'F')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(12.5)
-    doc.setTextColor(...FARBE.text)
-    doc.text(formatDatum(b.datum), 19, y)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(...FARBE.dezent)
-    doc.text(`erstellt von ${nameOf(b.erstellt_von)}`, 196, y, { align: 'right' })
-    y += 6.5
+  doc.setFillColor(...FARBE.marke)
+  doc.circle(15.3, y - 1.4, 1.1, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12.5)
+  doc.setTextColor(...FARBE.text)
+  doc.text(formatDatum(b.datum), 19, y)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(...FARBE.dezent)
+  doc.text(`erstellt von ${nameOf(b.erstellt_von)}`, 196, y, { align: 'right' })
+  y += 4.6
+  doc.setFontSize(7)
+  doc.setTextColor(...FARBE.dezent)
+  doc.text(dokName, 19, y)
+  doc.setFontSize(8)
+  y += 4.2
 
     const metaChips = [
       b.wetter ? `☁ ${b.wetter}` : null,
@@ -517,6 +521,45 @@ export async function exportTagesberichtePdf(
       y += 1
     }
 
+  return y
+}
+
+export async function exportTagesberichtePdf(
+  baustelle: Baustelle,
+  berichte: Tagesbericht[],
+  zeiten: Zeiterfassung[],
+  maengel: Mangel[],
+  material: MangelMaterial[],
+  kommentare: MangelKommentar[],
+  tueren: TagesberichtTuer[],
+  werteMap: Record<string, StatusVorlageWert>,
+  nameOf: (id: string | null) => string,
+) {
+  const doc = new jsPDF()
+  const unternehmen = await holeUnternehmen()
+  let y = await kopfzeile(doc, 'Bautagebuch', baustelle, unternehmen)
+  const seitenEnde = 278
+  const nummern = tagesberichtNummern(berichte)
+
+  for (const b of berichte) {
+    if (y > seitenEnde - 20) {
+      doc.addPage()
+      y = 20
+    }
+    y = await zeichneTagesberichtTag(
+      doc,
+      y,
+      seitenEnde,
+      b,
+      tagesberichtName(baustelle, b, nummern[b.id]),
+      zeiten,
+      maengel,
+      material,
+      kommentare,
+      tueren,
+      werteMap,
+      nameOf,
+    )
     y += 3
     doc.setDrawColor(...FARBE.rahmen)
     doc.line(14, y, 196, y)
@@ -525,4 +568,40 @@ export async function exportTagesberichtePdf(
 
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
   doc.save(`${baustelle.name}-bautagebuch.pdf`)
+}
+
+export async function exportEinzelnenTagesberichtPdf(
+  baustelle: Baustelle,
+  bericht: Tagesbericht,
+  zeiten: Zeiterfassung[],
+  maengel: Mangel[],
+  material: MangelMaterial[],
+  kommentare: MangelKommentar[],
+  tueren: TagesberichtTuer[],
+  werteMap: Record<string, StatusVorlageWert>,
+  nameOf: (id: string | null) => string,
+  dokumentname: string,
+): Promise<string> {
+  const doc = new jsPDF()
+  const unternehmen = await holeUnternehmen()
+  let y = await kopfzeile(doc, 'Bautagebuch', baustelle, unternehmen)
+  const seitenEnde = 278
+
+  await zeichneTagesberichtTag(
+    doc,
+    y,
+    seitenEnde,
+    bericht,
+    dokumentname,
+    zeiten,
+    maengel,
+    material,
+    kommentare,
+    tueren,
+    werteMap,
+    nameOf,
+  )
+
+  fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
+  return doc.output('bloburl').toString()
 }

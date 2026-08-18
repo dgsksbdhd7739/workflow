@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { MessageCircle, Send, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -32,6 +33,8 @@ function initialen(name: string) {
 export function ProjektChat() {
   const { user } = useAuth()
   const { nameOf } = useProfiles()
+  const [searchParams] = useSearchParams()
+  const vorausgewaehlteId = searchParams.get('projekt')
   const [baustellen, setBaustellen] = useState<Baustelle[]>([])
   const [baustelleId, setBaustelleId] = useState('')
   const [nachrichten, setNachrichten] = useState<ProjektChatNachricht[]>([])
@@ -50,10 +53,14 @@ export function ProjektChat() {
       .order('name')
       .then(({ data }) => {
         setBaustellen(data ?? [])
-        if (data && data.length > 0) setBaustelleId(data[0].id)
+        if (data && data.length > 0) {
+          const passt = vorausgewaehlteId && data.some((b) => b.id === vorausgewaehlteId)
+          setBaustelleId(passt ? vorausgewaehlteId! : data[0].id)
+        }
         setLadeProjekte(false)
       })
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vorausgewaehlteId])
 
   useEffect(() => {
     if (!baustelleId) {

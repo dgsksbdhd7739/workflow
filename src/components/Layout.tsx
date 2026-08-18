@@ -1,7 +1,7 @@
+import { Capacitor } from '@capacitor/core'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import {
   Archive,
-  Boxes,
   CalendarDays,
   ClipboardList,
   Clock,
@@ -25,6 +25,12 @@ import type { Rolle } from '../types/database'
 
 type NavItem = { to: string; label: string; icon: LucideIcon; end: boolean; roles?: Rolle[]; primary?: boolean }
 
+const istNativ = Capacitor.isNativePlatform()
+
+// Materialstamm ist bewusst in keiner der beiden Varianten hier gelistet --
+// erreichbar nur ueber Einstellungen. Nutzer bleibt in der Web-Version im
+// Hauptmenue, in der nativen App-Version nur ueber Einstellungen (kuerzere,
+// aufgeraeumtere Leiste auf dem Handy).
 const mainNav: NavItem[] = [
   { to: '/', label: 'Home', icon: Home, end: true },
   {
@@ -42,8 +48,7 @@ const mainNav: NavItem[] = [
     roles: ['admin', 'planer', 'techniker'],
   },
   { to: '/archiv', label: 'Archiv', icon: Archive, end: false, roles: ['admin', 'planer'] },
-  { to: '/material-stamm', label: 'Materialstamm', icon: Boxes, end: false, roles: ['admin', 'planer'] },
-  { to: '/nutzer', label: 'Nutzer', icon: Users, end: false, roles: ['admin'] },
+  ...(istNativ ? [] : [{ to: '/nutzer', label: 'Nutzer', icon: Users, end: false, roles: ['admin'] as Rolle[] }]),
   { to: '/einstellungen', label: 'Einstellungen', icon: Settings, end: false },
 ]
 
@@ -60,6 +65,13 @@ function baustelleNav(id: string): NavItem[] {
       to: `/baustellen/${id}/zeiterfassung`,
       label: 'Zeiterfassung',
       icon: Clock,
+      end: false,
+      roles: ['admin', 'planer', 'techniker'],
+    },
+    {
+      to: `/projekt-chat?projekt=${id}`,
+      label: 'Projekt-Chat',
+      icon: MessageCircle,
       end: false,
       roles: ['admin', 'planer', 'techniker'],
       primary: true,

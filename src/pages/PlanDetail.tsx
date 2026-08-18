@@ -5,7 +5,13 @@ import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { MangelDetails } from '../components/MangelDetails'
 import { Arbeitszeit } from '../components/Arbeitszeit'
+import { erkenneMarkierungenMitOcr, ladeCanvasAusBild, type ErkannteMarkierung } from '../lib/planOcr'
 import type { Mangel, MangelPrioritaet, MangelStatus, Plan, StatusVorlageWert } from '../types/database'
+
+interface VorschauMarkierung extends ErkannteMarkierung {
+  id: string
+  ausgewaehlt: boolean
+}
 
 const statusLabel: Record<MangelStatus, string> = {
   offen: 'Stopp',
@@ -102,6 +108,11 @@ export function PlanDetail() {
   const [fehler, setFehler] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
 
+  const [erkennungLaeuft, setErkennungLaeuft] = useState(false)
+  const [erkennungFortschritt, setErkennungFortschritt] = useState<{ aktuell: number; gesamt: number } | null>(null)
+  const [uebernehmeLaeuft, setUebernehmeLaeuft] = useState(false)
+  const [vorschauMarkierungen, setVorschauMarkierungen] = useState<VorschauMarkierung[] | null>(null)
+
   const updateZoomPan = (nextZoom: number, nextPan: { x: number; y: number }) => {
     zoomRef.current = nextZoom
     panRef.current = nextPan
@@ -156,6 +167,7 @@ export function PlanDetail() {
     load()
     resetZoom()
     setPinSuche('')
+    setVorschauMarkierungen(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId])
 
@@ -318,12 +330,89 @@ export function PlanDetail() {
       suppressClickRef.current = false
       return
     }
-    if (zeichenModus !== 'punkt' || !canMark) return
+    if (vorschauMarkierungen || zeichenModus !== 'punkt' || !canMark) return
     const rect = e.currentTarget.getBoundingClientRect()
     const pos = relPos(e.clientX, e.clientY, rect)
     setSelectedPin(null)
     resetNeuForm()
     setPendingPos(pos)
+  }
+
+  const istNaheBestehendemPin = (t: ErkannteMarkierung) =>
+    pins.some(
+      (p) => p.position_x != null && p.position_y != null && Math.hypot(p.position_x - t.x, p.position_y - t.y) < 2.5,
+    )
+
+  const starteErkennung = async () => {
+    if (!datenUrl) return
+    setFehler(null)
+    setVorschauMarkierungen(null)
+    setPendingPos(null)
+    setSelectedPin(null)
+    setErkennungLaeuft(true)
+    setErkennungFortschritt(null)
+    try {
+      const quelle = isPdf ? canvasRef.current : await ladeCanvasAusBild(datenUrl)
+      if (!quelle) {
+        setFehler('Plan-Inhalt nicht verfügbar.')
+        return
+      }
+      const treffer = await erkenneMarkierungenMitOcr(quelle, (aktuell, gesamt) =>
+        setErkennungFortschritt({ aktuell, gesamt }),
+      )
+      const neue = treffer.filter((t) => !istNaheBestehendemPin(t))
+      if (neue.length === 0) {
+        setFehler('Keine neuen Positions-Markierungen auf dem Plan erkannt.')
+      } else {
+        setVorschauMarkierungen(neue.map((t, i) => ({ ...t, id: `erkennung-${i}`, ausgewaehlt: true })))
+      }
+    } catch {
+      setFehler('Automatische Erkennung fehlgeschlagen.')
+    } finally {
+      setErkennungLaeuft(false)
+      setErkennungFortschritt(null)
+    }
+  }
+
+  const toggleVorschauAuswahl = (id: string) => {
+    setVorschauMarkierungen((liste) => liste?.map((m) => (m.id === id ? { ...m, ausgewaehlt: !m.ausgewaehlt } : m)) ?? null)
+  }
+
+  const bearbeiteVorschauCode = (id: string, code: string) => {
+    setVorschauMarkierungen((liste) => liste?.map((m) => (m.id === id ? { ...m, code } : m)) ?? null)
+  }
+
+  const uebernehmeErkennung = async () => {
+    if (!vorschauMarkierungen || !user || !baustelleId || !planId) return
+    const ausgewaehlt = vorschauMarkierungen.filter((m) => m.ausgewaehlt && m.code.trim())
+    if (ausgewaehlt.length === 0) return
+    setUebernehmeLaeuft(true)
+    setFehler(null)
+    const standard = werte.length > 0 ? standardWertId() || null : null
+    const eintraege = ausgewaehlt.map((m) => {
+      const code = m.code.trim()
+      return {
+        baustelle_id: baustelleId,
+        titel: code,
+        beschreibung: code,
+        prioritaet: 'mittel' as MangelPrioritaet,
+        plan_id: planId,
+        position_x: m.x,
+        position_y: m.y,
+        farbe: m.farbe,
+        status_wert_id: standard,
+        status: 'offen' as MangelStatus,
+        erstellt_von: user.id,
+      }
+    })
+    const { error } = await supabase.from('maengel').insert(eintraege)
+    setUebernehmeLaeuft(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
+    setVorschauMarkierungen(null)
+    load()
   }
 
   const handleContentMouseDown = (e: MouseEvent<HTMLDivElement>) => {
@@ -622,6 +711,25 @@ export function PlanDetail() {
                   ▭
                 </button>
               )}
+              {canMark && (
+                <button
+                  type="button"
+                  onClick={starteErkennung}
+                  disabled={erkennungLaeuft || Boolean(vorschauMarkierungen)}
+                  aria-label="Positions-Markierungen automatisch erkennen"
+                  title="Bereits im Plan eingezeichnete Positions-Markierungen automatisch erkennen"
+                  className="h-7 w-7 rounded-lg border border-border-strong text-sm text-text disabled:opacity-40"
+                >
+                  {erkennungLaeuft ? '…' : '🔎'}
+                </button>
+              )}
+              {erkennungLaeuft && (
+                <span className="text-xs text-text-muted">
+                  {erkennungFortschritt
+                    ? `Erkenne Text… ${erkennungFortschritt.aktuell}/${erkennungFortschritt.gesamt}`
+                    : 'Suche Markierungen…'}
+                </span>
+              )}
               <span className="mx-1 h-5 w-px bg-border" />
               <button
                 type="button"
@@ -790,6 +898,29 @@ export function PlanDetail() {
                   </div>
                 )
               )}
+              {vorschauMarkierungen &&
+                vorschauMarkierungen.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleVorschauAuswahl(m.id)
+                    }}
+                    style={{
+                      left: `${m.x}%`,
+                      top: `${m.y}%`,
+                      borderColor: m.farbe,
+                      opacity: m.ausgewaehlt ? 1 : 0.35,
+                      zIndex: 6,
+                    }}
+                    title={m.ausgewaehlt ? 'Ausgewählt – klicken zum Abwählen' : 'Abgewählt – klicken zum Auswählen'}
+                    className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center whitespace-nowrap rounded-full border-2 border-dashed bg-white/85 px-2 py-0.5 text-xs font-bold text-black shadow"
+                  >
+                    {m.ausgewaehlt ? '✓ ' : ''}
+                    {m.code || '?'}
+                  </button>
+                ))}
             </div>
           </div>
 
@@ -865,6 +996,69 @@ export function PlanDetail() {
                 </button>
               </div>
             </form>
+          )}
+
+          {vorschauMarkierungen && (
+            <div className="card mt-3 space-y-3 p-4">
+              <div className="text-sm font-medium text-text">
+                {vorschauMarkierungen.length} Markierung{vorschauMarkierungen.length === 1 ? '' : 'en'} automatisch erkannt
+              </div>
+              <p className="text-xs text-text-muted">
+                Ausgewählte Markierungen werden als neue Aufgaben angelegt – Titel und Aufgabe entsprechen dabei nur dem
+                per Texterkennung gelesenen Positions-Code. Die Erkennung kann sich vertippen – bitte vor dem Anlegen
+                kurz prüfen und bei Bedarf korrigieren. Weitere Inhalte bitte anschließend manuell ergänzen.
+              </p>
+              <ul className="space-y-1.5">
+                {vorschauMarkierungen.map((m) => (
+                  <li key={m.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={m.ausgewaehlt}
+                      onChange={() => toggleVorschauAuswahl(m.id)}
+                      className="h-4 w-4 flex-shrink-0"
+                    />
+                    <span style={{ backgroundColor: m.farbe }} className="h-2.5 w-2.5 flex-shrink-0 rounded-full" />
+                    <input
+                      value={m.code}
+                      onChange={(e) => bearbeiteVorschauCode(m.id, e.target.value)}
+                      placeholder="nicht erkannt – manuell eintragen"
+                      className="field-input flex-1 py-1 text-xs"
+                    />
+                  </li>
+                ))}
+              </ul>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVorschauMarkierungen((liste) => liste?.map((m) => ({ ...m, ausgewaehlt: true })) ?? null)}
+                  className="btn-secondary text-xs"
+                >
+                  Alle auswählen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVorschauMarkierungen((liste) => liste?.map((m) => ({ ...m, ausgewaehlt: false })) ?? null)}
+                  className="btn-secondary text-xs"
+                >
+                  Alle abwählen
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={uebernehmeErkennung}
+                  disabled={uebernehmeLaeuft || vorschauMarkierungen.every((m) => !m.ausgewaehlt || !m.code.trim())}
+                  className="btn-primary"
+                >
+                  {uebernehmeLaeuft
+                    ? 'Legt an…'
+                    : `${vorschauMarkierungen.filter((m) => m.ausgewaehlt && m.code.trim()).length} Aufgabe(n) anlegen`}
+                </button>
+                <button type="button" onClick={() => setVorschauMarkierungen(null)} className="btn-secondary">
+                  Abbrechen
+                </button>
+              </div>
+            </div>
           )}
 
           {selectedPin && (

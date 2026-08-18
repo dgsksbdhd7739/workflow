@@ -1,4 +1,3 @@
-import { Capacitor } from '@capacitor/core'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import {
   Archive,
@@ -15,7 +14,6 @@ import {
   MessageSquare,
   Package,
   Settings,
-  Users,
   WifiOff,
   type LucideIcon,
 } from 'lucide-react'
@@ -25,12 +23,8 @@ import type { Rolle } from '../types/database'
 
 type NavItem = { to: string; label: string; icon: LucideIcon; end: boolean; roles?: Rolle[]; primary?: boolean }
 
-const istNativ = Capacitor.isNativePlatform()
-
-// Materialstamm ist bewusst in keiner der beiden Varianten hier gelistet --
-// erreichbar nur ueber Einstellungen. Nutzer bleibt in der Web-Version im
-// Hauptmenue, in der nativen App-Version nur ueber Einstellungen (kuerzere,
-// aufgeraeumtere Leiste auf dem Handy).
+// Nutzer und Materialstamm sind bewusst nicht hier gelistet -- erreichbar
+// nur ueber Einstellungen, damit die Leiste kurz und aufgeraeumt bleibt.
 const mainNav: NavItem[] = [
   { to: '/', label: 'Home', icon: Home, end: true },
   {
@@ -48,7 +42,6 @@ const mainNav: NavItem[] = [
     roles: ['admin', 'planer', 'techniker'],
   },
   { to: '/archiv', label: 'Archiv', icon: Archive, end: false, roles: ['admin', 'planer'] },
-  ...(istNativ ? [] : [{ to: '/nutzer', label: 'Nutzer', icon: Users, end: false, roles: ['admin'] as Rolle[] }]),
   { to: '/einstellungen', label: 'Einstellungen', icon: Settings, end: false },
 ]
 

@@ -1,5 +1,8 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { Capacitor } from '@capacitor/core'
+import { Filesystem, Directory } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
 import { getSignedUrl, supabase } from './supabase'
 import { formatKundenAdresse, formatProjektAdresse, formatUnternehmenAdresse } from './adresse'
 import { formatDatum } from './datum'
@@ -139,6 +142,33 @@ function fusszeilenEinfuegen(doc: jsPDF, firmenname: string | null) {
     doc.text(`Seite ${i} von ${seiten}`, 196, 291, { align: 'right' })
     doc.setTextColor(...FARBE.text)
   }
+}
+
+function arrayBufferZuBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binaer = ''
+  const chunkGroesse = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkGroesse) {
+    binaer += String.fromCharCode(...bytes.subarray(i, i + chunkGroesse))
+  }
+  return btoa(binaer)
+}
+
+// Speichert das PDF plattformgerecht. Im Browser reicht jsPDF's eigener
+// Download-Mechanismus (Blob-URL + <a download>). In der nativen Android-App
+// laeuft dieser Mechanismus jedoch ins Leere, weil das Capacitor-WebView
+// keinen DownloadListener fuer Blob-URLs registriert hat -- Berichte liessen
+// sich dort weder oeffnen noch teilen. Daher wird nativ stattdessen ins
+// Cache-Verzeichnis geschrieben und der System-Share-Dialog geoeffnet, ueber
+// den sich die Datei sowohl mit einer PDF-App oeffnen als auch teilen laesst.
+async function pdfSpeichernOderTeilen(doc: jsPDF, dateiname: string) {
+  if (!Capacitor.isNativePlatform()) {
+    doc.save(dateiname)
+    return
+  }
+  const base64 = arrayBufferZuBase64(doc.output('arraybuffer'))
+  const { uri } = await Filesystem.writeFile({ path: dateiname, data: base64, directory: Directory.Cache })
+  await Share.share({ url: uri, title: dateiname })
 }
 
 function minutenVonZeit(zeit: string) {
@@ -294,7 +324,7 @@ export async function exportMaengelPdf(baustelle: Baustelle, maengel: Mangel[], 
     alternateRowStyles: { fillColor: FARBE.flaeche },
   })
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
-  doc.save(`${baustelle.name}-aufgabenliste.pdf`)
+  await pdfSpeichernOderTeilen(doc, `${baustelle.name}-aufgabenliste.pdf`)
 }
 
 export async function exportMaterialPdf(
@@ -314,7 +344,7 @@ export async function exportMaterialPdf(
     alternateRowStyles: { fillColor: FARBE.flaeche },
   })
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
-  doc.save(`${baustelle.name}-materialliste.pdf`)
+  await pdfSpeichernOderTeilen(doc, `${baustelle.name}-materialliste.pdf`)
 }
 
 // Rendert einen einzelnen Tagesbericht-Block (Datum, Wetter, Tueren-Stand,
@@ -567,7 +597,7 @@ export async function exportTagesberichtePdf(
   }
 
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
-  doc.save(`${baustelle.name}-bautagebuch.pdf`)
+  await pdfSpeichernOderTeilen(doc, `${baustelle.name}-bautagebuch.pdf`)
 }
 
 export async function exportEinzelnenTagesberichtPdf(
@@ -581,7 +611,7 @@ export async function exportEinzelnenTagesberichtPdf(
   werteMap: Record<string, StatusVorlageWert>,
   nameOf: (id: string | null) => string,
   dokumentname: string,
-): Promise<string> {
+) {
   const doc = new jsPDF()
   const unternehmen = await holeUnternehmen()
   let y = await kopfzeile(doc, 'Bautagebuch', baustelle, unternehmen)
@@ -603,5 +633,9 @@ export async function exportEinzelnenTagesberichtPdf(
   )
 
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
-  return doc.output('bloburl').toString()
+  if (Capacitor.isNativePlatform()) {
+    await pdfSpeichernOderTeilen(doc, `${dokumentname}.pdf`)
+  } else {
+    window.open(doc.output('bloburl').toString(), '_blank', 'noreferrer')
+  }
 }

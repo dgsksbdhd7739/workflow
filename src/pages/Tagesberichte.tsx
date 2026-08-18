@@ -268,7 +268,7 @@ export function Tagesberichte() {
     setOeffnendId(b.id)
     setFehler(null)
     try {
-      const url = await exportEinzelnenTagesberichtPdf(
+      await exportEinzelnenTagesberichtPdf(
         baustelle,
         b,
         zeiten,
@@ -280,7 +280,6 @@ export function Tagesberichte() {
         nameOf,
         tagesberichtName(baustelle, b, nummern[b.id]),
       )
-      window.open(url, '_blank', 'noreferrer')
     } catch (err) {
       setFehler(err instanceof Error ? err.message : 'PDF konnte nicht geöffnet werden.')
     }

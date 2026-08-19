@@ -76,7 +76,7 @@ export function Tagesberichte() {
   const [autoSaving, setAutoSaving] = useState(false)
   const [pdfExportiert, setPdfExportiert] = useState(false)
   const [oeffnendId, setOeffnendId] = useState<string | null>(null)
-  const [pdfViewer, setPdfViewer] = useState<{ url: string; doc: jsPDF; dateiname: string } | null>(null)
+  const [pdfViewer, setPdfViewer] = useState<{ data: ArrayBuffer; doc: jsPDF; dateiname: string } | null>(null)
   const [loeschendId, setLoeschendId] = useState<string | null>(null)
   const [exportAuswahlOffen, setExportAuswahlOffen] = useState(false)
   const [exportAusgewaehlt, setExportAusgewaehlt] = useState<Set<string>>(new Set())
@@ -305,7 +305,7 @@ export function Tagesberichte() {
         nameOf,
         dateiname,
       )
-      setPdfViewer({ url: doc.output('bloburl').toString(), doc, dateiname: `${dateiname}.pdf` })
+      setPdfViewer({ data: doc.output('arraybuffer'), doc, dateiname: `${dateiname}.pdf` })
     } catch (err) {
       setFehler(err instanceof Error ? err.message : 'PDF konnte nicht geöffnet werden.')
     }
@@ -657,7 +657,7 @@ export function Tagesberichte() {
     </div>
     {pdfViewer && (
       <PdfViewerModal
-        url={pdfViewer.url}
+        data={pdfViewer.data}
         titel={pdfViewer.dateiname}
         onClose={() => setPdfViewer(null)}
         onTeilen={() => pdfSpeichernOderTeilen(pdfViewer.doc, pdfViewer.dateiname)}

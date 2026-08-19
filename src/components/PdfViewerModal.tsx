@@ -5,13 +5,19 @@ import { Share2, X } from 'lucide-react'
 // die Plan-Vorschau in PlanDetail.tsx, hier aber fuer beliebig viele Seiten
 // statt nur die erste. So braucht es keinen nativen/Browser-PDF-Viewer, der
 // sich je nach Android-WebView-Version unterschiedlich verhaelt.
+//
+// Bekommt die PDF-Bytes direkt (statt einer Blob-URL): pdf.js laedt eine
+// per getDocument({ url }) uebergebene URL selbst per fetch() nach, und
+// blob:-URLs sind ausserhalb des Dokument-Kontexts, der sie erzeugt hat,
+// im Android-WebView nicht zuverlaessig aufloesbar -- derselbe Grund, aus
+// dem urspruenglich window.open(bloburl) beim PDF-Oeffnen fehlschlug.
 export function PdfViewerModal({
-  url,
+  data,
   titel,
   onClose,
   onTeilen,
 }: {
-  url: string
+  data: ArrayBuffer
   titel: string
   onClose: () => void
   onTeilen?: () => void
@@ -32,7 +38,7 @@ export function PdfViewerModal({
           import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
         ])
         pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
-        const pdf = await pdfjsLib.getDocument({ url }).promise
+        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise
         const container = containerRef.current
         if (!container || abgebrochen) return
         container.innerHTML = ''
@@ -52,7 +58,8 @@ export function PdfViewerModal({
         }
 
         if (!abgebrochen) setLadend(false)
-      } catch {
+      } catch (err) {
+        console.error('PDF-Vorschau fehlgeschlagen:', err)
         if (!abgebrochen) {
           setFehler('PDF konnte nicht angezeigt werden.')
           setLadend(false)
@@ -63,7 +70,7 @@ export function PdfViewerModal({
     return () => {
       abgebrochen = true
     }
-  }, [url])
+  }, [data])
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-bg">

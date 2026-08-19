@@ -15,7 +15,6 @@ import type {
   Mangel,
   MangelKommentar,
   MangelMaterial,
-  MangelPrioritaet,
   StatusVorlageWert,
   Tagesbericht,
   TagesberichtTuer,
@@ -23,12 +22,6 @@ import type {
 } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
-
-const prioritaetLabel: Record<MangelPrioritaet, string> = {
-  niedrig: 'Niedrig',
-  mittel: 'Mittel',
-  hoch: 'Hoch',
-}
 
 function minutenVonZeit(zeit: string) {
   const [h, m] = zeit.split(':').map(Number)
@@ -44,6 +37,14 @@ function formatDauer(minuten: number) {
 function eintragMinuten(z: Zeiterfassung) {
   if (!z.end_zeit) return 0
   return Math.max(0, minutenVonZeit(z.end_zeit) - minutenVonZeit(z.start_zeit) - z.pause_minuten)
+}
+
+// Aggregiert den Tueren-Snapshot eines Berichts nach Stand statt jede Tuer
+// einzeln aufzulisten -- die vollstaendige Liste gehoert nur ins PDF-Dokument.
+function standZaehlung(tueren: TagesberichtTuer[]): Map<string, number> {
+  const zaehlung = new Map<string, number>()
+  for (const t of tueren) zaehlung.set(t.stand, (zaehlung.get(t.stand) ?? 0) + 1)
+  return zaehlung
 }
 
 export function Tagesberichte() {
@@ -205,14 +206,11 @@ export function Tagesberichte() {
       erledigtZeilen.push(`- ${m.titel} (${technikerNamen}, ${formatDauer(minuten)})`)
     }
 
-    const offenZeilen = maengel
-      .filter((m) => m.status !== 'erledigt')
-      .map((m) => `- ${m.titel} (${prioritaetLabel[m.prioritaet]})`)
-
-    let text = ''
-    if (erledigtZeilen.length > 0) text += `Heute erledigt:\n${erledigtZeilen.join('\n')}`
-    if (offenZeilen.length > 0) text += `${text ? '\n\n' : ''}Noch offen:\n${offenZeilen.join('\n')}`
-    if (!text) text = 'Keine Aktivität erfasst.'
+    // Der Stand aller offenen Aufgaben wird bereits als Tueren-Snapshot
+    // (tuerenSnapshotEinfuegen) je Bericht gespeichert und dort aggregiert
+    // nach Fortschrittsstufe angezeigt -- ihn hier zusaetzlich Zeile fuer
+    // Zeile in den Freitext zu dumpen, machte die Karte unlesbar.
+    const text = erledigtZeilen.length > 0 ? `Heute erledigt:\n${erledigtZeilen.join('\n')}` : 'Keine Aktivität erfasst.'
 
     const technikerAnzahl = new Set(zeitenHeute.map((z) => z.user_id)).size
 
@@ -583,17 +581,17 @@ export function Tagesberichte() {
               )}
               {tuerenDesBerichts.length > 0 && (
                 <div className="mt-3 border-t border-border pt-2">
-                  <span className="text-xs font-medium text-text">Türen-Stand ({tuerenDesBerichts.length})</span>
-                  <ul className="mt-1 space-y-1">
-                    {tuerenDesBerichts.map((t) => (
-                      <li key={t.id} className="flex items-center justify-between gap-2 text-xs">
-                        <span className="min-w-0 truncate text-text-muted">{t.titel}</span>
-                        <span className="flex-shrink-0 rounded-full bg-brand-soft px-2 py-0.5 font-medium text-brand-text">
-                          {t.stand}
-                        </span>
-                      </li>
+                  <span className="text-xs font-medium text-text">Fortschritt ({tuerenDesBerichts.length})</span>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {[...standZaehlung(tuerenDesBerichts).entries()].map(([stand, anzahl]) => (
+                      <span
+                        key={stand}
+                        className="flex-shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand-text"
+                      >
+                        {stand}: {anzahl} ({Math.round((anzahl / tuerenDesBerichts.length) * 100)}%)
+                      </span>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
               {tagesZeiten.length > 0 && (

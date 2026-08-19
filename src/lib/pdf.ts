@@ -12,19 +12,12 @@ import type {
   Mangel,
   MangelKommentar,
   MangelMaterial,
-  MangelStatus,
   StatusVorlageWert,
   Tagesbericht,
   TagesberichtTuer,
   Unternehmen,
   Zeiterfassung,
 } from '../types/database'
-
-const statusLabel: Record<MangelStatus, string> = {
-  offen: 'Stopp',
-  in_bearbeitung: 'In Arbeit',
-  erledigt: 'Abgeschlossen',
-}
 
 type RGB = [number, number, number]
 
@@ -45,12 +38,6 @@ const FARBE = {
   warnungFlaeche: [254, 243, 199] as RGB, // #fef3c7
   erfolg: [5, 150, 105] as RGB, // #059669
   erfolgFlaeche: [220, 252, 231] as RGB, // #dcfce7
-}
-
-const statusFarbe: Record<MangelStatus, { text: RGB; flaeche: RGB }> = {
-  offen: { text: FARBE.gefahr, flaeche: FARBE.gefahrFlaeche },
-  in_bearbeitung: { text: FARBE.warnung, flaeche: FARBE.warnungFlaeche },
-  erledigt: { text: FARBE.erfolg, flaeche: FARBE.erfolgFlaeche },
 }
 
 function hexZuRgb(hex: string): RGB {
@@ -539,9 +526,6 @@ async function zeichneTagesberichtTag(
         const titelBreite = doc.getTextWidth(aufgabe)
         if (fortschrittWert) {
           zeichnePill(doc, 19 + titelBreite + 3, y, fortschrittWert.titel, hexZuRgb(fortschrittWert.farbe), [255, 255, 255])
-        } else if (m) {
-          const sf = statusFarbe[m.status]
-          zeichnePill(doc, 19 + titelBreite + 3, y, statusLabel[m.status], sf.flaeche, sf.text)
         }
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(8)
@@ -570,14 +554,32 @@ async function zeichneTagesberichtTag(
           y = zeichneChips(doc, chips, 19, y, 196)
         }
 
-        const kommentareListe = kommentare.filter((x) => x.mangel_id === key && x.text)
+        const kommentareListe = kommentare.filter((x) => x.mangel_id === key && (x.text || x.foto_pfad))
         for (const k of kommentareListe) {
-          const geschaetzteHoehe = doc.splitTextToSize(`„${k.text}"`, 175 - 4).length * 4 + 6
-          if (y + geschaetzteHoehe > seitenEnde) {
-            doc.addPage()
-            y = 20
+          if (k.text) {
+            const geschaetzteHoehe = doc.splitTextToSize(`„${k.text}"`, 175 - 4).length * 4 + 6
+            if (y + geschaetzteHoehe > seitenEnde) {
+              doc.addPage()
+              y = 20
+            }
+            y = zeichneKommentar(doc, k.text, nameOf(k.erstellt_von), 19, y, 175)
           }
-          y = zeichneKommentar(doc, k.text!, nameOf(k.erstellt_von), 19, y, 175)
+          if (k.foto_pfad) {
+            const bild = await bildFuerPdf(k.foto_pfad, 'mangel-fotos')
+            if (bild) {
+              if (y + fotoGroesse > seitenEnde) {
+                doc.addPage()
+                y = 20
+              }
+              const { breite, hoehe } = bildGroesseInBox(bild.breite, bild.hoehe, fotoGroesse, fotoGroesse)
+              const boxX = 19 + (fotoGroesse - breite) / 2
+              const boxY = y + (fotoGroesse - hoehe) / 2
+              doc.addImage(bild.dataUrl, 'PNG', boxX, boxY, breite, hoehe)
+              doc.setDrawColor(...FARBE.rahmen)
+              doc.roundedRect(19, y, fotoGroesse, fotoGroesse, 1.2, 1.2, 'S')
+              y += fotoGroesse + 4
+            }
+          }
         }
 
         const fotoEintraege = eintraege.filter((e) => e.foto_pfad)

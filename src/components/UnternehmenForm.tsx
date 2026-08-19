@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase, getSignedUrl } from '../lib/supabase'
+import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { komprimiereBild } from '../lib/bildKompression'
 import type { Unternehmen } from '../types/database'
@@ -68,7 +68,7 @@ export function UnternehmenForm() {
     } else if (logoDatei) {
       const logoKomprimiert = await komprimiereBild(logoDatei, { maxBreiteHoehe: 800 })
       const path = `${unternehmenId}/${Date.now()}-${logoKomprimiert.name}`
-      const { error: uploadError } = await supabase.storage.from('unternehmen-logos').upload(path, logoKomprimiert)
+      const { error: uploadError } = await uploadFile('unternehmen-logos', path, logoKomprimiert)
       if (uploadError) {
         setSaving(false)
         setFehler(`Logo-Upload fehlgeschlagen: ${uploadError.message}`)

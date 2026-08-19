@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { SignedImage } from '../components/SignedImage'
 import { PdfThumbnail } from '../components/PdfThumbnail'
@@ -66,7 +66,7 @@ export function Plaene() {
     setFehler(null)
 
     const path = `${baustelleId}/${Date.now()}-${file.name}`
-    const { error: uploadError } = await supabase.storage.from('plaene').upload(path, file)
+    const { error: uploadError } = await uploadFile('plaene', path, file)
     if (uploadError) {
       setFehler(uploadError.message)
       setUploading(false)

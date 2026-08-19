@@ -10,12 +10,27 @@ export const supabase = createClient(
   supabaseAnonKey ?? 'placeholder-anon-key',
 )
 
+type StorageBucket = 'mangel-fotos' | 'plaene' | 'projekt-logos' | 'dokumente' | 'unternehmen-logos'
+
+/**
+ * Laedt eine vom Nutzer ausgewaehlte Datei hoch. Im Android-WebView (Capacitor)
+ * fuehrt das direkte Uebergeben eines File-Objekts aus dem Datei-Picker (das
+ * seinen Inhalt lazy ueber eine content://-URI streamt) bei fetch() teils zu
+ * "Failed to fetch", ohne dass ueberhaupt eine Anfrage rausgeht. Das vorherige
+ * Einlesen in einen ArrayBuffer zwingt den Browser, die Datei vollstaendig ins
+ * Memory zu laden, was auf allen Plattformen zuverlaessig funktioniert.
+ */
+export async function uploadFile(bucket: StorageBucket, path: string, file: File) {
+  const bytes = await file.arrayBuffer()
+  return supabase.storage.from(bucket).upload(path, bytes, { contentType: file.type || 'application/octet-stream' })
+}
+
 /**
  * Alle Storage-Buckets sind privat (siehe Migration 0007, 0012). Anzeige/
  * Download funktioniert nur ueber zeitlich begrenzte signierte URLs.
  */
 export async function getSignedUrl(
-  bucket: 'mangel-fotos' | 'plaene' | 'projekt-logos' | 'dokumente' | 'unternehmen-logos',
+  bucket: StorageBucket,
   path: string,
   expiresInSeconds = 3600,
 ) {

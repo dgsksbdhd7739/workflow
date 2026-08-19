@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
-import { supabase, getSignedUrl } from '../lib/supabase'
+import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { SignedImage } from './SignedImage'
 import { formatDatum } from '../lib/datum'
@@ -91,7 +91,7 @@ export function Arbeitszeit({ mangel, onChange }: { mangel: Mangel; onChange?: (
 
     const stoppFotoKomprimiert = await komprimiereBild(stoppFoto)
     const path = `zeiterfassung/${mangel.id}/${Date.now()}-${stoppFotoKomprimiert.name}`
-    const { error: uploadError } = await supabase.storage.from('mangel-fotos').upload(path, stoppFotoKomprimiert)
+    const { error: uploadError } = await uploadFile('mangel-fotos', path, stoppFotoKomprimiert)
     if (uploadError) {
       setSaving(false)
       setFehler(`Foto-Upload fehlgeschlagen: ${uploadError.message}`)

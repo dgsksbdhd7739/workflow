@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase, getSignedUrl } from '../lib/supabase'
+import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { komprimiereBild } from '../lib/bildKompression'
@@ -124,7 +124,7 @@ export function ProjektForm({
     } else if (logoDatei) {
       const logoKomprimiert = await komprimiereBild(logoDatei, { maxBreiteHoehe: 800 })
       const path = `${saved.id}/${Date.now()}-${logoKomprimiert.name}`
-      const { error: uploadError } = await supabase.storage.from('projekt-logos').upload(path, logoKomprimiert)
+      const { error: uploadError } = await uploadFile('projekt-logos', path, logoKomprimiert)
       if (!uploadError) {
         await supabase.from('baustellen').update({ logo_pfad: path }).eq('id', saved.id)
         saved.logo_pfad = path

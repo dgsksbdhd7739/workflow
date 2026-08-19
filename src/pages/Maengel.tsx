@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AlertTriangle, CalendarClock, LayoutGrid, List, Map as MapIcon, Search } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { MangelDetails } from '../components/MangelDetails'
@@ -233,7 +233,7 @@ export function Maengel() {
     if (foto) {
       const fotoKomprimiert = await komprimiereBild(foto)
       const path = `${baustelleId}/${Date.now()}-${fotoKomprimiert.name}`
-      const { error: uploadError } = await supabase.storage.from('mangel-fotos').upload(path, fotoKomprimiert)
+      const { error: uploadError } = await uploadFile('mangel-fotos', path, fotoKomprimiert)
       if (uploadError) {
         setSaving(false)
         setFehler(`Foto-Upload fehlgeschlagen: ${uploadError.message}`)

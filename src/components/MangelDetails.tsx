@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { FileText, Trash2, X } from 'lucide-react'
-import { supabase, getSignedUrl } from '../lib/supabase'
+import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { SignedImage } from './SignedImage'
@@ -331,7 +331,7 @@ export function MangelDetails({
     if (kommentarFoto) {
       const kommentarFotoKomprimiert = await komprimiereBild(kommentarFoto)
       const path = `kommentare/${mangelId}/${Date.now()}-${kommentarFotoKomprimiert.name}`
-      const { error: uploadError } = await supabase.storage.from('mangel-fotos').upload(path, kommentarFotoKomprimiert)
+      const { error: uploadError } = await uploadFile('mangel-fotos', path, kommentarFotoKomprimiert)
       if (uploadError) {
         setKommentarSaving(false)
         setFehler(`Foto-Upload fehlgeschlagen: ${uploadError.message}`)

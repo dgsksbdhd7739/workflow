@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Download, FileText, FolderOpen, Trash2 } from 'lucide-react'
-import { supabase, getSignedUrl } from '../lib/supabase'
+import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { formatDatum } from '../lib/datum'
@@ -29,7 +29,7 @@ function UploadForm({
     setFehler(null)
 
     const path = `${baustelleId}/${Date.now()}-${datei.name}`
-    const { error: uploadError } = await supabase.storage.from('dokumente').upload(path, datei)
+    const { error: uploadError } = await uploadFile('dokumente', path, datei)
     if (uploadError) {
       setUploading(false)
       setFehler(`Upload fehlgeschlagen: ${uploadError.message}`)

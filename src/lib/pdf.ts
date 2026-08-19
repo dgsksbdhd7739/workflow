@@ -12,7 +12,6 @@ import type {
   Mangel,
   MangelKommentar,
   MangelMaterial,
-  MangelPrioritaet,
   MangelStatus,
   StatusVorlageWert,
   Tagesbericht,
@@ -25,12 +24,6 @@ const statusLabel: Record<MangelStatus, string> = {
   offen: 'Stopp',
   in_bearbeitung: 'In Arbeit',
   erledigt: 'Abgeschlossen',
-}
-
-const prioritaetLabel: Record<MangelPrioritaet, string> = {
-  niedrig: 'Niedrig',
-  mittel: 'Mittel',
-  hoch: 'Hoch',
 }
 
 type RGB = [number, number, number]
@@ -305,24 +298,95 @@ async function kopfzeile(doc: jsPDF, titel: string, baustelle: Baustelle, untern
   return y
 }
 
-export async function exportMaengelPdf(baustelle: Baustelle, maengel: Mangel[], nameOf: (id: string | null) => string) {
+// Pro Aufgabe ein Block statt einer Tabellenzeile: Titel, der aktuelle
+// Fortschritt (Statusvorlagen-Wert, nicht der rohe Status/Prioritaet/
+// Verantwortlicher), zugehoeriges Material und Kommentare samt Fotos.
+export async function exportMaengelPdf(
+  baustelle: Baustelle,
+  maengel: Mangel[],
+  material: MangelMaterial[],
+  kommentare: MangelKommentar[],
+  werteMap: Record<string, StatusVorlageWert>,
+  nameOf: (id: string | null) => string,
+) {
   const doc = new jsPDF()
   const unternehmen = await holeUnternehmen()
-  const startY = await kopfzeile(doc, 'Aufgabenliste', baustelle, unternehmen)
-  autoTable(doc, {
-    startY,
-    margin: { left: 14, right: 14 },
-    head: [['Titel', 'Status', 'Priorität', 'Verantwortlich']],
-    body: maengel.map((m) => [
-      m.titel,
-      statusLabel[m.status],
-      prioritaetLabel[m.prioritaet],
-      nameOf(m.verantwortlicher_id),
-    ]),
-    styles: { fontSize: 9, textColor: FARBE.text, lineColor: FARBE.rahmen },
-    headStyles: { fillColor: FARBE.marke, textColor: [255, 255, 255], fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: FARBE.flaeche },
-  })
+  let y = await kopfzeile(doc, 'Aufgabenliste', baustelle, unternehmen)
+  const seitenEnde = 278
+  const fotoGroesse = 30
+
+  for (const m of maengel) {
+    if (y > seitenEnde - 16) {
+      doc.addPage()
+      y = 20
+    }
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(...FARBE.text)
+    doc.text(m.titel, 14, y)
+    const fortschrittWert = m.status_wert_id ? werteMap[m.status_wert_id] : null
+    if (fortschrittWert) {
+      const titelBreite = doc.getTextWidth(m.titel)
+      zeichnePill(doc, 14 + titelBreite + 3, y, fortschrittWert.titel, hexZuRgb(fortschrittWert.farbe), [255, 255, 255])
+    }
+    doc.setFont('helvetica', 'normal')
+    y += 6.5
+
+    if (m.abnahme_nummer) {
+      doc.setFontSize(8)
+      doc.setTextColor(...FARBE.dezent)
+      doc.text('Abnahme-Nummer: ', 14, y)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...FARBE.text)
+      doc.text(m.abnahme_nummer, 14 + doc.getTextWidth('Abnahme-Nummer: '), y)
+      doc.setFont('helvetica', 'normal')
+      y += 4.5
+    }
+
+    const materialListe = material.filter((mm) => mm.mangel_id === m.id)
+    if (materialListe.length > 0) {
+      doc.setFontSize(7.5)
+      doc.setTextColor(...FARBE.dezent)
+      doc.text('Material', 14, y)
+      y += 3.6
+      const chips = materialListe.map((mm) => `${mm.bezeichnung} (${mm.menge}${mm.einheit ? ` ${mm.einheit}` : ''})`)
+      y = zeichneChips(doc, chips, 14, y, 196)
+    }
+
+    const kommentareListe = kommentare.filter((k) => k.mangel_id === m.id)
+    for (const k of kommentareListe) {
+      if (y > seitenEnde - 20) {
+        doc.addPage()
+        y = 20
+      }
+      if (k.text) {
+        y = zeichneKommentar(doc, k.text, nameOf(k.erstellt_von), 14, y, 180)
+      }
+      if (k.foto_pfad) {
+        const bild = await bildFuerPdf(k.foto_pfad, 'mangel-fotos')
+        if (bild) {
+          if (y + fotoGroesse > seitenEnde) {
+            doc.addPage()
+            y = 20
+          }
+          const { breite, hoehe } = bildGroesseInBox(bild.breite, bild.hoehe, fotoGroesse, fotoGroesse)
+          const boxX = 14 + (fotoGroesse - breite) / 2
+          const boxY = y + (fotoGroesse - hoehe) / 2
+          doc.addImage(bild.dataUrl, 'PNG', boxX, boxY, breite, hoehe)
+          doc.setDrawColor(...FARBE.rahmen)
+          doc.roundedRect(14, y, fotoGroesse, fotoGroesse, 1.2, 1.2, 'S')
+          y += fotoGroesse + 4
+        }
+      }
+    }
+
+    y += 3
+    doc.setDrawColor(...FARBE.rahmen)
+    doc.line(14, y, 196, y)
+    y += 8
+  }
+
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
   await pdfSpeichernOderTeilen(doc, `${baustelle.name}-aufgabenliste.pdf`)
 }

@@ -10,7 +10,15 @@ import { SignedImage } from '../components/SignedImage'
 import { exportMaengelPdf } from '../lib/pdf'
 import { formatDatum } from '../lib/datum'
 import { komprimiereBild } from '../lib/bildKompression'
-import type { Baustelle, Mangel, MangelPrioritaet, MangelStatus, StatusVorlageWert } from '../types/database'
+import type {
+  Baustelle,
+  Mangel,
+  MangelKommentar,
+  MangelMaterial,
+  MangelPrioritaet,
+  MangelStatus,
+  StatusVorlageWert,
+} from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
 
@@ -187,6 +195,8 @@ export function Maengel() {
   const [dragZielSpalte, setDragZielSpalte] = useState<MangelStatus | null>(null)
   const [geoeffnetId, setGeoeffnetId] = useState<string | null>(null)
   const [werteMap, setWerteMap] = useState<Record<string, StatusVorlageWert>>({})
+  const [material, setMaterial] = useState<MangelMaterial[]>([])
+  const [kommentare, setKommentare] = useState<MangelKommentar[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [ausgewaehlt, setAusgewaehlt] = useState<Set<string>>(new Set())
 
@@ -206,6 +216,21 @@ export function Maengel() {
     ])
     setMaengel(data ?? [])
     setBaustelle(baustelleData)
+
+    // Fuer den PDF-Export (Fortschritt, Material, Kommentare je Aufgabe).
+    const mangelIds = (data ?? []).map((m) => m.id)
+    if (mangelIds.length > 0) {
+      const [{ data: materialData }, { data: kommentareData }] = await Promise.all([
+        supabase.from('mangel_material').select('*').in('mangel_id', mangelIds),
+        supabase.from('mangel_kommentare').select('*').in('mangel_id', mangelIds),
+      ])
+      setMaterial(materialData ?? [])
+      setKommentare(kommentareData ?? [])
+    } else {
+      setMaterial([])
+      setKommentare([])
+    }
+
     setLoading(false)
   }
 
@@ -362,7 +387,10 @@ export function Maengel() {
             </button>
           </div>
           {baustelle && gefiltert.length > 0 && (
-            <button onClick={() => exportMaengelPdf(baustelle, gefiltert, nameOf)} className="btn-secondary">
+            <button
+              onClick={() => exportMaengelPdf(baustelle, gefiltert, material, kommentare, werteMap, nameOf)}
+              className="btn-secondary"
+            >
               PDF exportieren
             </button>
           )}

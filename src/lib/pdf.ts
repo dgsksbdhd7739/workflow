@@ -141,7 +141,7 @@ function arrayBufferZuBase64(buffer: ArrayBuffer): string {
 // sich dort weder oeffnen noch teilen. Daher wird nativ stattdessen ins
 // Cache-Verzeichnis geschrieben und der System-Share-Dialog geoeffnet, ueber
 // den sich die Datei sowohl mit einer PDF-App oeffnen als auch teilen laesst.
-async function pdfSpeichernOderTeilen(doc: jsPDF, dateiname: string) {
+export async function pdfSpeichernOderTeilen(doc: jsPDF, dateiname: string) {
   if (!Capacitor.isNativePlatform()) {
     doc.save(dateiname)
     return
@@ -681,7 +681,10 @@ export async function exportTagesberichtePdf(
   await pdfSpeichernOderTeilen(doc, `${baustelle.name}-bautagebuch.pdf`)
 }
 
-export async function exportEinzelnenTagesberichtPdf(
+// Baut den PDF-Dokument einzeln fuer einen Bericht, ohne ihn zu speichern/
+// teilen -- der Aufrufer zeigt ihn typischerweise erst in einem internen
+// Viewer an (siehe PdfViewerModal) und bietet erst von dort aus Teilen an.
+export async function erzeugeEinzelnenTagesberichtPdf(
   baustelle: Baustelle,
   bericht: Tagesbericht,
   zeiten: Zeiterfassung[],
@@ -692,7 +695,7 @@ export async function exportEinzelnenTagesberichtPdf(
   werteMap: Record<string, StatusVorlageWert>,
   nameOf: (id: string | null) => string,
   dokumentname: string,
-) {
+): Promise<jsPDF> {
   const doc = new jsPDF()
   const unternehmen = await holeUnternehmen()
   let y = await kopfzeile(doc, 'Bautagebuch', baustelle, unternehmen)
@@ -714,9 +717,5 @@ export async function exportEinzelnenTagesberichtPdf(
   )
 
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
-  if (Capacitor.isNativePlatform()) {
-    await pdfSpeichernOderTeilen(doc, `${dokumentname}.pdf`)
-  } else {
-    window.open(doc.output('bloburl').toString(), '_blank', 'noreferrer')
-  }
+  return doc
 }

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import type { jsPDF } from 'jspdf'
 import { useParams } from 'react-router-dom'
 import { CalendarDays, CloudSun, Loader2, Search, Trash2, X } from 'lucide-react'
 import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { SignedImage } from '../components/SignedImage'
-import { exportEinzelnenTagesberichtPdf, exportTagesberichtePdf } from '../lib/pdf'
+import { PdfViewerModal } from '../components/PdfViewerModal'
+import { erzeugeEinzelnenTagesberichtPdf, exportTagesberichtePdf, pdfSpeichernOderTeilen } from '../lib/pdf'
 import { formatDatum } from '../lib/datum'
 import { holeWetterFuerBaustelle, projektOrt } from '../lib/wetter'
 import { standVonMangel } from '../lib/mangelStand'
@@ -74,6 +76,7 @@ export function Tagesberichte() {
   const [autoSaving, setAutoSaving] = useState(false)
   const [pdfExportiert, setPdfExportiert] = useState(false)
   const [oeffnendId, setOeffnendId] = useState<string | null>(null)
+  const [pdfViewer, setPdfViewer] = useState<{ url: string; doc: jsPDF; dateiname: string } | null>(null)
   const [loeschendId, setLoeschendId] = useState<string | null>(null)
   const [exportAuswahlOffen, setExportAuswahlOffen] = useState(false)
   const [exportAusgewaehlt, setExportAusgewaehlt] = useState<Set<string>>(new Set())
@@ -289,7 +292,8 @@ export function Tagesberichte() {
     setOeffnendId(b.id)
     setFehler(null)
     try {
-      await exportEinzelnenTagesberichtPdf(
+      const dateiname = tagesberichtName(baustelle, b, nummern[b.id])
+      const doc = await erzeugeEinzelnenTagesberichtPdf(
         baustelle,
         b,
         zeiten,
@@ -299,8 +303,9 @@ export function Tagesberichte() {
         tueren,
         werteMap,
         nameOf,
-        tagesberichtName(baustelle, b, nummern[b.id]),
+        dateiname,
       )
+      setPdfViewer({ url: doc.output('bloburl').toString(), doc, dateiname: `${dateiname}.pdf` })
     } catch (err) {
       setFehler(err instanceof Error ? err.message : 'PDF konnte nicht geöffnet werden.')
     }
@@ -338,6 +343,7 @@ export function Tagesberichte() {
   }, [berichte, datumsFilter, suche, baustelle, nummern])
 
   return (
+    <>
     <div className="page">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-text">Bautagebuch</h1>
@@ -649,5 +655,14 @@ export function Tagesberichte() {
         </ul>
       )}
     </div>
+    {pdfViewer && (
+      <PdfViewerModal
+        url={pdfViewer.url}
+        titel={pdfViewer.dateiname}
+        onClose={() => setPdfViewer(null)}
+        onTeilen={() => pdfSpeichernOderTeilen(pdfViewer.doc, pdfViewer.dateiname)}
+      />
+    )}
+    </>
   )
 }

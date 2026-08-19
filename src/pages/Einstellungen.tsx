@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
+import { LogOut, Sparkles } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../hooks/useTheme'
 import { CHANGELOG } from '../lib/changelog'
@@ -14,7 +14,7 @@ const rollenLabel: Record<string, string> = {
 }
 
 export function Einstellungen() {
-  const { user, role, signOut } = useAuth()
+  const { user, role, signOut, setOnboardingGesehen } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const kannVerwalten = role === 'admin' || role === 'planer'
 
@@ -32,6 +32,10 @@ export function Einstellungen() {
           <Link to="/passwort-aendern" className="btn-secondary">
             Passwort ändern
           </Link>
+          <button onClick={() => setOnboardingGesehen(false)} className="btn-secondary">
+            <Sparkles className="h-4 w-4" strokeWidth={2.25} />
+            Tutorial erneut anzeigen
+          </button>
           <button onClick={() => signOut()} className="btn-secondary text-red-600 dark:text-red-400">
             <LogOut className="h-4 w-4" strokeWidth={2.25} />
             Abmelden

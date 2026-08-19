@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.4.0',
+    datum: '2026-08-19',
+    aenderungen: [
+      'Neue Einführungs-Anleitung, die neuen Nutzern nach dem ersten Passwort-Wechsel automatisch die wichtigsten Bereiche zeigt — jederzeit über die Einstellungen erneut aufrufbar',
+      'Neue Hilfe-Seite mit Kurzerklärungen zu allen Funktionsbereichen, erreichbar über die Navigation',
+    ],
+  },
+  {
     version: '1.2.0',
     datum: '2026-08-19',
     aenderungen: [

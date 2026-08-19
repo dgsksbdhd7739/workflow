@@ -10,6 +10,8 @@ interface AuthContextValue {
   unternehmenId: string | null
   mussPasswortAendern: boolean
   setMussPasswortAendern: (v: boolean) => void
+  onboardingGesehen: boolean
+  setOnboardingGesehen: (v: boolean) => void
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
@@ -22,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Rolle | null>(null)
   const [unternehmenId, setUnternehmenId] = useState<string | null>(null)
   const [mussPasswortAendern, setMussPasswortAendern] = useState(false)
+  const [onboardingGesehen, setOnboardingGesehen] = useState(true)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -43,17 +46,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(null)
       setUnternehmenId(null)
       setMussPasswortAendern(false)
+      setOnboardingGesehen(true)
       return
     }
     supabase
       .from('profiles')
-      .select('role, muss_passwort_aendern, unternehmen_id')
+      .select('role, muss_passwort_aendern, onboarding_gesehen, unternehmen_id')
       .eq('id', userId)
       .single()
       .then(({ data }) => {
         setRole(data?.role ?? null)
         setUnternehmenId(data?.unternehmen_id ?? null)
         setMussPasswortAendern(data?.muss_passwort_aendern ?? false)
+        setOnboardingGesehen(data?.onboarding_gesehen ?? true)
       })
   }, [session?.user.id])
 
@@ -75,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         unternehmenId,
         mussPasswortAendern,
         setMussPasswortAendern,
+        onboardingGesehen,
+        setOnboardingGesehen,
         loading,
         signIn,
         signOut,

@@ -6,6 +6,7 @@ import {
   Clock,
   FileText,
   HardHat,
+  HelpCircle,
   Home,
   LayoutDashboard,
   ListChecks,
@@ -42,6 +43,7 @@ const mainNav: NavItem[] = [
     roles: ['admin', 'planer', 'techniker'],
   },
   { to: '/archiv', label: 'Archiv', icon: Archive, end: false, roles: ['admin', 'planer'] },
+  { to: '/hilfe', label: 'Hilfe', icon: HelpCircle, end: false },
   { to: '/einstellungen', label: 'Einstellungen', icon: Settings, end: false },
 ]
 

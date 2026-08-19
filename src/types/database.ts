@@ -8,6 +8,7 @@ export interface Profile {
   full_name: string
   role: Rolle
   muss_passwort_aendern: boolean
+  onboarding_gesehen: boolean
   deaktiviert: boolean
   unternehmen_id: string
   created_at: string

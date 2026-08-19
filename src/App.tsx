@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { initPushNotifications } from './lib/push'
 import { ChangelogDialog } from './components/ChangelogDialog'
+import { OnboardingDialog } from './components/OnboardingDialog'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
@@ -24,6 +25,7 @@ import { Gruppenchat } from './pages/Gruppenchat'
 import { ProjektChat } from './pages/ProjektChat'
 import { Dokumente } from './pages/Dokumente'
 import { MaterialStamm } from './pages/MaterialStamm'
+import { Hilfe } from './pages/Hilfe'
 
 function PushBootstrap() {
   const { user } = useAuth()
@@ -33,12 +35,18 @@ function PushBootstrap() {
   return null
 }
 
+function ModalGate() {
+  const { user, mussPasswortAendern, onboardingGesehen } = useAuth()
+  if (!user || mussPasswortAendern) return null
+  return onboardingGesehen ? <ChangelogDialog /> : <OnboardingDialog />
+}
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <PushBootstrap />
-        <ChangelogDialog />
+        <ModalGate />
         <Routes>
           <Route path="/login" element={<Login />} />
 
@@ -48,6 +56,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/archiv" element={<Archiv />} />
               <Route path="/einstellungen" element={<Einstellungen />} />
+              <Route path="/hilfe" element={<Hilfe />} />
               <Route path="/statusvorlagen" element={<StatusVorlagen />} />
               <Route path="/nutzer" element={<Nutzerverwaltung />} />
               <Route path="/team-chat" element={<Gruppenchat />} />

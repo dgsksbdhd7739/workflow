@@ -67,6 +67,8 @@ export function Tagesberichte() {
   const [pdfExportiert, setPdfExportiert] = useState(false)
   const [oeffnendId, setOeffnendId] = useState<string | null>(null)
   const [loeschendId, setLoeschendId] = useState<string | null>(null)
+  const [exportAuswahlOffen, setExportAuswahlOffen] = useState(false)
+  const [exportAusgewaehlt, setExportAusgewaehlt] = useState<Set<string>>(new Set())
   const [wetterLaedt, setWetterLaedt] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
   const [suche, setSuche] = useState('')
@@ -254,13 +256,25 @@ export function Tagesberichte() {
 
   const handleExport = async () => {
     if (!baustelle) return
+    const ausgewaehlteBerichte = berichte.filter((b) => exportAusgewaehlt.has(b.id))
+    if (ausgewaehlteBerichte.length === 0) return
     setPdfExportiert(true)
     try {
-      await exportTagesberichtePdf(baustelle, berichte, zeiten, maengel, material, kommentare, tueren, werteMap, nameOf)
+      await exportTagesberichtePdf(baustelle, ausgewaehlteBerichte, zeiten, maengel, material, kommentare, tueren, werteMap, nameOf)
+      setExportAuswahlOffen(false)
     } catch (err) {
       setFehler(err instanceof Error ? err.message : 'PDF-Export fehlgeschlagen.')
     }
     setPdfExportiert(false)
+  }
+
+  const toggleExportAuswahl = (id: string) => {
+    setExportAusgewaehlt((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   const nummern = useMemo(() => tagesberichtNummern(berichte), [berichte])
@@ -324,8 +338,14 @@ export function Tagesberichte() {
         <h1 className="text-xl font-semibold text-text">Bautagebuch</h1>
         <div className="flex gap-2">
           {baustelle && berichte.length > 0 && (
-            <button onClick={handleExport} disabled={pdfExportiert} className="btn-secondary">
-              {pdfExportiert ? 'Exportiert…' : 'PDF exportieren'}
+            <button
+              onClick={() => {
+                setExportAusgewaehlt(new Set(berichte.map((b) => b.id)))
+                setExportAuswahlOffen((v) => !v)
+              }}
+              className="btn-secondary"
+            >
+              PDF exportieren
             </button>
           )}
           {kannBearbeiten && (
@@ -340,6 +360,51 @@ export function Tagesberichte() {
           )}
         </div>
       </div>
+
+      {exportAuswahlOffen && baustelle && (
+        <div className="card mb-4 space-y-3 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-text">Tagesberichte für den Export auswählen</p>
+            <button
+              type="button"
+              onClick={() =>
+                setExportAusgewaehlt((prev) =>
+                  prev.size === berichte.length ? new Set() : new Set(berichte.map((b) => b.id)),
+                )
+              }
+              className="flex-shrink-0 text-xs text-brand hover:underline"
+            >
+              {exportAusgewaehlt.size === berichte.length ? 'Alle abwählen' : 'Alle auswählen'}
+            </button>
+          </div>
+          <ul className="max-h-72 space-y-1 overflow-y-auto">
+            {berichte.map((b) => (
+              <li key={b.id}>
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-hover">
+                  <input
+                    type="checkbox"
+                    checked={exportAusgewaehlt.has(b.id)}
+                    onChange={() => toggleExportAuswahl(b.id)}
+                    className="h-4 w-4 flex-shrink-0"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-text">{tagesberichtName(baustelle, b, nummern[b.id])}</span>
+                  <span className="flex-shrink-0 text-xs text-text-subtle">{formatDatum(b.datum)}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center gap-2">
+            <button onClick={handleExport} disabled={pdfExportiert || exportAusgewaehlt.size === 0} className="btn-primary">
+              {pdfExportiert
+                ? 'Exportiert…'
+                : `${exportAusgewaehlt.size} Bericht${exportAusgewaehlt.size === 1 ? '' : 'e'} exportieren`}
+            </button>
+            <button onClick={() => setExportAuswahlOffen(false)} className="btn-secondary">
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
 
       {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
 

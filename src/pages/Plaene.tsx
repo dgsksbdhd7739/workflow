@@ -7,6 +7,24 @@ import { SignedImage } from '../components/SignedImage'
 import { PdfThumbnail } from '../components/PdfThumbnail'
 import type { Mangel, MangelStatus, Plan, StatusVorlageWert } from '../types/database'
 
+// Der Android-Dateipicker liefert bei manchen Dokumentanbietern (z. B. Google
+// Drive) einen Dateinamen ohne Endung -- die PDF-/Bild-Erkennung im Plan-
+// Viewer stuetzt sich aber auf die Endung von datei_pfad. Fehlt sie, wird sie
+// hier anhand des MIME-Typs ergaenzt, damit Marker-Setzen dort weiter funktioniert.
+const MIME_ENDUNG: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+}
+
+function dateinameMitEndung(file: File): string {
+  if (/\.[a-z0-9]{2,5}$/i.test(file.name)) return file.name
+  const endung = MIME_ENDUNG[file.type]
+  return endung ? `${file.name}.${endung}` : file.name
+}
+
 const statusFarbeFallback: Record<MangelStatus, string> = {
   offen: '#dc2626',
   in_bearbeitung: '#d97706',
@@ -65,7 +83,8 @@ export function Plaene() {
     setUploading(true)
     setFehler(null)
 
-    const path = `${baustelleId}/${Date.now()}-${file.name}`
+    const dateiname = dateinameMitEndung(file)
+    const path = `${baustelleId}/${Date.now()}-${dateiname}`
     const { error: uploadError } = await uploadFile('plaene', path, file)
     if (uploadError) {
       setFehler(uploadError.message)
@@ -84,7 +103,7 @@ export function Plaene() {
       .maybeSingle()
     const { error } = await supabase.from('plaene').insert({
       baustelle_id: baustelleId,
-      name: file.name,
+      name: dateiname,
       datei_pfad: path,
       statusvorlage_id: standardVorlage?.id ?? null,
       erstellt_von: user.id,

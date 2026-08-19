@@ -147,8 +147,19 @@ async function pdfSpeichernOderTeilen(doc: jsPDF, dateiname: string) {
     return
   }
   const base64 = arrayBufferZuBase64(doc.output('arraybuffer'))
-  const { uri } = await Filesystem.writeFile({ path: dateiname, data: base64, directory: Directory.Cache })
-  await Share.share({ url: uri, title: dateiname })
+  try {
+    const { uri } = await Filesystem.writeFile({ path: dateiname, data: base64, directory: Directory.Cache })
+    await Share.share({ url: uri, title: dateiname })
+  } catch (err) {
+    // Tritt auf, wenn die installierte APK aelter ist als das per Live-Update
+    // ausgelieferte JS -- die Filesystem/Share-Plugins sind dann nicht im
+    // nativen Code vorhanden, egal wie aktuell das JS-Bundle ist. Nur eine
+    // neue APK-Installation behebt das, kein weiteres Live-Update.
+    if (err instanceof Error && /not implemented/i.test(err.message)) {
+      throw new Error('Diese Funktion braucht eine neuere App-Version. Bitte die App über die Webseite neu installieren.')
+    }
+    throw err
+  }
 }
 
 function minutenVonZeit(zeit: string) {

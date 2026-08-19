@@ -6,7 +6,7 @@ import type { StatusVorlage, StatusVorlageWert } from '../types/database'
 const farbPalette = ['#dc2626', '#ea580c', '#f59e0b', '#eab308', '#16a34a', '#2563eb', '#9333ea', '#d946ef', '#000000', '#6b7280']
 
 export function StatusVorlagen() {
-  const { user, role } = useAuth()
+  const { user, role, unternehmenId } = useAuth()
   const [vorlagen, setVorlagen] = useState<StatusVorlage[]>([])
   const [werte, setWerte] = useState<StatusVorlageWert[]>([])
   const [ausgewaehlteVorlage, setAusgewaehlteVorlage] = useState<string | null>(null)
@@ -46,11 +46,11 @@ export function StatusVorlagen() {
 
   const handleCreateVorlage = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user || !neueVorlageName.trim()) return
+    if (!user || !unternehmenId || !neueVorlageName.trim()) return
     setFehler(null)
     const { data, error } = await supabase
       .from('statusvorlagen')
-      .insert({ name: neueVorlageName.trim(), erstellt_von: user.id })
+      .insert({ name: neueVorlageName.trim(), erstellt_von: user.id, unternehmen_id: unternehmenId })
       .select()
       .single()
     if (error) {

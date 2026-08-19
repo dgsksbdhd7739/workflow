@@ -17,7 +17,7 @@ export function ProjektForm({
   onSaved: (b: Baustelle) => void
   onCancel: () => void
 }) {
-  const { user } = useAuth()
+  const { user, unternehmenId } = useAuth()
   const { profiles } = useProfiles()
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [logoDatei, setLogoDatei] = useState<File | null>(null)
@@ -57,7 +57,7 @@ export function ProjektForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || !unternehmenId) return
     setSaving(true)
     setFehler(null)
 
@@ -102,7 +102,7 @@ export function ProjektForm({
     } else {
       const { data, error } = await supabase
         .from('baustellen')
-        .insert({ ...payload, created_by: user.id })
+        .insert({ ...payload, created_by: user.id, unternehmen_id: unternehmenId })
         .select()
         .single()
       if (error) {

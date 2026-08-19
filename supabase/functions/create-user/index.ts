@@ -34,7 +34,11 @@ Deno.serve(async (req) => {
       return json({ error: 'Nicht angemeldet.' }, 401)
     }
 
-    const { data: callerProfile } = await callerClient.from('profiles').select('role').eq('id', caller.id).single()
+    const { data: callerProfile } = await callerClient
+      .from('profiles')
+      .select('role, unternehmen_id')
+      .eq('id', caller.id)
+      .single()
     if (callerProfile?.role !== 'admin') {
       return json({ error: 'Nur Admins dürfen Nutzer anlegen.' }, 403)
     }
@@ -58,11 +62,17 @@ Deno.serve(async (req) => {
     // Service-Role-Client: nur serverseitig, nie im Browser sichtbar.
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
+    // Ohne diese Angabe wuerde handle_new_user() den Nutzer an das aelteste
+    // Unternehmen in der Datenbank haengen, statt an das des einladenden
+    // Admins -- das waere bei mehreren Firmen in derselben Datenbank falsch.
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: fullName ? { full_name: fullName } : undefined,
+      user_metadata: {
+        ...(fullName ? { full_name: fullName } : {}),
+        unternehmen_id: callerProfile.unternehmen_id,
+      },
     })
     if (createError || !created.user) {
       return json({ error: createError?.message ?? 'Nutzer konnte nicht angelegt werden.' }, 400)

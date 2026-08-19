@@ -47,6 +47,7 @@ export interface ProjektChatNachricht {
 
 export interface Baustelle {
   id: string
+  unternehmen_id: string
   name: string
   adresse: string | null
   projektnummer: string | null
@@ -191,6 +192,7 @@ export interface MangelKommentar {
 
 export interface StatusVorlage {
   id: string
+  unternehmen_id: string
   name: string
   ist_standard: boolean
   erstellt_von: string

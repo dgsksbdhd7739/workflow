@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.4.1',
+    datum: '2026-08-19',
+    aenderungen: [
+      'Bautagebuch: Aufgaben-Block im PDF neu aufgebaut — links Titel/Zeit/Fortschritt in Prozent, mittig alle Fortschrittfelder des Projekts mit Haken beim aktuellen Stand, rechts Kommentar mit Fotos',
+    ],
+  },
+  {
     version: '1.4.0',
     datum: '2026-08-19',
     aenderungen: [

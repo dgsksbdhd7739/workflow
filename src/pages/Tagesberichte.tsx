@@ -268,7 +268,7 @@ export function Tagesberichte() {
     if (ausgewaehlteBerichte.length === 0) return
     setPdfExportiert(true)
     try {
-      await exportTagesberichtePdf(baustelle, ausgewaehlteBerichte, zeiten, maengel, material, kommentare, tueren, werteMap, nameOf)
+      await exportTagesberichtePdf(baustelle, ausgewaehlteBerichte, zeiten, maengel, material, kommentare, tueren, nameOf)
       setExportAuswahlOffen(false)
     } catch (err) {
       setFehler(err instanceof Error ? err.message : 'PDF-Export fehlgeschlagen.')
@@ -301,7 +301,6 @@ export function Tagesberichte() {
         material,
         kommentare,
         tueren,
-        werteMap,
         nameOf,
         dateiname,
       )

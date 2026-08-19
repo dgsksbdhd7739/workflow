@@ -409,6 +409,291 @@ export async function exportMaterialPdf(
   await pdfSpeichernOderTeilen(doc, `${baustelle.name}-materialliste.pdf`)
 }
 
+// Ermittelt je Aufgabe die fuer ihr Projekt hinterlegten Fortschrittfelder --
+// dieselbe Herleitung wie in MangelDetails: ueber den Plan der Aufgabe zur
+// dortigen Statusvorlage, sonst die unternehmensweite Standardvorlage. Ein
+// Cache pro PDF-Export vermeidet wiederholte Abfragen fuer Aufgaben, die
+// denselben Plan/dieselbe Vorlage teilen.
+interface FortschrittCache {
+  planZuVorlage: Map<string, string | null>
+  werteProVorlage: Map<string, StatusVorlageWert[]>
+  standardVorlageId?: string | null
+}
+
+function neueFortschrittCache(): FortschrittCache {
+  return { planZuVorlage: new Map(), werteProVorlage: new Map() }
+}
+
+async function ermittleVorlageId(m: Mangel, cache: FortschrittCache): Promise<string | null> {
+  if (m.plan_id) {
+    if (!cache.planZuVorlage.has(m.plan_id)) {
+      const { data } = await supabase.from('plaene').select('statusvorlage_id').eq('id', m.plan_id).single()
+      cache.planZuVorlage.set(m.plan_id, data?.statusvorlage_id ?? null)
+    }
+    const vorlageId = cache.planZuVorlage.get(m.plan_id) ?? null
+    if (vorlageId) return vorlageId
+  }
+  if (cache.standardVorlageId === undefined) {
+    const { data } = await supabase.from('statusvorlagen').select('id').eq('ist_standard', true).limit(1).maybeSingle()
+    cache.standardVorlageId = data?.id ?? null
+  }
+  return cache.standardVorlageId ?? null
+}
+
+interface FortschrittFeld {
+  titel: string
+  farbe: string
+  aktiv: boolean
+}
+
+async function holeFortschrittfelder(m: Mangel, cache: FortschrittCache): Promise<FortschrittFeld[]> {
+  const vorlageId = await ermittleVorlageId(m, cache)
+  if (!vorlageId) return []
+  if (!cache.werteProVorlage.has(vorlageId)) {
+    const { data } = await supabase
+      .from('statusvorlage_werte')
+      .select('*')
+      .eq('statusvorlage_id', vorlageId)
+      .order('reihenfolge')
+    cache.werteProVorlage.set(vorlageId, data ?? [])
+  }
+  const werte = cache.werteProVorlage.get(vorlageId) ?? []
+  return werte.map((w) => ({ titel: w.titel, farbe: w.farbe, aktiv: w.id === m.status_wert_id }))
+}
+
+const AUFGABEN_SPALTE1_X = 19
+const AUFGABEN_SPALTE1_BREITE = 54
+const AUFGABEN_SPALTE2_X = 79
+const AUFGABEN_SPALTE2_BREITE = 48
+const AUFGABEN_SPALTE3_X = 133
+const AUFGABEN_SPALTE3_BREITE = 63
+// Feedback: der Titel eines Aufgaben-Blocks sass fast auf der Trennlinie
+// zum vorherigen Block ("Text sitzt direkt auf dem Rahmen") -- zwischen
+// Trennlinie und Blockanfang fehlte Luft. 8pt (typografische Punkte, nicht
+// mm) zusaetzlicher Abstand nach der Linie, bevor der naechste Block startet.
+const AUFGABENBLOCK_ABSTAND_NACH_TRENNLINIE = 2.82
+
+interface AufgabenKommentarEintrag {
+  text: string | null
+  autor: string
+  bild: PdfBild | null
+}
+
+interface AufgabenBlockDaten {
+  titel: string
+  technikerNamen: string | null
+  zeitText: string | null
+  abnahmeNummer: string | null
+  materialChips: string[]
+  fortschrittfelder: FortschrittFeld[]
+  kommentare: AufgabenKommentarEintrag[]
+}
+
+// Zeichnet einen Aufgaben-Block in drei Spalten -- links Titel/Zeit/
+// Fortschritts-Prozent, mittig alle fuer das Projekt hinterlegten
+// Fortschrittfelder mit Haken beim aktuellen, rechts Kommentare mit Fotos.
+// Mit nurMessen=true wird nichts gezeichnet, nur die benoetigte Hoehe anhand
+// derselben Zeilenumbrueche/Fonts ermittelt, um vor dem Zeichnen einen
+// Seitenumbruch entscheiden zu koennen, ohne den Block auf zwei Seiten zu
+// zerreissen. Gibt die Y-Position am unteren Ende des hoechsten Spalten
+// zurueck.
+function aufgabenBlock(doc: jsPDF, yStart: number, daten: AufgabenBlockDaten, nurMessen: boolean): number {
+  // Spalte 1: Titel, Techniker, Zeit, Fortschritts-Prozent, Material
+  let y1 = yStart
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9.5)
+  const titelZeilen = doc.splitTextToSize(daten.titel, AUFGABEN_SPALTE1_BREITE)
+  if (!nurMessen) {
+    doc.setTextColor(...FARBE.text)
+    doc.text(titelZeilen, AUFGABEN_SPALTE1_X, y1)
+  }
+  y1 += titelZeilen.length * 4.4 + 1.8
+  doc.setFont('helvetica', 'normal')
+
+  if (daten.technikerNamen) {
+    doc.setFontSize(7.5)
+    const zeilen = doc.splitTextToSize(daten.technikerNamen, AUFGABEN_SPALTE1_BREITE)
+    if (!nurMessen) {
+      doc.setTextColor(...FARBE.dezent)
+      doc.text(zeilen, AUFGABEN_SPALTE1_X, y1)
+    }
+    y1 += zeilen.length * 3.6 + 1
+  }
+
+  if (daten.zeitText) {
+    doc.setFontSize(8.5)
+    if (!nurMessen) {
+      doc.setTextColor(...FARBE.text)
+      doc.text(daten.zeitText, AUFGABEN_SPALTE1_X, y1)
+    }
+    y1 += 4.8
+  }
+
+  if (daten.abnahmeNummer) {
+    doc.setFontSize(7.5)
+    if (!nurMessen) {
+      doc.setTextColor(...FARBE.dezent)
+      doc.text('Abnahme-Nr.: ', AUFGABEN_SPALTE1_X, y1)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...FARBE.text)
+      doc.text(daten.abnahmeNummer, AUFGABEN_SPALTE1_X + doc.getTextWidth('Abnahme-Nr.: '), y1)
+      doc.setFont('helvetica', 'normal')
+    }
+    y1 += 4.2
+  }
+
+  const aktiverIndex = daten.fortschrittfelder.findIndex((f) => f.aktiv)
+  if (daten.fortschrittfelder.length > 0 && aktiverIndex >= 0) {
+    const prozent = Math.round(((aktiverIndex + 1) / daten.fortschrittfelder.length) * 100)
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'bold')
+    if (!nurMessen) {
+      doc.setTextColor(...FARBE.marke)
+      doc.text(`${prozent}% abgeschlossen`, AUFGABEN_SPALTE1_X, y1)
+    }
+    y1 += 3.2
+    if (!nurMessen) {
+      doc.setFillColor(...FARBE.rahmen)
+      doc.rect(AUFGABEN_SPALTE1_X, y1, AUFGABEN_SPALTE1_BREITE, 1.6, 'F')
+      doc.setFillColor(...FARBE.marke)
+      doc.rect(AUFGABEN_SPALTE1_X, y1, (AUFGABEN_SPALTE1_BREITE * prozent) / 100, 1.6, 'F')
+    }
+    y1 += 4.6
+    doc.setFont('helvetica', 'normal')
+  }
+  doc.setTextColor(...FARBE.text)
+
+  if (daten.materialChips.length > 0) {
+    doc.setFontSize(7.5)
+    if (!nurMessen) {
+      doc.setTextColor(...FARBE.dezent)
+      doc.text('Material', AUFGABEN_SPALTE1_X, y1)
+    }
+    y1 += 3.6
+    if (nurMessen) {
+      let x = AUFGABEN_SPALTE1_X
+      let y = y1
+      doc.setFontSize(7.5)
+      for (const item of daten.materialChips) {
+        const breite = doc.getTextWidth(item) + 4.2
+        if (x + breite > AUFGABEN_SPALTE1_X + AUFGABEN_SPALTE1_BREITE) {
+          x = AUFGABEN_SPALTE1_X
+          y += 6
+        }
+        x += breite + 1.8
+      }
+      y1 = y + 5.5
+    } else {
+      y1 = zeichneChips(doc, daten.materialChips, AUFGABEN_SPALTE1_X, y1, AUFGABEN_SPALTE1_X + AUFGABEN_SPALTE1_BREITE)
+    }
+  }
+  doc.setTextColor(...FARBE.text)
+
+  // Spalte 2: fuer das Projekt hinterlegte Fortschrittfelder, Haken beim aktuellen
+  let y2 = yStart
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  if (!nurMessen) {
+    doc.setTextColor(...FARBE.dezent)
+    doc.text('Fortschritt', AUFGABEN_SPALTE2_X, y2)
+  }
+  y2 += 4.8
+  doc.setFont('helvetica', 'normal')
+  if (daten.fortschrittfelder.length === 0) {
+    doc.setFontSize(8)
+    if (!nurMessen) {
+      doc.setTextColor(...FARBE.dezent)
+      doc.text('Keine Fortschrittfelder hinterlegt', AUFGABEN_SPALTE2_X, y2)
+    }
+    y2 += 4.5
+  } else {
+    for (const feld of daten.fortschrittfelder) {
+      doc.setFontSize(8.3)
+      doc.setFont('helvetica', feld.aktiv ? 'bold' : 'normal')
+      const labelZeilen = doc.splitTextToSize(feld.titel, AUFGABEN_SPALTE2_BREITE - 4.8)
+      if (!nurMessen) {
+        // Box auf die Kapitalhoehe der 8.3pt-Schrift zentriert (~2.05mm ueber
+        // der Grundlinie) statt auf eine fest gewaehlte Groesse -- sonst
+        // schwebt das Kaestchen sichtbar ueber dem Text statt mittig zu sitzen.
+        const boxGroesse = 2.5
+        const boxY = y2 - 2.2
+        if (feld.aktiv) {
+          doc.setFillColor(...hexZuRgb(feld.farbe))
+          doc.setDrawColor(...hexZuRgb(feld.farbe))
+          doc.roundedRect(AUFGABEN_SPALTE2_X, boxY, boxGroesse, boxGroesse, 0.5, 0.5, 'FD')
+          doc.setDrawColor(255, 255, 255)
+          doc.setLineWidth(0.4)
+          doc.line(AUFGABEN_SPALTE2_X + 0.5, boxY + 1.3, AUFGABEN_SPALTE2_X + 1.0, boxY + 1.9)
+          doc.line(AUFGABEN_SPALTE2_X + 1.0, boxY + 1.9, AUFGABEN_SPALTE2_X + 2.1, boxY + 0.5)
+          doc.setLineWidth(0.2)
+        } else {
+          doc.setDrawColor(...FARBE.rahmen)
+          doc.roundedRect(AUFGABEN_SPALTE2_X, boxY, boxGroesse, boxGroesse, 0.5, 0.5, 'S')
+        }
+        doc.setTextColor(...(feld.aktiv ? FARBE.text : FARBE.gedaempft))
+        doc.text(labelZeilen, AUFGABEN_SPALTE2_X + 4.4, y2)
+      }
+      y2 += Math.max(labelZeilen.length * 3.8, 4.6)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(...FARBE.text)
+    }
+  }
+
+  // Spalte 3: Kommentare mit Fotos
+  let y3 = yStart
+  const fotoGroesse = 26
+  if (daten.kommentare.length === 0) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(8)
+    if (!nurMessen) {
+      doc.setTextColor(...FARBE.dezent)
+      doc.text('Keine Kommentare', AUFGABEN_SPALTE3_X, y3)
+    }
+    doc.setFont('helvetica', 'normal')
+    y3 += 4.5
+  } else {
+    let fotoX = AUFGABEN_SPALTE3_X
+    let fotoReiheOffen = false
+    const fotoZeileAbschliessen = () => {
+      if (fotoReiheOffen) {
+        y3 += fotoGroesse + 3
+        fotoX = AUFGABEN_SPALTE3_X
+        fotoReiheOffen = false
+      }
+    }
+    for (const k of daten.kommentare) {
+      if (k.text) {
+        fotoZeileAbschliessen()
+        const zeilen = doc.splitTextToSize(`„${k.text}"`, AUFGABEN_SPALTE3_BREITE - 4)
+        if (!nurMessen) {
+          y3 = zeichneKommentar(doc, k.text, k.autor, AUFGABEN_SPALTE3_X, y3, AUFGABEN_SPALTE3_BREITE)
+        } else {
+          y3 += zeilen.length * 4 + 4.5
+        }
+      }
+      if (k.bild) {
+        const { breite, hoehe } = bildGroesseInBox(k.bild.breite, k.bild.hoehe, fotoGroesse, fotoGroesse)
+        if (fotoX + fotoGroesse > AUFGABEN_SPALTE3_X + AUFGABEN_SPALTE3_BREITE) {
+          fotoX = AUFGABEN_SPALTE3_X
+          y3 += fotoGroesse + 3
+        }
+        if (!nurMessen) {
+          const boxX = fotoX + (fotoGroesse - breite) / 2
+          const boxY = y3 + (fotoGroesse - hoehe) / 2
+          doc.addImage(k.bild.dataUrl, 'PNG', boxX, boxY, breite, hoehe)
+          doc.setDrawColor(...FARBE.rahmen)
+          doc.roundedRect(fotoX, y3, fotoGroesse, fotoGroesse, 1.2, 1.2, 'S')
+        }
+        fotoX += fotoGroesse + 3
+        fotoReiheOffen = true
+      }
+    }
+    fotoZeileAbschliessen()
+  }
+
+  return Math.max(y1, y2, y3)
+}
+
 // Rendert einen einzelnen Tagesbericht-Block (Datum, Wetter, Tueren-Stand,
 // Zeiterfassung je Aufgabe mit Fortschritt, Material, Kommentaren, Fotos).
 // Wird sowohl fuer den Sammel-Export (alle Berichte) als auch fuer das
@@ -424,8 +709,8 @@ async function zeichneTagesberichtTag(
   material: MangelMaterial[],
   kommentare: MangelKommentar[],
   tueren: TagesberichtTuer[],
-  werteMap: Record<string, StatusVorlageWert>,
   nameOf: (id: string | null) => string,
+  fortschrittCache: FortschrittCache,
 ): Promise<number> {
   let y = yStart
 
@@ -509,8 +794,6 @@ async function zeichneTagesberichtTag(
         if (!gruppen.has(k.mangel_id)) gruppen.set(k.mangel_id, [])
       }
 
-      const fotoGroesse = 30
-
       for (const [key, eintraege] of gruppen) {
         if (y > seitenEnde - 12) {
           doc.addPage()
@@ -536,107 +819,46 @@ async function zeichneTagesberichtTag(
         }
 
         const m = maengel.find((x) => x.id === key)
-        const aufgabe = m?.titel ?? 'Aufgabe'
-        const fortschrittWert = m?.status_wert_id ? werteMap[m.status_wert_id] : null
-        const technikerNamen = [...new Set(eintraege.map((e) => nameOf(e.user_id)))].join(', ')
+        const technikerNamen = [...new Set(eintraege.map((e) => nameOf(e.user_id)))].join(', ') || null
         const gesamtDauer = eintraege.reduce((sum, e) => sum + eintragMinuten(e), 0)
-
-        doc.setFontSize(9.5)
-        doc.setFont('helvetica', 'bold')
-        doc.setTextColor(...FARBE.text)
-        doc.text(aufgabe, 19, y)
-        const titelBreite = doc.getTextWidth(aufgabe)
-        if (fortschrittWert) {
-          zeichnePill(doc, 19 + titelBreite + 3, y, fortschrittWert.titel, hexZuRgb(fortschrittWert.farbe), [255, 255, 255])
-        }
-        doc.setFont('helvetica', 'normal')
-        if (eintraege.length > 0) {
-          doc.setFontSize(8)
-          doc.setTextColor(...FARBE.dezent)
-          doc.text(`${technikerNamen} · ${formatDauer(gesamtDauer)}`, 196, y, { align: 'right' })
-        }
-        y += 5.2
-
-        if (m?.abnahme_nummer) {
-          doc.setFontSize(8)
-          doc.setTextColor(...FARBE.dezent)
-          doc.text(`Abnahme-Nummer: `, 19, y)
-          doc.setFont('helvetica', 'bold')
-          doc.setTextColor(...FARBE.text)
-          doc.text(m.abnahme_nummer, 19 + doc.getTextWidth('Abnahme-Nummer: '), y)
-          doc.setFont('helvetica', 'normal')
-          y += 4.5
-        }
-
         const materialListe = material.filter((x) => x.mangel_id === key)
-        if (materialListe.length > 0) {
-          doc.setFontSize(7.5)
-          doc.setTextColor(...FARBE.dezent)
-          doc.text('Material', 19, y)
-          y += 3.6
-          const chips = materialListe.map((mm) => `${mm.bezeichnung} (${mm.menge}${mm.einheit ? ` ${mm.einheit}` : ''})`)
-          y = zeichneChips(doc, chips, 19, y, 196)
-        }
+        const materialChips = materialListe.map(
+          (mm) => `${mm.bezeichnung} (${mm.menge}${mm.einheit ? ` ${mm.einheit}` : ''})`,
+        )
+        const fortschrittfelder = m ? await holeFortschrittfelder(m, fortschrittCache) : []
 
+        const kommentareDaten: AufgabenKommentarEintrag[] = []
         const kommentareListe = kommentareHeute.filter((x) => x.mangel_id === key && (x.text || x.foto_pfad))
         for (const k of kommentareListe) {
-          if (k.text) {
-            const geschaetzteHoehe = doc.splitTextToSize(`„${k.text}"`, 175 - 4).length * 4 + 6
-            if (y + geschaetzteHoehe > seitenEnde) {
-              doc.addPage()
-              y = 20
-            }
-            y = zeichneKommentar(doc, k.text, nameOf(k.erstellt_von), 19, y, 175)
-          }
-          if (k.foto_pfad) {
-            const bild = await bildFuerPdf(k.foto_pfad, 'mangel-fotos')
-            if (bild) {
-              if (y + fotoGroesse > seitenEnde) {
-                doc.addPage()
-                y = 20
-              }
-              const { breite, hoehe } = bildGroesseInBox(bild.breite, bild.hoehe, fotoGroesse, fotoGroesse)
-              const boxX = 19 + (fotoGroesse - breite) / 2
-              const boxY = y + (fotoGroesse - hoehe) / 2
-              doc.addImage(bild.dataUrl, 'PNG', boxX, boxY, breite, hoehe)
-              doc.setDrawColor(...FARBE.rahmen)
-              doc.roundedRect(19, y, fotoGroesse, fotoGroesse, 1.2, 1.2, 'S')
-              y += fotoGroesse + 4
-            }
-          }
+          const bild = k.foto_pfad ? await bildFuerPdf(k.foto_pfad, 'mangel-fotos') : null
+          kommentareDaten.push({ text: k.text, autor: nameOf(k.erstellt_von), bild })
+        }
+        for (const e of eintraege.filter((z) => z.foto_pfad)) {
+          const bild = await bildFuerPdf(e.foto_pfad!, 'mangel-fotos')
+          if (bild) kommentareDaten.push({ text: null, autor: nameOf(e.user_id), bild })
         }
 
-        const fotoEintraege = eintraege.filter((e) => e.foto_pfad)
-        if (fotoEintraege.length > 0) {
-          let x = 19
-          if (y + fotoGroesse > seitenEnde) {
-            doc.addPage()
-            y = 20
-          }
-          for (const e of fotoEintraege) {
-            const bild = await bildFuerPdf(e.foto_pfad!, 'mangel-fotos')
-            if (!bild) continue
-            if (x + fotoGroesse > 196) {
-              x = 19
-              y += fotoGroesse + 3
-            }
-            if (y + fotoGroesse > seitenEnde) {
-              doc.addPage()
-              y = 20
-              x = 19
-            }
-            const { breite, hoehe } = bildGroesseInBox(bild.breite, bild.hoehe, fotoGroesse, fotoGroesse)
-            const boxX = x + (fotoGroesse - breite) / 2
-            const boxY = y + (fotoGroesse - hoehe) / 2
-            doc.addImage(bild.dataUrl, 'PNG', boxX, boxY, breite, hoehe)
-            doc.setDrawColor(...FARBE.rahmen)
-            doc.roundedRect(x, y, fotoGroesse, fotoGroesse, 1.2, 1.2, 'S')
-            x += fotoGroesse + 3
-          }
-          y += fotoGroesse + 4
+        const daten: AufgabenBlockDaten = {
+          titel: m?.titel ?? 'Aufgabe',
+          technikerNamen,
+          zeitText: eintraege.length > 0 ? formatDauer(gesamtDauer) : null,
+          abnahmeNummer: m?.abnahme_nummer ?? null,
+          materialChips,
+          fortschrittfelder,
+          kommentare: kommentareDaten,
         }
 
-        y += 3.5
+        const benoetigteHoehe = aufgabenBlock(doc, 0, daten, true)
+        if (y + benoetigteHoehe > seitenEnde) {
+          doc.addPage()
+          y = 20
+        }
+        y = aufgabenBlock(doc, y, daten, false) + 4
+        if (y < seitenEnde - 4) {
+          doc.setDrawColor(...FARBE.rahmen)
+          doc.line(19, y - 2.5, 196, y - 2.5)
+        }
+        y += AUFGABENBLOCK_ABSTAND_NACH_TRENNLINIE
       }
       y += 1
     }
@@ -652,7 +874,6 @@ export async function exportTagesberichtePdf(
   material: MangelMaterial[],
   kommentare: MangelKommentar[],
   tueren: TagesberichtTuer[],
-  werteMap: Record<string, StatusVorlageWert>,
   nameOf: (id: string | null) => string,
 ) {
   const doc = new jsPDF()
@@ -660,6 +881,7 @@ export async function exportTagesberichtePdf(
   let y = await kopfzeile(doc, 'Bautagebuch', baustelle, unternehmen)
   const seitenEnde = 278
   const nummern = tagesberichtNummern(berichte)
+  const fortschrittCache = neueFortschrittCache()
 
   for (const b of berichte) {
     if (y > seitenEnde - 20) {
@@ -677,8 +899,8 @@ export async function exportTagesberichtePdf(
       material,
       kommentare,
       tueren,
-      werteMap,
       nameOf,
+      fortschrittCache,
     )
     y += 3
     doc.setDrawColor(...FARBE.rahmen)
@@ -701,7 +923,6 @@ export async function erzeugeEinzelnenTagesberichtPdf(
   material: MangelMaterial[],
   kommentare: MangelKommentar[],
   tueren: TagesberichtTuer[],
-  werteMap: Record<string, StatusVorlageWert>,
   nameOf: (id: string | null) => string,
   dokumentname: string,
 ): Promise<jsPDF> {
@@ -721,8 +942,8 @@ export async function erzeugeEinzelnenTagesberichtPdf(
     material,
     kommentare,
     tueren,
-    werteMap,
     nameOf,
+    neueFortschrittCache(),
   )
 
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)

@@ -493,13 +493,20 @@ async function zeichneTagesberichtTag(
     }
 
     const tagesZeiten = zeiten.filter((z) => z.datum === b.datum)
-    if (tagesZeiten.length > 0) {
+    // Kommentare/Fotos sind nicht an eine Zeiterfassung gebunden -- ohne
+    // diese zusaetzliche Quelle blieb eine Aufgabe, an der nur kommentiert
+    // (aber keine Zeit erfasst) wurde, an diesem Tag komplett unsichtbar.
+    const kommentareHeute = kommentare.filter((k) => k.erstellt_am.slice(0, 10) === b.datum)
+    if (tagesZeiten.length > 0 || kommentareHeute.length > 0) {
       const gruppen = new Map<string, Zeiterfassung[]>()
       for (const z of tagesZeiten) {
         const key = z.mangel_id ?? '__allgemein__'
         const liste = gruppen.get(key) ?? []
         liste.push(z)
         gruppen.set(key, liste)
+      }
+      for (const k of kommentareHeute) {
+        if (!gruppen.has(k.mangel_id)) gruppen.set(k.mangel_id, [])
       }
 
       const fotoGroesse = 30
@@ -543,9 +550,11 @@ async function zeichneTagesberichtTag(
           zeichnePill(doc, 19 + titelBreite + 3, y, fortschrittWert.titel, hexZuRgb(fortschrittWert.farbe), [255, 255, 255])
         }
         doc.setFont('helvetica', 'normal')
-        doc.setFontSize(8)
-        doc.setTextColor(...FARBE.dezent)
-        doc.text(`${technikerNamen} · ${formatDauer(gesamtDauer)}`, 196, y, { align: 'right' })
+        if (eintraege.length > 0) {
+          doc.setFontSize(8)
+          doc.setTextColor(...FARBE.dezent)
+          doc.text(`${technikerNamen} · ${formatDauer(gesamtDauer)}`, 196, y, { align: 'right' })
+        }
         y += 5.2
 
         if (m?.abnahme_nummer) {
@@ -569,7 +578,7 @@ async function zeichneTagesberichtTag(
           y = zeichneChips(doc, chips, 19, y, 196)
         }
 
-        const kommentareListe = kommentare.filter((x) => x.mangel_id === key && (x.text || x.foto_pfad))
+        const kommentareListe = kommentareHeute.filter((x) => x.mangel_id === key && (x.text || x.foto_pfad))
         for (const k of kommentareListe) {
           if (k.text) {
             const geschaetzteHoehe = doc.splitTextToSize(`„${k.text}"`, 175 - 4).length * 4 + 6

@@ -42,4 +42,4 @@ npx tauri build           # Windows-Desktop, Release-Installer
 - `tagesberichte` — Bautagebuch-Einträge je Tag/Baustelle
 - `zeiterfassung` — Arbeitszeiten je Mitarbeiter/Baustelle
 
-v1-Berechtigungsmodell: jeder eingeloggte Nutzer sieht/bearbeitet alle Daten (ein Firmen-Team). Feingranulare Rechte pro Baustelle sind für eine spätere Version vorgesehen.
+Mandantenfähig: Daten sind strikt pro Firma (`unternehmen`) getrennt (Row Level Security), innerhalb einer Firma sieht/bearbeitet jeder eingeloggte Nutzer je nach Rolle die gemeinsamen Daten. Neue Firma anlegen: [docs/firma-erstellen.md](docs/firma-erstellen.md).

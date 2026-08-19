@@ -123,8 +123,7 @@ export function ProjektForm({
       saved.logo_pfad = null
     } else if (logoDatei) {
       const logoKomprimiert = await komprimiereBild(logoDatei, { maxBreiteHoehe: 800 })
-      const path = `${saved.id}/${Date.now()}-${logoKomprimiert.name}`
-      const { error: uploadError } = await uploadFile('projekt-logos', path, logoKomprimiert)
+      const { path, error: uploadError } = await uploadFile('projekt-logos', saved.id, logoKomprimiert)
       if (!uploadError) {
         await supabase.from('baustellen').update({ logo_pfad: path }).eq('id', saved.id)
         saved.logo_pfad = path

@@ -67,11 +67,10 @@ export function UnternehmenForm() {
       logo_pfad = null
     } else if (logoDatei) {
       const logoKomprimiert = await komprimiereBild(logoDatei, { maxBreiteHoehe: 800 })
-      const path = `${unternehmenId}/${Date.now()}-${logoKomprimiert.name}`
-      const { error: uploadError } = await uploadFile('unternehmen-logos', path, logoKomprimiert)
+      const { path, error: uploadError } = await uploadFile('unternehmen-logos', unternehmenId, logoKomprimiert)
       if (uploadError) {
         setSaving(false)
-        setFehler(`Logo-Upload fehlgeschlagen: ${uploadError.message}`)
+        setFehler(`Logo-Upload fehlgeschlagen: ${uploadError}`)
         return
       }
       logo_pfad = path

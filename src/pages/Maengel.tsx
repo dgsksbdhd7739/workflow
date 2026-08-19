@@ -232,11 +232,10 @@ export function Maengel() {
     let foto_pfad: string | null = null
     if (foto) {
       const fotoKomprimiert = await komprimiereBild(foto)
-      const path = `${baustelleId}/${Date.now()}-${fotoKomprimiert.name}`
-      const { error: uploadError } = await uploadFile('mangel-fotos', path, fotoKomprimiert)
+      const { path, error: uploadError } = await uploadFile('mangel-fotos', baustelleId, fotoKomprimiert)
       if (uploadError) {
         setSaving(false)
-        setFehler(`Foto-Upload fehlgeschlagen: ${uploadError.message}`)
+        setFehler(`Foto-Upload fehlgeschlagen: ${uploadError}`)
         return
       }
       foto_pfad = path

@@ -89,10 +89,10 @@ export function Plaene() {
     setFehler(null)
 
     const dateiname = await dateinameMitEndung(file)
-    const path = `${baustelleId}/${Date.now()}-${dateiname}`
-    const { error: uploadError } = await uploadFile('plaene', path, file)
+    const fileMitEndung = dateiname === file.name ? file : new File([file], dateiname, { type: file.type })
+    const { path, error: uploadError } = await uploadFile('plaene', baustelleId, fileMitEndung)
     if (uploadError) {
-      setFehler(uploadError.message)
+      setFehler(uploadError)
       setUploading(false)
       e.target.value = ''
       return

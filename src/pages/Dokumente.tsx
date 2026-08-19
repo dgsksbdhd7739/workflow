@@ -28,11 +28,10 @@ function UploadForm({
     setUploading(true)
     setFehler(null)
 
-    const path = `${baustelleId}/${Date.now()}-${datei.name}`
-    const { error: uploadError } = await uploadFile('dokumente', path, datei)
+    const { path, error: uploadError } = await uploadFile('dokumente', baustelleId, datei)
     if (uploadError) {
       setUploading(false)
-      setFehler(`Upload fehlgeschlagen: ${uploadError.message}`)
+      setFehler(`Upload fehlgeschlagen: ${uploadError}`)
       return
     }
 

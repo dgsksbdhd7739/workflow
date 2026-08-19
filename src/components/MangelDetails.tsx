@@ -330,11 +330,10 @@ export function MangelDetails({
     let foto_pfad: string | null = null
     if (kommentarFoto) {
       const kommentarFotoKomprimiert = await komprimiereBild(kommentarFoto)
-      const path = `kommentare/${mangelId}/${Date.now()}-${kommentarFotoKomprimiert.name}`
-      const { error: uploadError } = await uploadFile('mangel-fotos', path, kommentarFotoKomprimiert)
+      const { path, error: uploadError } = await uploadFile('mangel-fotos', `kommentare/${mangelId}`, kommentarFotoKomprimiert)
       if (uploadError) {
         setKommentarSaving(false)
-        setFehler(`Foto-Upload fehlgeschlagen: ${uploadError.message}`)
+        setFehler(`Foto-Upload fehlgeschlagen: ${uploadError}`)
         return
       }
       foto_pfad = path

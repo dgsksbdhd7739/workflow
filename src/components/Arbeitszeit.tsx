@@ -90,11 +90,10 @@ export function Arbeitszeit({ mangel, onChange }: { mangel: Mangel; onChange?: (
     setSaving(true)
 
     const stoppFotoKomprimiert = await komprimiereBild(stoppFoto)
-    const path = `zeiterfassung/${mangel.id}/${Date.now()}-${stoppFotoKomprimiert.name}`
-    const { error: uploadError } = await uploadFile('mangel-fotos', path, stoppFotoKomprimiert)
+    const { path, error: uploadError } = await uploadFile('mangel-fotos', `zeiterfassung/${mangel.id}`, stoppFotoKomprimiert)
     if (uploadError) {
       setSaving(false)
-      setFehler(`Foto-Upload fehlgeschlagen: ${uploadError.message}`)
+      setFehler(`Foto-Upload fehlgeschlagen: ${uploadError}`)
       return
     }
 

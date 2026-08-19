@@ -47,6 +47,13 @@ function standZaehlung(tueren: TagesberichtTuer[]): Map<string, number> {
   return zaehlung
 }
 
+// Vor der Aenderung an handleAutoErstellen enthalten bereits gespeicherte
+// Berichte noch den vollstaendigen "Noch offen"-Dump im Freitext. Wird beim
+// Anzeigen herausgefiltert, ohne die gespeicherten Daten zu veraendern.
+function taetigkeitenAnzeige(text: string): string {
+  return text.replace(/\n*Noch offen:\n(?:- .+\n?)+/, '').trim()
+}
+
 export function Tagesberichte() {
   const { id: baustelleId } = useParams<{ id: string }>()
   const { user, role } = useAuth()
@@ -575,7 +582,9 @@ export function Tagesberichte() {
                 {b.temperatur !== null && <span>{b.temperatur}°C</span>}
                 {b.personal_anzahl !== null && <span>Personal: {b.personal_anzahl}</span>}
               </div>
-              {b.taetigkeiten && <p className="mt-2 text-sm text-text-muted">{b.taetigkeiten}</p>}
+              {b.taetigkeiten && taetigkeitenAnzeige(b.taetigkeiten) && (
+                <p className="mt-2 text-sm text-text-muted">{taetigkeitenAnzeige(b.taetigkeiten)}</p>
+              )}
               {b.besonderheiten && (
                 <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">⚠ {b.besonderheiten}</p>
               )}

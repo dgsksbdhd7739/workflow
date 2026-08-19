@@ -460,10 +460,14 @@ async function zeichneTagesberichtTag(
       y = doc.lastAutoTable.finalY + 4
     }
 
-    if (b.taetigkeiten) {
+    // Vor der Aenderung an handleAutoErstellen enthalten bereits gespeicherte
+    // Berichte noch den vollstaendigen "Noch offen"-Dump im Freitext -- der
+    // ist redundant zur Tueren-Tabelle oben und wird hier herausgefiltert.
+    const taetigkeitenOhneDump = b.taetigkeiten?.replace(/\n*Noch offen:\n(?:- .+\n?)+/, '').trim()
+    if (taetigkeitenOhneDump) {
       doc.setFontSize(9)
       doc.setTextColor(...FARBE.text)
-      const zeilen = doc.splitTextToSize(b.taetigkeiten, 175)
+      const zeilen = doc.splitTextToSize(taetigkeitenOhneDump, 175)
       doc.text(zeilen, 19, y)
       y += zeilen.length * 4.2 + 2
     }

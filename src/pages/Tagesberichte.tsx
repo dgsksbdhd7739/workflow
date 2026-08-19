@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
-import { CalendarDays, CloudSun, Loader2, Search, X } from 'lucide-react'
+import { CalendarDays, CloudSun, Loader2, Search, Trash2, X } from 'lucide-react'
 import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
@@ -50,6 +50,7 @@ export function Tagesberichte() {
   const { id: baustelleId } = useParams<{ id: string }>()
   const { user, role } = useAuth()
   const kannBearbeiten = role !== 'kunde'
+  const kannLoeschen = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
   const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
   const [berichte, setBerichte] = useState<Tagesbericht[]>([])
@@ -65,6 +66,7 @@ export function Tagesberichte() {
   const [autoSaving, setAutoSaving] = useState(false)
   const [pdfExportiert, setPdfExportiert] = useState(false)
   const [oeffnendId, setOeffnendId] = useState<string | null>(null)
+  const [loeschendId, setLoeschendId] = useState<string | null>(null)
   const [wetterLaedt, setWetterLaedt] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
   const [suche, setSuche] = useState('')
@@ -286,6 +288,19 @@ export function Tagesberichte() {
     setOeffnendId(null)
   }
 
+  const handleDelete = async (b: Tagesbericht) => {
+    if (!window.confirm('Tagesbericht wirklich endgültig löschen? Das kann nicht rückgängig gemacht werden.')) return
+    setLoeschendId(b.id)
+    setFehler(null)
+    const { error } = await supabase.from('tagesberichte').delete().eq('id', b.id)
+    setLoeschendId(null)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
+    setBerichte((prev) => prev.filter((x) => x.id !== b.id))
+  }
+
   const gefilterteBerichte = useMemo(() => {
     return berichte.filter((b) => {
       if (datumsFilter && b.datum !== datumsFilter) return false
@@ -475,7 +490,21 @@ export function Tagesberichte() {
                       ? tagesberichtName(baustelle, b, nummern[b.id])
                       : formatDatum(b.datum)}
                 </button>
-                <span className="flex-shrink-0 text-xs text-text-subtle">{nameOf(b.erstellt_von)}</span>
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <span className="text-xs text-text-subtle">{nameOf(b.erstellt_von)}</span>
+                  {kannLoeschen && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(b)}
+                      disabled={loeschendId === b.id}
+                      aria-label="Tagesbericht löschen"
+                      title="Tagesbericht löschen"
+                      className="text-text-subtle hover:text-red-600 disabled:opacity-60 dark:hover:text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4" strokeWidth={2.25} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="mb-1 text-xs text-text-subtle">{formatDatum(b.datum)}</div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">

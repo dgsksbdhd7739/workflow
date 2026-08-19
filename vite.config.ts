@@ -42,6 +42,15 @@ export default defineConfig({
         // App mit live bearbeiteten, geteilten Daten ist Korrektheit wichtiger
         // als eine Offline-Ansicht veralteter Listen.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Ohne skipWaiting/clientsClaim bleibt ein neuer Service Worker im
+        // "waiting"-Zustand haengen, bis WIRKLICH alle Instanzen des alten
+        // geschlossen wurden -- in der nativen App reicht dafuer haeufig
+        // nicht ein einfaches Schliessen/Wiederoeffnen. Das fuehrte dazu,
+        // dass Nutzer trotz veroeffentlichtem Update weiterhin alten Code
+        // (altes PDF-Layout, veraltete Daten) sahen. So wird ein neuer SW
+        // sofort beim naechsten Laden aktiv.
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],

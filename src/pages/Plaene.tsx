@@ -8,21 +8,26 @@ import { PdfThumbnail } from '../components/PdfThumbnail'
 import type { Mangel, MangelStatus, Plan, StatusVorlageWert } from '../types/database'
 
 // Der Android-Dateipicker liefert bei manchen Dokumentanbietern (z. B. Google
-// Drive) einen Dateinamen ohne Endung -- die PDF-/Bild-Erkennung im Plan-
-// Viewer stuetzt sich aber auf die Endung von datei_pfad. Fehlt sie, wird sie
-// hier anhand des MIME-Typs ergaenzt, damit Marker-Setzen dort weiter funktioniert.
-const MIME_ENDUNG: Record<string, string> = {
-  'application/pdf': 'pdf',
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/webp': 'webp',
-  'image/gif': 'gif',
-}
+// Drive) einen Dateinamen ohne Endung UND einen leeren/generischen MIME-Typ
+// (z. B. "application/octet-stream") -- die PDF-/Bild-Erkennung im Plan-
+// Viewer stuetzt sich aber auf die Endung von datei_pfad. Um das zuverlaessig
+// zu ergaenzen, wird -- unabhaengig vom (unzuverlaessigen) MIME-Typ -- direkt
+// anhand der Magic Bytes am Dateianfang geprueft, um welches Format es sich
+// tatsaechlich handelt.
+const MAGIC_BYTES: { signatur: number[]; endung: string }[] = [
+  { signatur: [0x25, 0x50, 0x44, 0x46], endung: 'pdf' }, // %PDF
+  { signatur: [0x89, 0x50, 0x4e, 0x47], endung: 'png' },
+  { signatur: [0xff, 0xd8, 0xff], endung: 'jpg' },
+  { signatur: [0x47, 0x49, 0x46, 0x38], endung: 'gif' },
+  { signatur: [0x52, 0x49, 0x46, 0x46], endung: 'webp' }, // RIFF-Container (WEBP-Teil folgt ab Byte 8)
+]
 
-function dateinameMitEndung(file: File): string {
+async function dateinameMitEndung(file: File): Promise<string> {
   if (/\.[a-z0-9]{2,5}$/i.test(file.name)) return file.name
-  const endung = MIME_ENDUNG[file.type]
-  return endung ? `${file.name}.${endung}` : file.name
+
+  const kopf = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+  const treffer = MAGIC_BYTES.find((m) => m.signatur.every((byte, i) => kopf[i] === byte))
+  return treffer ? `${file.name}.${treffer.endung}` : file.name
 }
 
 const statusFarbeFallback: Record<MangelStatus, string> = {
@@ -83,7 +88,7 @@ export function Plaene() {
     setUploading(true)
     setFehler(null)
 
-    const dateiname = dateinameMitEndung(file)
+    const dateiname = await dateinameMitEndung(file)
     const path = `${baustelleId}/${Date.now()}-${dateiname}`
     const { error: uploadError } = await uploadFile('plaene', path, file)
     if (uploadError) {

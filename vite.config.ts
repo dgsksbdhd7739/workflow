@@ -32,16 +32,22 @@ export default defineConfig({
       },
       workbox: {
         // App-Shell (JS/CSS/HTML) wird vorab gecacht, damit die App auch
-        // ohne Netz sofort startet. Supabase-Leseanfragen werden nach
-        // "stale-while-revalidate" behandelt: zuletzt geladene Daten bleiben
-        // offline sichtbar, aktualisieren sich aber sofort bei Netz.
+        // ohne Netz sofort startet. Supabase-Leseanfragen versuchen zuerst
+        // das Netz (kurzes Timeout), damit z. B. ein gerade hochgeladener
+        // Plan sofort in der Liste auftaucht -- "stale-while-revalidate"
+        // liefert bewusst erst die ALTE Antwort aus dem Cache zurueck und
+        // aktualisiert ihn nur im Hintergrund fuer den naechsten Aufruf, was
+        // frische Schreibvorgaenge unsichtbar machte, bis irgendeine andere
+        // Ansicht denselben Endpunkt erneut abgefragt hat. Nur wenn das Netz
+        // nicht antwortet, faellt es auf die zuletzt geladenen Daten zurueck.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/rest/v1/'),
-            handler: 'StaleWhileRevalidate',
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-rest',
+              networkTimeoutSeconds: 4,
               cacheableResponse: { statuses: [0, 200] },
             },
           },

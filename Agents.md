@@ -10,6 +10,7 @@ Version/Änderungshistorie stehen im in-App-Changelog ([src/lib/changelog.ts](sr
 - Backend: Supabase (Postgres, Auth, Storage, Realtime), Migrationen unter `supabase/migrations/`.
 - Android: Capacitor (`android/`). Windows: Tauri (`src-tauri/`).
 - Release-APK-Namenskonvention: `WorkFlow-v{versionName}.apk` (siehe `landing/index.html`) — kein anderes Namensschema verwenden.
+- **Live-Update-Versionierung ist scharf:** `scripts/publish-update.mjs` veröffentlicht immer unter der aktuellen `package.json`-`version`. Der Update-Check auf dem Gerät (`src/lib/liveUpdate.ts`) vergleicht nur den Versions-*String* gegen das bereits installierte Bundle — wird ein Bugfix ohne Versionsbump erneut unter derselben Nummer hochgeladen, überspringen alle Geräte, die diese Nummer schon haben, den Download stillschweigend (kein Fehler, einfach kein Update). Vor jedem `publish-update.mjs`-Lauf zwingend `package.json`-`version` erhöhen — war die Ursache für einen echten Produktionsausfall (Projekt-Erstellung in der App durch stillstehendes Live-Update auf Vor-Rename-Code blockiert, siehe Version 1.4.3).
 
 ### Architektur-Vorgaben
 - Multi-Tenant über `unternehmen_id` + Row Level Security; siehe `docs/firma-erstellen.md` für Firmen-Provisionierung.

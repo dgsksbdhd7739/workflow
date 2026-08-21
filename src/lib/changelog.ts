@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.4.3',
+    datum: '2026-08-21',
+    aenderungen: [
+      'Fehler behoben, durch den das Anlegen neuer Projekte fehlschlagen konnte ("Could not find the table \'public.baustellen\'")',
+      'Planansicht: Plan öffnet jetzt bildschirmfüllend mit schwebender Werkzeugleiste über dem Plan, statt eingebettet in der normalen Seite',
+    ],
+  },
+  {
     version: '1.4.1',
     datum: '2026-08-19',
     aenderungen: [

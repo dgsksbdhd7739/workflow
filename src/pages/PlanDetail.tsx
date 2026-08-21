@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type TouchEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { Search, X } from 'lucide-react'
+import { ArrowLeft, List, Search, X } from 'lucide-react'
 import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { AufgabeDetails } from '../components/AufgabeDetails'
@@ -92,8 +92,7 @@ export function PlanDetail() {
   const panDragRef = useRef<{ startX: number; startY: number; startPan: { x: number; y: number }; dragging: boolean } | null>(null)
   const suppressClickRef = useRef(false)
   const pinchRef = useRef<{ dist: number; zoom: number; pan: { x: number; y: number }; midX: number; midY: number } | null>(null)
-  const planSectionRef = useRef<HTMLDivElement>(null)
-  const [istVollbild, setIstVollbild] = useState(false)
+  const [zeigeListe, setZeigeListe] = useState(false)
 
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
@@ -232,7 +231,6 @@ export function PlanDetail() {
     if (ziel) {
       setPendingPos(null)
       setSelectedPin(ziel)
-      planSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -241,20 +239,6 @@ export function PlanDetail() {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pins])
-
-  useEffect(() => {
-    const handler = () => setIstVollbild(Boolean(document.fullscreenElement))
-    document.addEventListener('fullscreenchange', handler)
-    return () => document.removeEventListener('fullscreenchange', handler)
-  }, [])
-
-  const toggleVollbild = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
-    } else {
-      planSectionRef.current?.requestFullscreen()
-    }
-  }
 
   const isPdf = Boolean(plan?.datei_pfad.match(/\.pdf$/i))
 
@@ -349,6 +333,7 @@ export function PlanDetail() {
     setVorschauMarkierungen(null)
     setPendingPos(null)
     setSelectedPin(null)
+    setZeigeListe(false)
     setErkennungLaeuft(true)
     setErkennungFortschritt(null)
     try {
@@ -646,43 +631,79 @@ export function PlanDetail() {
   const canMark = kannBearbeiten && (Boolean(isImage) || (isPdf && pdfReady))
   const vorschauFarbe = werte.find((w) => w.id === statusWertId)?.farbe ?? statusFarbe[status]
 
-  return (
-    <div className="page">
-      <Link to={`/projekte/${projektId}/plaene`} className="mb-3 inline-block text-sm text-brand">
-        ← Zurück zu Plänen
-      </Link>
-      <h1 className="mb-4 text-xl font-semibold text-text">{plan.name}</h1>
-
-      {fehler && <p className="banner-error mb-3">Fehler: {fehler}</p>}
-
-      {isPdf && pdfError ? (
+  if (isPdf && pdfError) {
+    return (
+      <div className="page">
+        <Link to={`/projekte/${projektId}/plaene`} className="mb-3 inline-block text-sm text-brand">
+          ← Zurück zu Plänen
+        </Link>
+        <h1 className="mb-4 text-xl font-semibold text-text">{plan.name}</h1>
+        {fehler && <p className="banner-error mb-3">Fehler: {fehler}</p>}
         <p className="text-sm text-text-muted">
           PDF konnte nicht geladen werden. <a className="text-brand" href={datenUrl} target="_blank" rel="noreferrer">Datei öffnen</a>
         </p>
-      ) : !isImage && !isPdf ? (
+      </div>
+    )
+  }
+
+  if (!isImage && !isPdf) {
+    return (
+      <div className="page">
+        <Link to={`/projekte/${projektId}/plaene`} className="mb-3 inline-block text-sm text-brand">
+          ← Zurück zu Plänen
+        </Link>
+        <h1 className="mb-4 text-xl font-semibold text-text">{plan.name}</h1>
+        {fehler && <p className="banner-error mb-3">Fehler: {fehler}</p>}
         <p className="text-sm text-text-muted">
           Für dieses Dateiformat ist keine Markierung im Browser möglich. <a className="text-brand" href={datenUrl} target="_blank" rel="noreferrer">Datei öffnen</a>
         </p>
-      ) : (
-        <div ref={planSectionRef} className={istVollbild ? 'h-screen overflow-y-auto bg-bg p-4' : ''}>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-text-muted">
-              {!canMark
-                ? 'PDF wird geladen…'
-                : zeichenModus === 'rechteck'
-                  ? 'Auf dem Plan ziehen, um ein Rechteck (z. B. um eine Tür) zu markieren.'
-                  : 'Auf den Plan tippen, um eine Aufgabe zu markieren. Vorhandene Markierung antippen zum Bearbeiten.'}
-            </p>
-            <div className="flex flex-shrink-0 flex-wrap items-center gap-1">
-              <button
-                type="button"
-                onClick={toggleVollbild}
-                aria-label={istVollbild ? 'Vollbild beenden' : 'Vollbild anzeigen'}
-                title={istVollbild ? 'Vollbild beenden' : 'Vollbild anzeigen (am PC)'}
-                className="hidden h-7 w-7 rounded-lg border border-border-strong text-sm text-text md:inline-flex md:items-center md:justify-center"
-              >
-                {istVollbild ? '✕' : '⛶'}
-              </button>
+      </div>
+    )
+  }
+
+  const panel = vorschauMarkierungen
+    ? 'erkennung'
+    : pendingPos
+      ? 'neu'
+      : selectedPin
+        ? 'details'
+        : zeigeListe
+          ? 'liste'
+          : null
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-bg">
+      {/* Schwebende Toolbar -- liegt im Vordergrund ueber dem Plan, statt den
+          Platz oberhalb wegzunehmen, damit der Plan beim Oeffnen sofort
+          bildschirmfuellend ("in Gross") sichtbar ist -- auch in der
+          Capacitor-App, wo die Browser-Fullscreen-API unzuverlaessig ist. */}
+      <div className="relative z-20 flex flex-wrap items-center gap-1.5 border-b border-border bg-surface/95 px-2 py-2 backdrop-blur-sm">
+        <Link
+          to={`/projekte/${projektId}/plaene`}
+          aria-label="Zurück zu Plänen"
+          title="Zurück zu Plänen"
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-text hover:bg-surface-hover"
+        >
+          <ArrowLeft className="h-4.5 w-4.5" strokeWidth={2.25} />
+        </Link>
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text" title={plan.name}>
+          {plan.name}
+        </span>
+        {fehler && <p className="banner-error w-full basis-full text-xs">Fehler: {fehler}</p>}
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-1">
+              {pins.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setZeigeListe((v) => !v)}
+                  aria-label={zeigeListe ? 'Markierungsliste ausblenden' : 'Markierungsliste anzeigen'}
+                  title={zeigeListe ? 'Markierungsliste ausblenden' : 'Markierungsliste anzeigen'}
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg border text-sm ${
+                    zeigeListe ? 'border-brand bg-brand-soft text-brand-text' : 'border-border-strong text-text'
+                  }`}
+                >
+                  <List className="h-3.5 w-3.5" strokeWidth={2.25} />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setZeigePunkte((v) => !v)}
@@ -757,9 +778,16 @@ export function PlanDetail() {
                   Zurücksetzen
                 </button>
               )}
-            </div>
-          </div>
-          <div ref={viewportRef} className="w-full overflow-hidden rounded-xl border border-border">
+        </div>
+      </div>
+      <p className="relative z-10 border-b border-border bg-surface/80 px-3 py-1 text-[11px] text-text-muted backdrop-blur-sm">
+        {!canMark
+          ? 'PDF wird geladen…'
+          : zeichenModus === 'rechteck'
+            ? 'Auf dem Plan ziehen, um ein Rechteck (z. B. um eine Tür) zu markieren.'
+            : 'Auf den Plan tippen, um eine Aufgabe zu markieren. Vorhandene Markierung antippen zum Bearbeiten.'}
+      </p>
+      <div ref={viewportRef} className="relative flex-1 overflow-hidden">
             <div
               onClick={handlePlanClick}
               onMouseDown={handleContentMouseDown}
@@ -922,10 +950,12 @@ export function PlanDetail() {
                   </button>
                 ))}
             </div>
-          </div>
+      </div>
 
-          {pendingPos && (
-            <form onSubmit={handleCreate} className="card mt-3 space-y-3 p-4">
+      {panel && (
+        <div className="absolute inset-x-0 bottom-0 z-20 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-4 shadow-2xl">
+          {panel === 'neu' && (
+            <form onSubmit={handleCreate} className="space-y-3">
               <div className="text-sm font-medium text-text">Neue Aufgabe an dieser Position</div>
               <div>
                 <label className="field-label">Titel</label>
@@ -998,8 +1028,8 @@ export function PlanDetail() {
             </form>
           )}
 
-          {vorschauMarkierungen && (
-            <div className="card mt-3 space-y-3 p-4">
+          {panel === 'erkennung' && vorschauMarkierungen && (
+            <div className="space-y-3">
               <div className="text-sm font-medium text-text">
                 {vorschauMarkierungen.length} Markierung{vorschauMarkierungen.length === 1 ? '' : 'en'} automatisch erkannt
               </div>
@@ -1061,8 +1091,8 @@ export function PlanDetail() {
             </div>
           )}
 
-          {selectedPin && (
-            <div className="card mt-3 space-y-3 p-4">
+          {panel === 'details' && selectedPin && (
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium text-text">{selectedPin.titel}</div>
                 <button onClick={() => setSelectedPin(null)} className="text-xs text-text-muted">
@@ -1135,9 +1165,15 @@ export function PlanDetail() {
             </div>
           )}
 
-          {pins.length > 0 && (
-            <div className="mt-4">
-              <div className="relative mb-2">
+          {panel === 'liste' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium text-text">Markierungen</div>
+                <button onClick={() => setZeigeListe(false)} className="text-xs text-text-muted">
+                  Schließen
+                </button>
+              </div>
+              <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-subtle" strokeWidth={2.25} />
                 <input
                   value={pinSuche}

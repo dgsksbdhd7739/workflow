@@ -1,6 +1,6 @@
 # WorkFlow
 
-Baustellen-Management-App: Aufgabenmanagement, Pläne mit Markierungen, Bautagebuch/Tagesberichte und Zeiterfassung. Läuft als Web-App (Browser), Android-App (Capacitor) und Windows-Desktop-App (Tauri) aus derselben React/TypeScript-Codebasis.
+Projekt-Management-App: Aufgabenmanagement, Pläne mit Markierungen, Bautagebuch/Tagesberichte und Zeiterfassung. Läuft als Web-App (Browser), Android-App (Capacitor) und Windows-Desktop-App (Tauri) aus derselben React/TypeScript-Codebasis.
 
 ## Tech-Stack
 
@@ -36,10 +36,10 @@ npx tauri build           # Windows-Desktop, Release-Installer
 
 ## Datenmodell (Kurzüberblick)
 
-- `baustellen` — Baustellen/Projekte (oberste Ebene)
-- `maengel` — Mängel je Baustelle, mit Status/Priorität/Foto/optionaler Plan-Position
+- `baustellen` — Projekte (oberste Ebene; Tabellenname historisch, in der UI durchgängig "Projekt" genannt)
+- `maengel` — Aufgaben je Projekt, mit Status/Priorität/Foto/optionaler Plan-Position (Tabellenname historisch, in der UI "Aufgabe" genannt)
 - `plaene` + `plan_markierungen` — hochgeladene Pläne und Pins darauf
-- `tagesberichte` — Bautagebuch-Einträge je Tag/Baustelle
-- `zeiterfassung` — Arbeitszeiten je Mitarbeiter/Baustelle
+- `tagesberichte` — Bautagebuch-Einträge je Tag/Projekt
+- `zeiterfassung` — Arbeitszeiten je Mitarbeiter/Projekt
 
 Mandantenfähig: Daten sind strikt pro Firma (`unternehmen`) getrennt (Row Level Security), innerhalb einer Firma sieht/bearbeitet jeder eingeloggte Nutzer je nach Rolle die gemeinsamen Daten. Neue Firma anlegen: [docs/firma-erstellen.md](docs/firma-erstellen.md).

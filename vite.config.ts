@@ -19,7 +19,7 @@ export default defineConfig({
       manifest: {
         name: 'WorkFlow',
         short_name: 'WorkFlow',
-        description: 'Aufgabenmanagement, Pläne, Bautagebuch und Zeiterfassung für Baustellen',
+        description: 'Aufgabenmanagement, Pläne, Bautagebuch und Zeiterfassung für Projekte',
         theme_color: '#2563eb',
         background_color: '#f8fafc',
         display: 'standalone',

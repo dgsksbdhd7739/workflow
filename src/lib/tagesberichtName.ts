@@ -1,4 +1,4 @@
-import type { Baustelle, Tagesbericht } from '../types/database'
+import type { Projekt, Tagesbericht } from '../types/database'
 
 // Fortlaufende Nummer je Bericht innerhalb eines Projekts, nach Datum
 // (bei gleichem Datum nach Erstellzeit) aufsteigend vergeben -- unabhaengig
@@ -15,7 +15,7 @@ export function tagesberichtNummern(berichte: Tagesbericht[]): Record<string, nu
   return map
 }
 
-export function tagesberichtName(baustelle: Baustelle, bericht: Tagesbericht, nummer: number): string {
-  const projektname = baustelle.name.trim().replace(/\s+/g, '_')
+export function tagesberichtName(projekt: Projekt, bericht: Tagesbericht, nummer: number): string {
+  const projektname = projekt.name.trim().replace(/\s+/g, '_')
   return `TB_${projektname}_${nummer}_${bericht.datum}`
 }

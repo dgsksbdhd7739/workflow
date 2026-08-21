@@ -2,48 +2,48 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { exportMaterialPdf } from '../lib/pdf'
-import type { Baustelle, MangelMaterial } from '../types/database'
+import type { Projekt, AufgabeMaterial } from '../types/database'
 
-interface MaterialZeile extends MangelMaterial {
-  mangel_titel: string
+interface MaterialZeile extends AufgabeMaterial {
+  aufgabe_titel: string
   plan_id: string | null
 }
 
 export function Material() {
-  const { id: baustelleId } = useParams<{ id: string }>()
-  const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
+  const { id: projektId } = useParams<{ id: string }>()
+  const [projekt, setProjekt] = useState<Projekt | null>(null)
   const [zeilen, setZeilen] = useState<MaterialZeile[]>([])
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
-    if (!baustelleId) return
+    if (!projektId) return
     setLoading(true)
-    const [{ data: baustelleData }, { data: maengelData }] = await Promise.all([
-      supabase.from('baustellen').select('*').eq('id', baustelleId).single(),
-      supabase.from('maengel').select('id, titel, plan_id').eq('baustelle_id', baustelleId),
+    const [{ data: projektData }, { data: aufgabenData }] = await Promise.all([
+      supabase.from('projekte').select('*').eq('id', projektId).single(),
+      supabase.from('aufgaben').select('id, titel, plan_id').eq('projekt_id', projektId),
     ])
-    setBaustelle(baustelleData)
-    const mangelIds = (maengelData ?? []).map((m) => m.id)
-    const titelMap = Object.fromEntries((maengelData ?? []).map((m) => [m.id, m.titel]))
-    const planMap = Object.fromEntries((maengelData ?? []).map((m) => [m.id, m.plan_id]))
+    setProjekt(projektData)
+    const aufgabeIds = (aufgabenData ?? []).map((m) => m.id)
+    const titelMap = Object.fromEntries((aufgabenData ?? []).map((m) => [m.id, m.titel]))
+    const planMap = Object.fromEntries((aufgabenData ?? []).map((m) => [m.id, m.plan_id]))
 
-    if (mangelIds.length === 0) {
+    if (aufgabeIds.length === 0) {
       setZeilen([])
       setLoading(false)
       return
     }
 
     const { data: materialData } = await supabase
-      .from('mangel_material')
+      .from('aufgabe_material')
       .select('*')
-      .in('mangel_id', mangelIds)
+      .in('aufgabe_id', aufgabeIds)
       .order('bezeichnung')
 
     setZeilen(
       (materialData ?? []).map((m) => ({
         ...m,
-        mangel_titel: titelMap[m.mangel_id] ?? '—',
-        plan_id: planMap[m.mangel_id] ?? null,
+        aufgabe_titel: titelMap[m.aufgabe_id] ?? '—',
+        plan_id: planMap[m.aufgabe_id] ?? null,
       })),
     )
     setLoading(false)
@@ -52,7 +52,7 @@ export function Material() {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baustelleId])
+  }, [projektId])
 
   const summe = useMemo(() => {
     const map = new Map<string, { bezeichnung: string; einheit: string | null; menge: number; anzahl: number }>()
@@ -75,8 +75,8 @@ export function Material() {
             Alle Materiallisten der Aufgaben/Markierungen dieses Projekts, zusammengefasst.
           </p>
         </div>
-        {baustelle && zeilen.length > 0 && (
-          <button onClick={() => exportMaterialPdf(baustelle, summe)} className="btn-secondary">
+        {projekt && zeilen.length > 0 && (
+          <button onClick={() => exportMaterialPdf(projekt, summe)} className="btn-secondary">
             PDF exportieren
           </button>
         )}
@@ -131,11 +131,11 @@ export function Material() {
                     </span>
                   </div>
                   <div className="truncate text-xs text-text-subtle">
-                    {z.mangel_titel}
-                    {z.plan_id && baustelleId && (
+                    {z.aufgabe_titel}
+                    {z.plan_id && projektId && (
                       <>
                         {' · '}
-                        <Link to={`/baustellen/${baustelleId}/plaene/${z.plan_id}`} className="text-brand">
+                        <Link to={`/projekte/${projektId}/plaene/${z.plan_id}`} className="text-brand">
                           Plan ansehen
                         </Link>
                       </>

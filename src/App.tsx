@@ -9,7 +9,7 @@ import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { ProjektDashboard } from './pages/ProjektDashboard'
-import { Maengel } from './pages/Maengel'
+import { Aufgaben } from './pages/Aufgaben'
 import { Material } from './pages/Material'
 import { Plaene } from './pages/Plaene'
 import { PlanDetail } from './pages/PlanDetail'
@@ -62,15 +62,15 @@ function App() {
               <Route path="/team-chat" element={<Gruppenchat />} />
               <Route path="/projekt-chat" element={<ProjektChat />} />
               <Route path="/material-stamm" element={<MaterialStamm />} />
-              <Route path="/baustellen/:id" element={<ProjektDashboard />} />
-              <Route path="/baustellen/:id/maengel" element={<Maengel />} />
-              <Route path="/baustellen/:id/material" element={<Material />} />
-              <Route path="/baustellen/:id/plaene" element={<Plaene />} />
-              <Route path="/baustellen/:id/plaene/:planId" element={<PlanDetail />} />
-              <Route path="/baustellen/:id/dokumente" element={<Dokumente />} />
-              <Route path="/baustellen/:id/tagesberichte" element={<Tagesberichte />} />
-              <Route path="/baustellen/:id/zeiterfassung" element={<Zeiterfassung />} />
-              <Route path="/baustellen/:id/termine" element={<Termine />} />
+              <Route path="/projekte/:id" element={<ProjektDashboard />} />
+              <Route path="/projekte/:id/aufgaben" element={<Aufgaben />} />
+              <Route path="/projekte/:id/material" element={<Material />} />
+              <Route path="/projekte/:id/plaene" element={<Plaene />} />
+              <Route path="/projekte/:id/plaene/:planId" element={<PlanDetail />} />
+              <Route path="/projekte/:id/dokumente" element={<Dokumente />} />
+              <Route path="/projekte/:id/tagesberichte" element={<Tagesberichte />} />
+              <Route path="/projekte/:id/zeiterfassung" element={<Zeiterfassung />} />
+              <Route path="/projekte/:id/termine" element={<Termine />} />
             </Route>
           </Route>
         </Routes>

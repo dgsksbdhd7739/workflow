@@ -8,10 +8,10 @@ import { formatKundenAdresse, formatProjektAdresse, formatUnternehmenAdresse } f
 import { formatDatum } from './datum'
 import { tagesberichtName, tagesberichtNummern } from './tagesberichtName'
 import type {
-  Baustelle,
-  Mangel,
-  MangelKommentar,
-  MangelMaterial,
+  Projekt,
+  Aufgabe,
+  AufgabeKommentar,
+  AufgabeMaterial,
   StatusVorlageWert,
   Tagesbericht,
   TagesberichtTuer,
@@ -228,7 +228,7 @@ function bildGroesseInBox(breite: number, hoehe: number, maxBreite: number, maxH
   return { breite: breite * skala, hoehe: hoehe * skala }
 }
 
-async function kopfzeile(doc: jsPDF, titel: string, baustelle: Baustelle, unternehmen: Unternehmen | null): Promise<number> {
+async function kopfzeile(doc: jsPDF, titel: string, projekt: Projekt, unternehmen: Unternehmen | null): Promise<number> {
   // Markenbalken als Briefkopf-Signal am oberen Seitenrand.
   doc.setFillColor(...FARBE.marke)
   doc.rect(0, 0, 210, 2.5, 'F')
@@ -266,13 +266,13 @@ async function kopfzeile(doc: jsPDF, titel: string, baustelle: Baustelle, untern
   doc.setTextColor(...FARBE.gedaempft)
 
   let y = 28
-  const projektAdresse = formatProjektAdresse(baustelle)
-  doc.text(baustelle.name + (projektAdresse ? ` — ${projektAdresse}` : ''), 14, y)
+  const projektAdresse = formatProjektAdresse(projekt)
+  doc.text(projekt.name + (projektAdresse ? ` — ${projektAdresse}` : ''), 14, y)
   y += 5
 
-  const kundenAdresse = formatKundenAdresse(baustelle)
-  if (baustelle.kunde_name || kundenAdresse) {
-    const kundenZeile = ['Kunde:', baustelle.kunde_name, kundenAdresse ? `(${kundenAdresse})` : null]
+  const kundenAdresse = formatKundenAdresse(projekt)
+  if (projekt.kunde_name || kundenAdresse) {
+    const kundenZeile = ['Kunde:', projekt.kunde_name, kundenAdresse ? `(${kundenAdresse})` : null]
       .filter(Boolean)
       .join(' ')
     doc.text(kundenZeile, 14, y)
@@ -281,7 +281,7 @@ async function kopfzeile(doc: jsPDF, titel: string, baustelle: Baustelle, untern
 
   const erstelltText = `Erstellt am ${new Date().toLocaleDateString('de-DE')}`
   doc.text(
-    baustelle.projekt_ende ? `${erstelltText} · Projekt fällig bis ${formatDatum(baustelle.projekt_ende)}` : erstelltText,
+    projekt.projekt_ende ? `${erstelltText} · Projekt fällig bis ${formatDatum(projekt.projekt_ende)}` : erstelltText,
     14,
     y,
   )
@@ -299,21 +299,21 @@ async function kopfzeile(doc: jsPDF, titel: string, baustelle: Baustelle, untern
 // Pro Aufgabe ein Block statt einer Tabellenzeile: Titel, der aktuelle
 // Fortschritt (Statusvorlagen-Wert, nicht der rohe Status/Prioritaet/
 // Verantwortlicher), zugehoeriges Material und Kommentare samt Fotos.
-export async function exportMaengelPdf(
-  baustelle: Baustelle,
-  maengel: Mangel[],
-  material: MangelMaterial[],
-  kommentare: MangelKommentar[],
+export async function exportAufgabenPdf(
+  projekt: Projekt,
+  aufgaben: Aufgabe[],
+  material: AufgabeMaterial[],
+  kommentare: AufgabeKommentar[],
   werteMap: Record<string, StatusVorlageWert>,
   nameOf: (id: string | null) => string,
 ) {
   const doc = new jsPDF()
   const unternehmen = await holeUnternehmen()
-  let y = await kopfzeile(doc, 'Aufgabenliste', baustelle, unternehmen)
+  let y = await kopfzeile(doc, 'Aufgabenliste', projekt, unternehmen)
   const seitenEnde = 278
   const fotoGroesse = 30
 
-  for (const m of maengel) {
+  for (const m of aufgaben) {
     if (y > seitenEnde - 16) {
       doc.addPage()
       y = 20
@@ -342,7 +342,7 @@ export async function exportMaengelPdf(
       y += 4.5
     }
 
-    const materialListe = material.filter((mm) => mm.mangel_id === m.id)
+    const materialListe = material.filter((mm) => mm.aufgabe_id === m.id)
     if (materialListe.length > 0) {
       doc.setFontSize(7.5)
       doc.setTextColor(...FARBE.dezent)
@@ -352,7 +352,7 @@ export async function exportMaengelPdf(
       y = zeichneChips(doc, chips, 14, y, 196)
     }
 
-    const kommentareListe = kommentare.filter((k) => k.mangel_id === m.id)
+    const kommentareListe = kommentare.filter((k) => k.aufgabe_id === m.id)
     for (const k of kommentareListe) {
       if (y > seitenEnde - 20) {
         doc.addPage()
@@ -386,16 +386,16 @@ export async function exportMaengelPdf(
   }
 
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
-  await pdfSpeichernOderTeilen(doc, `${baustelle.name}-aufgabenliste.pdf`)
+  await pdfSpeichernOderTeilen(doc, `${projekt.name}-aufgabenliste.pdf`)
 }
 
 export async function exportMaterialPdf(
-  baustelle: Baustelle,
+  projekt: Projekt,
   summe: { bezeichnung: string; einheit: string | null; menge: number; anzahl: number }[],
 ) {
   const doc = new jsPDF()
   const unternehmen = await holeUnternehmen()
-  const startY = await kopfzeile(doc, 'Materialliste', baustelle, unternehmen)
+  const startY = await kopfzeile(doc, 'Materialliste', projekt, unternehmen)
   autoTable(doc, {
     startY,
     margin: { left: 14, right: 14 },
@@ -406,11 +406,11 @@ export async function exportMaterialPdf(
     alternateRowStyles: { fillColor: FARBE.flaeche },
   })
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
-  await pdfSpeichernOderTeilen(doc, `${baustelle.name}-materialliste.pdf`)
+  await pdfSpeichernOderTeilen(doc, `${projekt.name}-materialliste.pdf`)
 }
 
 // Ermittelt je Aufgabe die fuer ihr Projekt hinterlegten Fortschrittfelder --
-// dieselbe Herleitung wie in MangelDetails: ueber den Plan der Aufgabe zur
+// dieselbe Herleitung wie in AufgabeDetails: ueber den Plan der Aufgabe zur
 // dortigen Statusvorlage, sonst die unternehmensweite Standardvorlage. Ein
 // Cache pro PDF-Export vermeidet wiederholte Abfragen fuer Aufgaben, die
 // denselben Plan/dieselbe Vorlage teilen.
@@ -424,7 +424,7 @@ function neueFortschrittCache(): FortschrittCache {
   return { planZuVorlage: new Map(), werteProVorlage: new Map() }
 }
 
-async function ermittleVorlageId(m: Mangel, cache: FortschrittCache): Promise<string | null> {
+async function ermittleVorlageId(m: Aufgabe, cache: FortschrittCache): Promise<string | null> {
   if (m.plan_id) {
     if (!cache.planZuVorlage.has(m.plan_id)) {
       const { data } = await supabase.from('plaene').select('statusvorlage_id').eq('id', m.plan_id).single()
@@ -446,7 +446,7 @@ interface FortschrittFeld {
   aktiv: boolean
 }
 
-async function holeFortschrittfelder(m: Mangel, cache: FortschrittCache): Promise<FortschrittFeld[]> {
+async function holeFortschrittfelder(m: Aufgabe, cache: FortschrittCache): Promise<FortschrittFeld[]> {
   const vorlageId = await ermittleVorlageId(m, cache)
   if (!vorlageId) return []
   if (!cache.werteProVorlage.has(vorlageId)) {
@@ -694,7 +694,7 @@ function aufgabenBlock(doc: jsPDF, yStart: number, daten: AufgabenBlockDaten, nu
   return Math.max(y1, y2, y3)
 }
 
-// Rendert einen einzelnen Tagesbericht-Block (Datum, Wetter, Tueren-Stand,
+// Rendert einen einzelnen Tagesbericht-Block (Datum, Tueren-Stand,
 // Zeiterfassung je Aufgabe mit Fortschritt, Material, Kommentaren, Fotos).
 // Wird sowohl fuer den Sammel-Export (alle Berichte) als auch fuer das
 // Oeffnen/Exportieren eines einzelnen Berichts verwendet.
@@ -705,9 +705,9 @@ async function zeichneTagesberichtTag(
   b: Tagesbericht,
   dokName: string,
   zeiten: Zeiterfassung[],
-  maengel: Mangel[],
-  material: MangelMaterial[],
-  kommentare: MangelKommentar[],
+  aufgaben: Aufgabe[],
+  material: AufgabeMaterial[],
+  kommentare: AufgabeKommentar[],
   tueren: TagesberichtTuer[],
   nameOf: (id: string | null) => string,
   fortschrittCache: FortschrittCache,
@@ -732,8 +732,6 @@ async function zeichneTagesberichtTag(
   y += 4.2
 
     const metaChips = [
-      b.wetter ? `☁ ${b.wetter}` : null,
-      b.temperatur !== null ? `${b.temperatur}°C` : null,
       b.personal_anzahl !== null ? `Personal: ${b.personal_anzahl}` : null,
     ].filter((z): z is string => Boolean(z))
     if (metaChips.length > 0) {
@@ -785,13 +783,13 @@ async function zeichneTagesberichtTag(
     if (tagesZeiten.length > 0 || kommentareHeute.length > 0) {
       const gruppen = new Map<string, Zeiterfassung[]>()
       for (const z of tagesZeiten) {
-        const key = z.mangel_id ?? '__allgemein__'
+        const key = z.aufgabe_id ?? '__allgemein__'
         const liste = gruppen.get(key) ?? []
         liste.push(z)
         gruppen.set(key, liste)
       }
       for (const k of kommentareHeute) {
-        if (!gruppen.has(k.mangel_id)) gruppen.set(k.mangel_id, [])
+        if (!gruppen.has(k.aufgabe_id)) gruppen.set(k.aufgabe_id, [])
       }
 
       for (const [key, eintraege] of gruppen) {
@@ -818,17 +816,17 @@ async function zeichneTagesberichtTag(
           continue
         }
 
-        const m = maengel.find((x) => x.id === key)
+        const m = aufgaben.find((x) => x.id === key)
         const technikerNamen = [...new Set(eintraege.map((e) => nameOf(e.user_id)))].join(', ') || null
         const gesamtDauer = eintraege.reduce((sum, e) => sum + eintragMinuten(e), 0)
-        const materialListe = material.filter((x) => x.mangel_id === key)
+        const materialListe = material.filter((x) => x.aufgabe_id === key)
         const materialChips = materialListe.map(
           (mm) => `${mm.bezeichnung} (${mm.menge}${mm.einheit ? ` ${mm.einheit}` : ''})`,
         )
         const fortschrittfelder = m ? await holeFortschrittfelder(m, fortschrittCache) : []
 
         const kommentareDaten: AufgabenKommentarEintrag[] = []
-        const kommentareListe = kommentareHeute.filter((x) => x.mangel_id === key && (x.text || x.foto_pfad))
+        const kommentareListe = kommentareHeute.filter((x) => x.aufgabe_id === key && (x.text || x.foto_pfad))
         for (const k of kommentareListe) {
           const bild = k.foto_pfad ? await bildFuerPdf(k.foto_pfad, 'mangel-fotos') : null
           kommentareDaten.push({ text: k.text, autor: nameOf(k.erstellt_von), bild })
@@ -867,18 +865,18 @@ async function zeichneTagesberichtTag(
 }
 
 export async function exportTagesberichtePdf(
-  baustelle: Baustelle,
+  projekt: Projekt,
   berichte: Tagesbericht[],
   zeiten: Zeiterfassung[],
-  maengel: Mangel[],
-  material: MangelMaterial[],
-  kommentare: MangelKommentar[],
+  aufgaben: Aufgabe[],
+  material: AufgabeMaterial[],
+  kommentare: AufgabeKommentar[],
   tueren: TagesberichtTuer[],
   nameOf: (id: string | null) => string,
 ) {
   const doc = new jsPDF()
   const unternehmen = await holeUnternehmen()
-  let y = await kopfzeile(doc, 'Bautagebuch', baustelle, unternehmen)
+  let y = await kopfzeile(doc, 'Bautagebuch', projekt, unternehmen)
   const seitenEnde = 278
   const nummern = tagesberichtNummern(berichte)
   const fortschrittCache = neueFortschrittCache()
@@ -893,9 +891,9 @@ export async function exportTagesberichtePdf(
       y,
       seitenEnde,
       b,
-      tagesberichtName(baustelle, b, nummern[b.id]),
+      tagesberichtName(projekt, b, nummern[b.id]),
       zeiten,
-      maengel,
+      aufgaben,
       material,
       kommentare,
       tueren,
@@ -909,26 +907,26 @@ export async function exportTagesberichtePdf(
   }
 
   fusszeilenEinfuegen(doc, unternehmen?.name ?? null)
-  await pdfSpeichernOderTeilen(doc, `${baustelle.name}-bautagebuch.pdf`)
+  await pdfSpeichernOderTeilen(doc, `${projekt.name}-bautagebuch.pdf`)
 }
 
 // Baut den PDF-Dokument einzeln fuer einen Bericht, ohne ihn zu speichern/
 // teilen -- der Aufrufer zeigt ihn typischerweise erst in einem internen
 // Viewer an (siehe PdfViewerModal) und bietet erst von dort aus Teilen an.
 export async function erzeugeEinzelnenTagesberichtPdf(
-  baustelle: Baustelle,
+  projekt: Projekt,
   bericht: Tagesbericht,
   zeiten: Zeiterfassung[],
-  maengel: Mangel[],
-  material: MangelMaterial[],
-  kommentare: MangelKommentar[],
+  aufgaben: Aufgabe[],
+  material: AufgabeMaterial[],
+  kommentare: AufgabeKommentar[],
   tueren: TagesberichtTuer[],
   nameOf: (id: string | null) => string,
   dokumentname: string,
 ): Promise<jsPDF> {
   const doc = new jsPDF()
   const unternehmen = await holeUnternehmen()
-  let y = await kopfzeile(doc, 'Bautagebuch', baustelle, unternehmen)
+  let y = await kopfzeile(doc, 'Bautagebuch', projekt, unternehmen)
   const seitenEnde = 278
 
   await zeichneTagesberichtTag(
@@ -938,7 +936,7 @@ export async function erzeugeEinzelnenTagesberichtPdf(
     bericht,
     dokumentname,
     zeiten,
-    maengel,
+    aufgaben,
     material,
     kommentare,
     tueren,

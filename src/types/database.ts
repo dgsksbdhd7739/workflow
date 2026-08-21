@@ -1,5 +1,5 @@
-export type MangelStatus = 'offen' | 'in_bearbeitung' | 'erledigt'
-export type MangelPrioritaet = 'niedrig' | 'mittel' | 'hoch'
+export type AufgabeStatus = 'offen' | 'in_bearbeitung' | 'erledigt'
+export type AufgabePrioritaet = 'niedrig' | 'mittel' | 'hoch'
 
 export type Rolle = 'admin' | 'planer' | 'techniker' | 'kunde'
 
@@ -39,13 +39,13 @@ export interface ChatNachricht {
 
 export interface ProjektChatNachricht {
   id: string
-  baustelle_id: string
+  projekt_id: string
   user_id: string
   text: string
   erstellt_am: string
 }
 
-export interface Baustelle {
+export interface Projekt {
   id: string
   unternehmen_id: string
   name: string
@@ -75,13 +75,13 @@ export interface Baustelle {
   created_at: string
 }
 
-export interface Mangel {
+export interface Aufgabe {
   id: string
-  baustelle_id: string
+  projekt_id: string
   titel: string
   beschreibung: string | null
-  status: MangelStatus
-  prioritaet: MangelPrioritaet
+  status: AufgabeStatus
+  prioritaet: AufgabePrioritaet
   verantwortlicher_id: string | null
   faellig_am: string | null
   foto_pfad: string | null
@@ -99,7 +99,7 @@ export interface Mangel {
 
 export interface Plan {
   id: string
-  baustelle_id: string
+  projekt_id: string
   name: string
   datei_pfad: string
   statusvorlage_id: string | null
@@ -109,10 +109,8 @@ export interface Plan {
 
 export interface Tagesbericht {
   id: string
-  baustelle_id: string
+  projekt_id: string
   datum: string
-  wetter: string | null
-  temperatur: number | null
   personal_anzahl: number | null
   taetigkeiten: string | null
   besonderheiten: string | null
@@ -122,14 +120,14 @@ export interface Tagesbericht {
 
 export interface Zeiterfassung {
   id: string
-  baustelle_id: string
+  projekt_id: string
   user_id: string
   datum: string
   start_zeit: string
   end_zeit: string | null
   pause_minuten: number
   taetigkeit: string | null
-  mangel_id: string | null
+  aufgabe_id: string | null
   foto_pfad: string | null
   erstellt_am: string
 }
@@ -138,7 +136,7 @@ export type TerminStatus = 'geplant' | 'laufend' | 'abgeschlossen' | 'verzoegert
 
 export interface Termin {
   id: string
-  baustelle_id: string
+  projekt_id: string
   titel: string
   start_datum: string
   end_datum: string
@@ -148,20 +146,20 @@ export interface Termin {
   erstellt_am: string
 }
 
-export interface MangelPhase {
+export interface AufgabePhase {
   id: string
-  mangel_id: string
+  aufgabe_id: string
   titel: string
   reihenfolge: number
-  status: MangelStatus
+  status: AufgabeStatus
   notiz: string | null
   erstellt_von: string
   erstellt_am: string
 }
 
-export interface MangelMaterial {
+export interface AufgabeMaterial {
   id: string
-  mangel_id: string
+  aufgabe_id: string
   bezeichnung: string
   menge: number
   einheit: string | null
@@ -181,9 +179,9 @@ export interface MaterialStamm {
   erstellt_am: string
 }
 
-export interface MangelKommentar {
+export interface AufgabeKommentar {
   id: string
-  mangel_id: string
+  aufgabe_id: string
   text: string | null
   foto_pfad: string | null
   erstellt_von: string
@@ -203,8 +201,8 @@ export type DokumentKategorie = 'projekt' | 'aufgabe'
 
 export interface Dokument {
   id: string
-  baustelle_id: string
-  mangel_id: string | null
+  projekt_id: string
+  aufgabe_id: string | null
   kategorie: DokumentKategorie
   name: string
   datei_pfad: string
@@ -225,7 +223,7 @@ export interface StatusVorlageWert {
 export interface TagesberichtTuer {
   id: string
   tagesbericht_id: string
-  mangel_id: string | null
+  aufgabe_id: string | null
   titel: string
   stand: string
   reihenfolge: number

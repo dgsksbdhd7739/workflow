@@ -47,17 +47,17 @@ const mainNav: NavItem[] = [
   { to: '/einstellungen', label: 'Einstellungen', icon: Settings, end: false },
 ]
 
-function baustelleNav(id: string): NavItem[] {
+function projektNav(id: string): NavItem[] {
   return [
-    { to: `/baustellen/${id}`, label: 'Übersicht', icon: LayoutDashboard, end: true, primary: true },
-    { to: `/baustellen/${id}/plaene`, label: 'Pläne', icon: MapIcon, end: false, primary: true },
-    { to: `/baustellen/${id}/dokumente`, label: 'Dokumente', icon: FileText, end: false },
-    { to: `/baustellen/${id}/maengel`, label: 'Aufgaben', icon: ListChecks, end: false, primary: true },
-    { to: `/baustellen/${id}/tagesberichte`, label: 'Tagesberichte', icon: ClipboardList, end: false },
-    { to: `/baustellen/${id}/material`, label: 'Material', icon: Package, end: false },
-    { to: `/baustellen/${id}/termine`, label: 'Termine', icon: CalendarDays, end: false },
+    { to: `/projekte/${id}`, label: 'Übersicht', icon: LayoutDashboard, end: true, primary: true },
+    { to: `/projekte/${id}/plaene`, label: 'Pläne', icon: MapIcon, end: false, primary: true },
+    { to: `/projekte/${id}/dokumente`, label: 'Dokumente', icon: FileText, end: false },
+    { to: `/projekte/${id}/aufgaben`, label: 'Aufgaben', icon: ListChecks, end: false, primary: true },
+    { to: `/projekte/${id}/tagesberichte`, label: 'Tagesberichte', icon: ClipboardList, end: false },
+    { to: `/projekte/${id}/material`, label: 'Material', icon: Package, end: false },
+    { to: `/projekte/${id}/termine`, label: 'Termine', icon: CalendarDays, end: false },
     {
-      to: `/baustellen/${id}/zeiterfassung`,
+      to: `/projekte/${id}/zeiterfassung`,
       label: 'Zeiterfassung',
       icon: Clock,
       end: false,
@@ -84,7 +84,7 @@ export function Layout() {
   const online = useOnlineStatus()
 
   const navHaupt = mainNav.filter((item) => passtZurRolle(item, role))
-  const navProjekt = id ? baustelleNav(id).filter((item) => passtZurRolle(item, role)) : []
+  const navProjekt = id ? projektNav(id).filter((item) => passtZurRolle(item, role)) : []
   const navUnten = id ? [mainNav[0], ...navProjekt.filter((item) => item.primary)] : navHaupt
 
   return (

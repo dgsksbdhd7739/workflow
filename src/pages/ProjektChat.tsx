@@ -4,7 +4,7 @@ import { MessageCircle, Send, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
-import type { Baustelle, ProjektChatNachricht } from '../types/database'
+import type { Projekt, ProjektChatNachricht } from '../types/database'
 
 function formatUhrzeit(iso: string) {
   const d = new Date(iso)
@@ -35,8 +35,8 @@ export function ProjektChat() {
   const { nameOf } = useProfiles()
   const [searchParams] = useSearchParams()
   const vorausgewaehlteId = searchParams.get('projekt')
-  const [baustellen, setBaustellen] = useState<Baustelle[]>([])
-  const [baustelleId, setBaustelleId] = useState('')
+  const [projekte, setProjekte] = useState<Projekt[]>([])
+  const [projektId, setProjektId] = useState('')
   const [nachrichten, setNachrichten] = useState<ProjektChatNachricht[]>([])
   const [text, setText] = useState('')
   const [ladeProjekte, setLadeProjekte] = useState(true)
@@ -47,15 +47,15 @@ export function ProjektChat() {
 
   useEffect(() => {
     supabase
-      .from('baustellen')
+      .from('projekte')
       .select('*')
       .eq('archiviert', false)
       .order('name')
       .then(({ data }) => {
-        setBaustellen(data ?? [])
+        setProjekte(data ?? [])
         if (data && data.length > 0) {
           const passt = vorausgewaehlteId && data.some((b) => b.id === vorausgewaehlteId)
-          setBaustelleId(passt ? vorausgewaehlteId! : data[0].id)
+          setProjektId(passt ? vorausgewaehlteId! : data[0].id)
         }
         setLadeProjekte(false)
       })
@@ -63,7 +63,7 @@ export function ProjektChat() {
   }, [vorausgewaehlteId])
 
   useEffect(() => {
-    if (!baustelleId) {
+    if (!projektId) {
       setNachrichten([])
       setLoading(false)
       return
@@ -72,7 +72,7 @@ export function ProjektChat() {
     supabase
       .from('projekt_chat_nachrichten')
       .select('*')
-      .eq('baustelle_id', baustelleId)
+      .eq('projekt_id', projektId)
       .order('erstellt_am', { ascending: true })
       .limit(200)
       .then(({ data }) => {
@@ -81,10 +81,10 @@ export function ProjektChat() {
       })
 
     const channel = supabase
-      .channel(`projekt-chat-${baustelleId}`)
+      .channel(`projekt-chat-${projektId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'projekt_chat_nachrichten', filter: `baustelle_id=eq.${baustelleId}` },
+        { event: 'INSERT', schema: 'public', table: 'projekt_chat_nachrichten', filter: `projekt_id=eq.${projektId}` },
         (payload) => {
           setNachrichten((prev) =>
             prev.some((n) => n.id === payload.new.id) ? prev : [...prev, payload.new as ProjektChatNachricht],
@@ -93,7 +93,7 @@ export function ProjektChat() {
       )
       .on(
         'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'projekt_chat_nachrichten', filter: `baustelle_id=eq.${baustelleId}` },
+        { event: 'DELETE', schema: 'public', table: 'projekt_chat_nachrichten', filter: `projekt_id=eq.${projektId}` },
         (payload) => {
           setNachrichten((prev) => prev.filter((n) => n.id !== payload.old.id))
         },
@@ -103,7 +103,7 @@ export function ProjektChat() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [baustelleId])
+  }, [projektId])
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
@@ -112,13 +112,13 @@ export function ProjektChat() {
   const handleSenden = async (e: FormEvent) => {
     e.preventDefault()
     const inhalt = text.trim()
-    if (!inhalt || !user || !baustelleId) return
+    if (!inhalt || !user || !projektId) return
     setSenden(true)
     setFehler(null)
     setText('')
     const { data, error } = await supabase
       .from('projekt_chat_nachrichten')
-      .insert({ baustelle_id: baustelleId, user_id: user.id, text: inhalt })
+      .insert({ projekt_id: projektId, user_id: user.id, text: inhalt })
       .select()
       .single()
     setSenden(false)
@@ -140,9 +140,9 @@ export function ProjektChat() {
     <div className="mx-auto flex h-full max-w-2xl flex-col px-4 py-6">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-text">Projekt-Chat</h1>
-        {!ladeProjekte && baustellen.length > 0 && (
-          <select value={baustelleId} onChange={(e) => setBaustelleId(e.target.value)} className="field-input w-auto">
-            {baustellen.map((b) => (
+        {!ladeProjekte && projekte.length > 0 && (
+          <select value={projektId} onChange={(e) => setProjektId(e.target.value)} className="field-input w-auto">
+            {projekte.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
               </option>
@@ -153,7 +153,7 @@ export function ProjektChat() {
 
       {fehler && <p className="banner-error mb-3">Fehler: {fehler}</p>}
 
-      {!ladeProjekte && baustellen.length === 0 ? (
+      {!ladeProjekte && projekte.length === 0 ? (
         <div className="card flex flex-1 flex-col items-center justify-center gap-2 py-12 text-center text-text-subtle">
           <MessageCircle className="h-8 w-8" strokeWidth={1.75} />
           <p className="text-sm">Noch keine Projekte angelegt.</p>

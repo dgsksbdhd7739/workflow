@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { SignedImage } from './SignedImage'
 import { komprimiereBild } from '../lib/bildKompression'
-import type { Dokument, Mangel, MangelKommentar, MangelMaterial, MaterialStamm, StatusVorlageWert } from '../types/database'
+import type { Dokument, Aufgabe, AufgabeKommentar, AufgabeMaterial, MaterialStamm, StatusVorlageWert } from '../types/database'
 
 // Gruen ist standardmaessig fuer "Abnahme" reserviert, deshalb hier nicht zur Auswahl.
 const fortschrittFarbPalette = ['#dc2626', '#ea580c', '#f59e0b', '#eab308', '#2563eb', '#9333ea', '#d946ef', '#6b7280']
@@ -22,13 +22,13 @@ function relativZeit(iso: string) {
   return `vor ${tage} Tag${tage === 1 ? '' : 'en'}`
 }
 
-export function MangelDetails({
-  mangelId,
+export function AufgabeDetails({
+  aufgabeId,
   werte: werteProp,
   vorlageId: vorlageIdProp,
   onChange,
 }: {
-  mangelId: string
+  aufgabeId: string
   werte?: StatusVorlageWert[]
   vorlageId?: string | null
   onChange?: () => void
@@ -39,13 +39,13 @@ export function MangelDetails({
   const kannMaterialAbhaken = role !== 'kunde'
   const kannFortschrittDefinieren = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
-  const [mangel, setMangel] = useState<Mangel | null>(null)
+  const [aufgabe, setAufgabe] = useState<Aufgabe | null>(null)
   const [werteLokal, setWerteLokal] = useState<StatusVorlageWert[]>([])
   const [vorlageIdLokal, setVorlageIdLokal] = useState<string | null>(null)
   const werte = werteProp ?? werteLokal
   const vorlageId = werteProp ? (vorlageIdProp ?? null) : vorlageIdLokal
-  const [kommentare, setKommentare] = useState<MangelKommentar[]>([])
-  const [material, setMaterial] = useState<MangelMaterial[]>([])
+  const [kommentare, setKommentare] = useState<AufgabeKommentar[]>([])
+  const [material, setMaterial] = useState<AufgabeMaterial[]>([])
   const [dokumente, setDokumente] = useState<Dokument[]>([])
   const [freieDokumente, setFreieDokumente] = useState<Dokument[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,35 +75,35 @@ export function MangelDetails({
 
   const load = async () => {
     setLoading(true)
-    const [{ data: mangelData }, { data: kommentareData }, { data: materialData }, { data: dokumenteData }] = await Promise.all([
-      supabase.from('maengel').select('*').eq('id', mangelId).single(),
-      supabase.from('mangel_kommentare').select('*').eq('mangel_id', mangelId).order('erstellt_am'),
-      supabase.from('mangel_material').select('*').eq('mangel_id', mangelId).order('reihenfolge'),
-      supabase.from('dokumente').select('*').eq('mangel_id', mangelId).order('erstellt_am', { ascending: false }),
+    const [{ data: aufgabeData }, { data: kommentareData }, { data: materialData }, { data: dokumenteData }] = await Promise.all([
+      supabase.from('aufgaben').select('*').eq('id', aufgabeId).single(),
+      supabase.from('aufgabe_kommentare').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am'),
+      supabase.from('aufgabe_material').select('*').eq('aufgabe_id', aufgabeId).order('reihenfolge'),
+      supabase.from('dokumente').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am', { ascending: false }),
     ])
-    setMangel(mangelData)
+    setAufgabe(aufgabeData)
     setKommentare(kommentareData ?? [])
     setMaterial(materialData ?? [])
     setDokumente(dokumenteData ?? [])
 
-    if (mangelData?.baustelle_id) {
+    if (aufgabeData?.projekt_id) {
       const { data: freieDokumenteData } = await supabase
         .from('dokumente')
         .select('*')
-        .eq('baustelle_id', mangelData.baustelle_id)
+        .eq('projekt_id', aufgabeData.projekt_id)
         .eq('kategorie', 'aufgabe')
-        .is('mangel_id', null)
+        .is('aufgabe_id', null)
         .order('erstellt_am', { ascending: false })
       setFreieDokumente(freieDokumenteData ?? [])
     }
 
     if (!werteProp) {
       let ermitteltId: string | null = null
-      if (mangelData?.plan_id) {
+      if (aufgabeData?.plan_id) {
         const { data: planData } = await supabase
           .from('plaene')
           .select('statusvorlage_id')
-          .eq('id', mangelData.plan_id)
+          .eq('id', aufgabeData.plan_id)
           .single()
         ermitteltId = planData?.statusvorlage_id ?? null
       }
@@ -135,7 +135,7 @@ export function MangelDetails({
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mangelId])
+  }, [aufgabeId])
 
   useEffect(() => {
     if (!kannMaterialDefinieren || !unternehmenId) return
@@ -149,16 +149,16 @@ export function MangelDetails({
   }, [kannMaterialDefinieren, unternehmenId])
 
   const waehleFortschritt = async (wert: StatusVorlageWert) => {
-    if (!mangel) return
+    if (!aufgabe) return
     setFehler(null)
     setAbnahmeFormFuerWert(null)
 
-    if (mangel.status_wert_id === wert.id) {
-      setMangel((prev) => (prev ? { ...prev, status_wert_id: null, abnahme_nummer: null } : prev))
+    if (aufgabe.status_wert_id === wert.id) {
+      setAufgabe((prev) => (prev ? { ...prev, status_wert_id: null, abnahme_nummer: null } : prev))
       const { error } = await supabase
-        .from('maengel')
+        .from('aufgaben')
         .update({ status_wert_id: null, abnahme_nummer: null })
-        .eq('id', mangelId)
+        .eq('id', aufgabeId)
       if (error) {
         setFehler(error.message)
         load()
@@ -174,11 +174,11 @@ export function MangelDetails({
       return
     }
 
-    setMangel((prev) => (prev ? { ...prev, status_wert_id: wert.id, abnahme_nummer: null } : prev))
+    setAufgabe((prev) => (prev ? { ...prev, status_wert_id: wert.id, abnahme_nummer: null } : prev))
     const { error } = await supabase
-      .from('maengel')
+      .from('aufgaben')
       .update({ status_wert_id: wert.id, abnahme_nummer: null })
-      .eq('id', mangelId)
+      .eq('id', aufgabeId)
     if (error) {
       setFehler(error.message)
       load()
@@ -194,14 +194,14 @@ export function MangelDetails({
     const wertId = abnahmeFormFuerWert
     const nummer = abnahmeNummerEingabe.trim()
     const { error } = await supabase
-      .from('maengel')
+      .from('aufgaben')
       .update({ status_wert_id: wertId, abnahme_nummer: nummer })
-      .eq('id', mangelId)
+      .eq('id', aufgabeId)
     if (error) {
       setFehler(error.message)
       return
     }
-    setMangel((prev) => (prev ? { ...prev, status_wert_id: wertId, abnahme_nummer: nummer } : prev))
+    setAufgabe((prev) => (prev ? { ...prev, status_wert_id: wertId, abnahme_nummer: nummer } : prev))
     setAbnahmeFormFuerWert(null)
     setAbnahmeNummerEingabe('')
     onChange?.()
@@ -237,8 +237,8 @@ export function MangelDetails({
     setMaterialSaving(true)
     setFehler(null)
     const reihenfolge = material.length > 0 ? Math.max(...material.map((m) => m.reihenfolge)) + 1 : 1
-    const { error } = await supabase.from('mangel_material').insert({
-      mangel_id: mangelId,
+    const { error } = await supabase.from('aufgabe_material').insert({
+      aufgabe_id: aufgabeId,
       material_stamm_id: stammEintrag.id,
       bezeichnung: stammEintrag.bezeichnung,
       menge: Number(neuesMaterialMenge) || 1,
@@ -260,7 +260,7 @@ export function MangelDetails({
   const toggleMaterialErledigt = async (materialId: string, erledigt: boolean) => {
     setFehler(null)
     setMaterial((prev) => prev.map((m) => (m.id === materialId ? { ...m, erledigt } : m)))
-    const { error } = await supabase.from('mangel_material').update({ erledigt }).eq('id', materialId)
+    const { error } = await supabase.from('aufgabe_material').update({ erledigt }).eq('id', materialId)
     if (error) {
       setFehler(error.message)
       load()
@@ -271,7 +271,7 @@ export function MangelDetails({
     if (!window.confirm('Diesen Materialposten wirklich löschen?')) return
     setFehler(null)
     setMaterial((prev) => prev.filter((m) => m.id !== materialId))
-    const { error } = await supabase.from('mangel_material').delete().eq('id', materialId)
+    const { error } = await supabase.from('aufgabe_material').delete().eq('id', materialId)
     if (error) {
       setFehler(error.message)
       load()
@@ -283,7 +283,7 @@ export function MangelDetails({
     if (!auswahlDokId) return
     setZuordnenSaving(true)
     setFehler(null)
-    const { error } = await supabase.from('dokumente').update({ mangel_id: mangelId }).eq('id', auswahlDokId)
+    const { error } = await supabase.from('dokumente').update({ aufgabe_id: aufgabeId }).eq('id', auswahlDokId)
     setZuordnenSaving(false)
     if (error) {
       setFehler(error.message)
@@ -297,7 +297,7 @@ export function MangelDetails({
   const handleDokumentEntfernen = async (d: Dokument) => {
     setFehler(null)
     setDokumente((prev) => prev.filter((x) => x.id !== d.id))
-    const { error } = await supabase.from('dokumente').update({ mangel_id: null }).eq('id', d.id)
+    const { error } = await supabase.from('dokumente').update({ aufgabe_id: null }).eq('id', d.id)
     if (error) setFehler(error.message)
     load()
   }
@@ -330,7 +330,7 @@ export function MangelDetails({
     let foto_pfad: string | null = null
     if (kommentarFoto) {
       const kommentarFotoKomprimiert = await komprimiereBild(kommentarFoto)
-      const { path, error: uploadError } = await uploadFile('mangel-fotos', `kommentare/${mangelId}`, kommentarFotoKomprimiert)
+      const { path, error: uploadError } = await uploadFile('mangel-fotos', `kommentare/${aufgabeId}`, kommentarFotoKomprimiert)
       if (uploadError) {
         setKommentarSaving(false)
         setFehler(`Foto-Upload fehlgeschlagen: ${uploadError}`)
@@ -339,8 +339,8 @@ export function MangelDetails({
       foto_pfad = path
     }
 
-    const { error } = await supabase.from('mangel_kommentare').insert({
-      mangel_id: mangelId,
+    const { error } = await supabase.from('aufgabe_kommentare').insert({
+      aufgabe_id: aufgabeId,
       text: kommentarText.trim() || null,
       foto_pfad,
       erstellt_von: user.id,
@@ -410,7 +410,7 @@ export function MangelDetails({
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {werte.map((w) => {
-              const aktiv = mangel?.status_wert_id === w.id
+              const aktiv = aufgabe?.status_wert_id === w.id
               return (
                 <button
                   key={w.id}
@@ -459,8 +459,8 @@ export function MangelDetails({
           </form>
         )}
 
-        {mangel?.abnahme_nummer && (
-          <p className="mt-1 text-xs text-text-subtle">Abnahme-Nummer: {mangel.abnahme_nummer}</p>
+        {aufgabe?.abnahme_nummer && (
+          <p className="mt-1 text-xs text-text-subtle">Abnahme-Nummer: {aufgabe.abnahme_nummer}</p>
         )}
       </div>
 
@@ -572,8 +572,8 @@ export function MangelDetails({
           (freieDokumente.length === 0 ? (
             <p className="mb-2 text-xs text-text-subtle">
               Keine hochgeladenen Aufgabendokumente verfügbar. Erst{' '}
-              {mangel && (
-                <Link to={`/baustellen/${mangel.baustelle_id}/dokumente`} className="text-brand hover:underline">
+              {aufgabe && (
+                <Link to={`/projekte/${aufgabe.projekt_id}/dokumente`} className="text-brand hover:underline">
                   auf der Dokumente-Seite
                 </Link>
               )}{' '}

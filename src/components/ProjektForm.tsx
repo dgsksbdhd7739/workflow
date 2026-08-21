@@ -3,18 +3,18 @@ import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { komprimiereBild } from '../lib/bildKompression'
-import type { Baustelle } from '../types/database'
+import type { Projekt } from '../types/database'
 
 const laender = ['Deutschland', 'Österreich', 'Schweiz', 'Sonstiges']
 const sprachen = ['Deutsch', 'Englisch']
 
 export function ProjektForm({
-  baustelle,
+  projekt,
   onSaved,
   onCancel,
 }: {
-  baustelle?: Baustelle
-  onSaved: (b: Baustelle) => void
+  projekt?: Projekt
+  onSaved: (b: Projekt) => void
   onCancel: () => void
 }) {
   const { user, unternehmenId } = useAuth()
@@ -25,35 +25,35 @@ export function ProjektForm({
   const [saving, setSaving] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
 
-  const [name, setName] = useState(baustelle?.name ?? '')
-  const [projektnummer, setProjektnummer] = useState(baustelle?.projektnummer ?? '')
-  const [projektleiterId, setProjektleiterId] = useState(baustelle?.projektleiter_id ?? '')
-  const [obermonteurId, setObermonteurId] = useState(baustelle?.bauleitender_obermonteur_id ?? '')
-  const [kundeName, setKundeName] = useState(baustelle?.kunde_name ?? '')
-  const [projektBeginn, setProjektBeginn] = useState(baustelle?.projekt_beginn ?? '')
-  const [projektEnde, setProjektEnde] = useState(baustelle?.projekt_ende ?? '')
-  const [sprache, setSprache] = useState(baustelle?.sprache ?? 'Deutsch')
+  const [name, setName] = useState(projekt?.name ?? '')
+  const [projektnummer, setProjektnummer] = useState(projekt?.projektnummer ?? '')
+  const [projektleiterId, setProjektleiterId] = useState(projekt?.projektleiter_id ?? '')
+  const [obermonteurId, setObermonteurId] = useState(projekt?.bauleitender_obermonteur_id ?? '')
+  const [kundeName, setKundeName] = useState(projekt?.kunde_name ?? '')
+  const [projektBeginn, setProjektBeginn] = useState(projekt?.projekt_beginn ?? '')
+  const [projektEnde, setProjektEnde] = useState(projekt?.projekt_ende ?? '')
+  const [sprache, setSprache] = useState(projekt?.sprache ?? 'Deutsch')
 
-  const [projektLand, setProjektLand] = useState(baustelle?.projekt_land ?? '')
-  const [projektStrasse, setProjektStrasse] = useState(baustelle?.projekt_strasse ?? '')
-  const [projektHausnummer, setProjektHausnummer] = useState(baustelle?.projekt_hausnummer ?? '')
-  const [projektAdresszusatz, setProjektAdresszusatz] = useState(baustelle?.projekt_adresszusatz ?? '')
-  const [projektPlz, setProjektPlz] = useState(baustelle?.projekt_plz ?? '')
-  const [projektStadt, setProjektStadt] = useState(baustelle?.projekt_stadt ?? '')
+  const [projektLand, setProjektLand] = useState(projekt?.projekt_land ?? '')
+  const [projektStrasse, setProjektStrasse] = useState(projekt?.projekt_strasse ?? '')
+  const [projektHausnummer, setProjektHausnummer] = useState(projekt?.projekt_hausnummer ?? '')
+  const [projektAdresszusatz, setProjektAdresszusatz] = useState(projekt?.projekt_adresszusatz ?? '')
+  const [projektPlz, setProjektPlz] = useState(projekt?.projekt_plz ?? '')
+  const [projektStadt, setProjektStadt] = useState(projekt?.projekt_stadt ?? '')
 
-  const [kundenLand, setKundenLand] = useState(baustelle?.kunden_land ?? '')
-  const [kundenStrasse, setKundenStrasse] = useState(baustelle?.kunden_strasse ?? '')
-  const [kundenHausnummer, setKundenHausnummer] = useState(baustelle?.kunden_hausnummer ?? '')
-  const [kundenAdresszusatz, setKundenAdresszusatz] = useState(baustelle?.kunden_adresszusatz ?? '')
-  const [kundenPlz, setKundenPlz] = useState(baustelle?.kunden_plz ?? '')
-  const [kundenStadt, setKundenStadt] = useState(baustelle?.kunden_stadt ?? '')
+  const [kundenLand, setKundenLand] = useState(projekt?.kunden_land ?? '')
+  const [kundenStrasse, setKundenStrasse] = useState(projekt?.kunden_strasse ?? '')
+  const [kundenHausnummer, setKundenHausnummer] = useState(projekt?.kunden_hausnummer ?? '')
+  const [kundenAdresszusatz, setKundenAdresszusatz] = useState(projekt?.kunden_adresszusatz ?? '')
+  const [kundenPlz, setKundenPlz] = useState(projekt?.kunden_plz ?? '')
+  const [kundenStadt, setKundenStadt] = useState(projekt?.kunden_stadt ?? '')
 
   useEffect(() => {
-    if (baustelle?.logo_pfad) {
-      getSignedUrl('projekt-logos', baustelle.logo_pfad).then(({ url }) => setLogoUrl(url))
+    if (projekt?.logo_pfad) {
+      getSignedUrl('projekt-logos', projekt.logo_pfad).then(({ url }) => setLogoUrl(url))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baustelle?.logo_pfad])
+  }, [projekt?.logo_pfad])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -84,13 +84,13 @@ export function ProjektForm({
       kunden_stadt: kundenStadt || null,
     }
 
-    let saved: Baustelle | null = null
+    let saved: Projekt | null = null
 
-    if (baustelle) {
+    if (projekt) {
       const { data, error } = await supabase
-        .from('baustellen')
+        .from('projekte')
         .update(payload)
-        .eq('id', baustelle.id)
+        .eq('id', projekt.id)
         .select()
         .single()
       if (error) {
@@ -101,7 +101,7 @@ export function ProjektForm({
       saved = data
     } else {
       const { data, error } = await supabase
-        .from('baustellen')
+        .from('projekte')
         .insert({ ...payload, created_by: user.id, unternehmen_id: unternehmenId })
         .select()
         .single()
@@ -119,13 +119,13 @@ export function ProjektForm({
     }
 
     if (logoEntfernen) {
-      await supabase.from('baustellen').update({ logo_pfad: null }).eq('id', saved.id)
+      await supabase.from('projekte').update({ logo_pfad: null }).eq('id', saved.id)
       saved.logo_pfad = null
     } else if (logoDatei) {
       const logoKomprimiert = await komprimiereBild(logoDatei, { maxBreiteHoehe: 800 })
       const { path, error: uploadError } = await uploadFile('projekt-logos', saved.id, logoKomprimiert)
       if (!uploadError) {
-        await supabase.from('baustellen').update({ logo_pfad: path }).eq('id', saved.id)
+        await supabase.from('projekte').update({ logo_pfad: path }).eq('id', saved.id)
         saved.logo_pfad = path
       }
     }
@@ -394,7 +394,7 @@ export function ProjektForm({
 
       <div className="flex gap-2">
         <button type="submit" disabled={saving} className="btn-primary">
-          {saving ? 'Speichert…' : baustelle ? 'Speichern' : 'Projekt anlegen'}
+          {saving ? 'Speichert…' : projekt ? 'Speichern' : 'Projekt anlegen'}
         </button>
         <button type="button" onClick={onCancel} className="btn-secondary">
           Abbrechen

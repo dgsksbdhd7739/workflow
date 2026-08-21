@@ -30,7 +30,7 @@ const heute = () => new Date().toISOString().slice(0, 10)
 const tageSeitEpoch = (d: string) => Math.floor(new Date(d).getTime() / 86_400_000)
 
 export function Termine() {
-  const { id: baustelleId } = useParams<{ id: string }>()
+  const { id: projektId } = useParams<{ id: string }>()
   const { user, role } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const [termine, setTermine] = useState<Termin[]>([])
@@ -45,12 +45,12 @@ export function Termine() {
   const [vorgaengerId, setVorgaengerId] = useState('')
 
   const load = async () => {
-    if (!baustelleId) return
+    if (!projektId) return
     setLoading(true)
     const { data } = await supabase
       .from('termine')
       .select('*')
-      .eq('baustelle_id', baustelleId)
+      .eq('projekt_id', projektId)
       .order('start_datum', { ascending: true })
     setTermine(data ?? [])
     setLoading(false)
@@ -59,15 +59,15 @@ export function Termine() {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baustelleId])
+  }, [projektId])
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user || !baustelleId) return
+    if (!user || !projektId) return
     setSaving(true)
     setFehler(null)
     const { error } = await supabase.from('termine').insert({
-      baustelle_id: baustelleId,
+      projekt_id: projektId,
       titel,
       start_datum: startDatum,
       end_datum: endDatum,

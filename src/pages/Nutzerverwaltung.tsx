@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import type { Baustelle, Profile, Rolle } from '../types/database'
+import type { Projekt, Profile, Rolle } from '../types/database'
 
 const rollenLabel: Record<Rolle, string> = {
   admin: 'Admin',
@@ -13,7 +13,7 @@ const rollenLabel: Record<Rolle, string> = {
 export function Nutzerverwaltung() {
   const { role, user } = useAuth()
   const [profile, setProfile] = useState<Profile[]>([])
-  const [baustellen, setBaustellen] = useState<Baustelle[]>([])
+  const [projekte, setProjekte] = useState<Projekt[]>([])
   const [zuweisungen, setZuweisungen] = useState<Record<string, Set<string>>>({})
   const [loading, setLoading] = useState(true)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -32,17 +32,17 @@ export function Nutzerverwaltung() {
 
   const load = async () => {
     setLoading(true)
-    const [{ data: profileData }, { data: baustellenData }, { data: zuweisungenData }] = await Promise.all([
+    const [{ data: profileData }, { data: projekteData }, { data: zuweisungenData }] = await Promise.all([
       supabase.from('profiles').select('*').order('full_name'),
-      supabase.from('baustellen').select('*').order('name'),
-      supabase.from('baustelle_kunden').select('user_id, baustelle_id'),
+      supabase.from('projekte').select('*').order('name'),
+      supabase.from('projekt_kunden').select('user_id, projekt_id'),
     ])
     setProfile(profileData ?? [])
-    setBaustellen(baustellenData ?? [])
+    setProjekte(projekteData ?? [])
     const map: Record<string, Set<string>> = {}
     for (const z of zuweisungenData ?? []) {
       if (!map[z.user_id]) map[z.user_id] = new Set()
-      map[z.user_id].add(z.baustelle_id)
+      map[z.user_id].add(z.projekt_id)
     }
     setZuweisungen(map)
     setLoading(false)
@@ -133,18 +133,18 @@ export function Nutzerverwaltung() {
     load()
   }
 
-  const toggleProjektZugriff = async (userId: string, baustelleId: string) => {
+  const toggleProjektZugriff = async (userId: string, projektId: string) => {
     setFehler(null)
-    const hatZugriff = zuweisungen[userId]?.has(baustelleId) ?? false
+    const hatZugriff = zuweisungen[userId]?.has(projektId) ?? false
     setZuweisungen((prev) => {
       const next = { ...prev, [userId]: new Set(prev[userId] ?? []) }
-      if (hatZugriff) next[userId].delete(baustelleId)
-      else next[userId].add(baustelleId)
+      if (hatZugriff) next[userId].delete(projektId)
+      else next[userId].add(projektId)
       return next
     })
     const { error } = hatZugriff
-      ? await supabase.from('baustelle_kunden').delete().eq('user_id', userId).eq('baustelle_id', baustelleId)
-      : await supabase.from('baustelle_kunden').insert({ user_id: userId, baustelle_id: baustelleId })
+      ? await supabase.from('projekt_kunden').delete().eq('user_id', userId).eq('projekt_id', projektId)
+      : await supabase.from('projekt_kunden').insert({ user_id: userId, projekt_id: projektId })
     if (error) {
       setFehler(error.message)
       load()
@@ -166,7 +166,7 @@ export function Nutzerverwaltung() {
           <h1 className="text-xl font-semibold text-text">Nutzerverwaltung</h1>
           <p className="text-xs text-text-muted">
             Rollen steuern, was ein Nutzer sehen und bearbeiten darf. Admin: alles. Planer: fast alles außer
-            Nutzerverwaltung. Techniker: Baustellenarbeit inkl. Zeiterfassung. Kunde: nur lesen, keine
+            Nutzerverwaltung. Techniker: Projektarbeit inkl. Zeiterfassung. Kunde: nur lesen, keine
             Zeiterfassung — und nur für ausdrücklich zugewiesene Projekte.
           </p>
         </div>
@@ -324,10 +324,10 @@ export function Nutzerverwaltung() {
                   </button>
                   {offenerNutzer === p.id && (
                     <div className="mt-2 space-y-1 border-t border-border pt-2">
-                      {baustellen.length === 0 ? (
+                      {projekte.length === 0 ? (
                         <p className="text-xs text-text-subtle">Noch keine Projekte angelegt.</p>
                       ) : (
-                        baustellen.map((b) => (
+                        projekte.map((b) => (
                           <label key={b.id} className="flex items-center gap-2 text-sm text-text-muted">
                             <input
                               type="checkbox"

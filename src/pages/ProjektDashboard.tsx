@@ -20,7 +20,7 @@ import { ProjektForm } from '../components/ProjektForm'
 import { SignedImage } from '../components/SignedImage'
 import { formatProjektAdresse, kartenUrl } from '../lib/adresse'
 import { formatDatum } from '../lib/datum'
-import type { Baustelle, Mangel, Rolle, Tagesbericht, Termin } from '../types/database'
+import type { Projekt, Aufgabe, Rolle, Tagesbericht, Termin } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
 
@@ -36,7 +36,7 @@ function formatDauer(minuten: number) {
 }
 
 const quickLinks: { to: string; label: string; icon: LucideIcon; roles?: Rolle[] }[] = [
-  { to: 'maengel', label: 'Aufgaben', icon: ListChecks },
+  { to: 'aufgaben', label: 'Aufgaben', icon: ListChecks },
   { to: 'material', label: 'Material', icon: Package },
   { to: 'plaene', label: 'Pläne', icon: MapIcon },
   { to: 'dokumente', label: 'Dokumente', icon: FileText },
@@ -45,7 +45,7 @@ const quickLinks: { to: string; label: string; icon: LucideIcon; roles?: Rolle[]
   { to: 'termine', label: 'Termine', icon: CalendarDays },
 ]
 
-type AktivitaetTyp = 'mangel' | 'termin' | 'bericht'
+type AktivitaetTyp = 'aufgabe' | 'termin' | 'bericht'
 
 interface AktivitaetsEintrag {
   id: string
@@ -55,7 +55,7 @@ interface AktivitaetsEintrag {
 }
 
 const aktivitaetIcon: Record<AktivitaetTyp, LucideIcon> = {
-  mangel: ListChecks,
+  aufgabe: ListChecks,
   termin: CalendarPlus,
   bericht: ClipboardList,
 }
@@ -73,15 +73,15 @@ function relativeZeit(iso: string): string {
 }
 
 export function ProjektDashboard() {
-  const { id: baustelleId } = useParams<{ id: string }>()
+  const { id: projektId } = useParams<{ id: string }>()
   const { role } = useAuth()
   const kannZeitSehen = role !== 'kunde'
   const kannBearbeiten = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
-  const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
+  const [projekt, setProjekt] = useState<Projekt | null>(null)
   const [bearbeiten, setBearbeiten] = useState(false)
-  const [offeneMaengel, setOffeneMaengel] = useState(0)
-  const [hochPrioMaengel, setHochPrioMaengel] = useState(0)
+  const [offeneAufgaben, setOffeneAufgaben] = useState(0)
+  const [hochPrioAufgaben, setHochPrioAufgaben] = useState(0)
   const [termine, setTermine] = useState<Termin[]>([])
   const [gestempelteMinuten, setGestempelteMinuten] = useState(0)
   const [letzterBericht, setLetzterBericht] = useState<Tagesbericht | null>(null)
@@ -89,36 +89,36 @@ export function ProjektDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!baustelleId) return
+    if (!projektId) return
     setLoading(true)
     Promise.all([
-      supabase.from('baustellen').select('*').eq('id', baustelleId).single(),
-      supabase.from('maengel').select('*', { count: 'exact', head: true }).eq('baustelle_id', baustelleId).neq('status', 'erledigt'),
+      supabase.from('projekte').select('*').eq('id', projektId).single(),
+      supabase.from('aufgaben').select('*', { count: 'exact', head: true }).eq('projekt_id', projektId).neq('status', 'erledigt'),
       supabase
-        .from('maengel')
+        .from('aufgaben')
         .select('*', { count: 'exact', head: true })
-        .eq('baustelle_id', baustelleId)
+        .eq('projekt_id', projektId)
         .neq('status', 'erledigt')
         .eq('prioritaet', 'hoch'),
-      supabase.from('termine').select('*').eq('baustelle_id', baustelleId).order('start_datum'),
-      supabase.from('zeiterfassung').select('start_zeit, end_zeit, pause_minuten').eq('baustelle_id', baustelleId),
-      supabase.from('tagesberichte').select('*').eq('baustelle_id', baustelleId).order('datum', { ascending: false }).limit(8),
+      supabase.from('termine').select('*').eq('projekt_id', projektId).order('start_datum'),
+      supabase.from('zeiterfassung').select('start_zeit, end_zeit, pause_minuten').eq('projekt_id', projektId),
+      supabase.from('tagesberichte').select('*').eq('projekt_id', projektId).order('datum', { ascending: false }).limit(8),
       supabase
-        .from('maengel')
+        .from('aufgaben')
         .select('id, titel, status, erstellt_am')
-        .eq('baustelle_id', baustelleId)
+        .eq('projekt_id', projektId)
         .order('erstellt_am', { ascending: false })
         .limit(8),
       supabase
         .from('termine')
         .select('id, titel, erstellt_am')
-        .eq('baustelle_id', baustelleId)
+        .eq('projekt_id', projektId)
         .order('erstellt_am', { ascending: false })
         .limit(8),
-    ]).then(([baustelleRes, offeneRes, hochRes, termineRes, zeitenRes, berichteRes, maengelActRes, termineActRes]) => {
-      setBaustelle(baustelleRes.data)
-      setOffeneMaengel(offeneRes.count ?? 0)
-      setHochPrioMaengel(hochRes.count ?? 0)
+    ]).then(([projektRes, offeneRes, hochRes, termineRes, zeitenRes, berichteRes, aufgabenActRes, termineActRes]) => {
+      setProjekt(projektRes.data)
+      setOffeneAufgaben(offeneRes.count ?? 0)
+      setHochPrioAufgaben(hochRes.count ?? 0)
       setTermine(termineRes.data ?? [])
       setGestempelteMinuten(
         (zeitenRes.data ?? []).reduce(
@@ -132,9 +132,9 @@ export function ProjektDashboard() {
       setLetzterBericht(berichteRes.data?.[0] ?? null)
 
       const eintraege: AktivitaetsEintrag[] = [
-        ...((maengelActRes.data ?? []) as Pick<Mangel, 'id' | 'titel' | 'status' | 'erstellt_am'>[]).map((m) => ({
-          id: `mangel-${m.id}`,
-          typ: 'mangel' as const,
+        ...((aufgabenActRes.data ?? []) as Pick<Aufgabe, 'id' | 'titel' | 'status' | 'erstellt_am'>[]).map((m) => ({
+          id: `aufgabe-${m.id}`,
+          typ: 'aufgabe' as const,
           label: `Aufgabe „${m.titel}“ angelegt`,
           zeitpunkt: m.erstellt_am,
         })),
@@ -157,19 +157,19 @@ export function ProjektDashboard() {
 
       setLoading(false)
     })
-  }, [baustelleId])
+  }, [projektId])
 
   const handleArchivToggle = async () => {
-    if (!baustelle) return
-    const naechsterWert = !baustelle.archiviert
+    if (!projekt) return
+    const naechsterWert = !projekt.archiviert
     if (
       naechsterWert &&
       !window.confirm('Projekt wirklich archivieren? Es wird im Dashboard ausgeblendet, bleibt aber mit allen Daten erhalten.')
     ) {
       return
     }
-    const { error } = await supabase.from('baustellen').update({ archiviert: naechsterWert }).eq('id', baustelle.id)
-    if (!error) setBaustelle({ ...baustelle, archiviert: naechsterWert })
+    const { error } = await supabase.from('projekte').update({ archiviert: naechsterWert }).eq('id', projekt.id)
+    if (!error) setProjekt({ ...projekt, archiviert: naechsterWert })
   }
 
   if (loading) return <p className="p-6 text-sm text-text-muted">Lädt…</p>
@@ -180,14 +180,14 @@ export function ProjektDashboard() {
     .sort((a, b) => a.start_datum.localeCompare(b.start_datum))
     .slice(0, 3)
 
-  if (bearbeiten && baustelle) {
+  if (bearbeiten && projekt) {
     return (
       <div className="page">
         <h1 className="mb-4 text-xl font-semibold text-text">Projekt bearbeiten</h1>
         <ProjektForm
-          baustelle={baustelle}
+          projekt={projekt}
           onSaved={(saved) => {
-            setBaustelle(saved)
+            setProjekt(saved)
             setBearbeiten(false)
           }}
           onCancel={() => setBearbeiten(false)}
@@ -200,40 +200,40 @@ export function ProjektDashboard() {
     <div className="page">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
-          {baustelle?.logo_pfad && (
+          {projekt?.logo_pfad && (
             <SignedImage
               bucket="projekt-logos"
-              path={baustelle.logo_pfad}
+              path={projekt.logo_pfad}
               alt=""
               className="h-14 w-14 flex-shrink-0 rounded-lg object-cover"
             />
           )}
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="truncate text-xl font-semibold text-text">{baustelle?.name}</h1>
-              {baustelle?.archiviert && (
+              <h1 className="truncate text-xl font-semibold text-text">{projekt?.name}</h1>
+              {projekt?.archiviert && (
                 <span className="flex-shrink-0 rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-muted">
                   Archiviert
                 </span>
               )}
             </div>
-            {baustelle && formatProjektAdresse(baustelle) && (
+            {projekt && formatProjektAdresse(projekt) && (
               <a
-                href={kartenUrl(formatProjektAdresse(baustelle)!)}
+                href={kartenUrl(formatProjektAdresse(projekt)!)}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 truncate text-sm text-text-muted hover:text-brand hover:underline"
               >
                 <MapPin className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={2.25} />
-                <span className="truncate">{formatProjektAdresse(baustelle)}</span>
+                <span className="truncate">{formatProjektAdresse(projekt)}</span>
               </a>
             )}
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-text-subtle">
-              {baustelle?.projektnummer && <span>Nr. {baustelle.projektnummer}</span>}
-              {baustelle?.kunde_name && <span>Kunde: {baustelle.kunde_name}</span>}
-              {baustelle?.projektleiter_id && <span>PL: {nameOf(baustelle.projektleiter_id)}</span>}
-              {baustelle?.bauleitender_obermonteur_id && (
-                <span>Obermonteur: {nameOf(baustelle.bauleitender_obermonteur_id)}</span>
+              {projekt?.projektnummer && <span>Nr. {projekt.projektnummer}</span>}
+              {projekt?.kunde_name && <span>Kunde: {projekt.kunde_name}</span>}
+              {projekt?.projektleiter_id && <span>PL: {nameOf(projekt.projektleiter_id)}</span>}
+              {projekt?.bauleitender_obermonteur_id && (
+                <span>Obermonteur: {nameOf(projekt.bauleitender_obermonteur_id)}</span>
               )}
             </div>
           </div>
@@ -244,7 +244,7 @@ export function ProjektDashboard() {
               Projekt bearbeiten
             </button>
             <button onClick={handleArchivToggle} className="btn-secondary">
-              {baustelle?.archiviert ? 'Reaktivieren' : 'Archivieren'}
+              {projekt?.archiviert ? 'Reaktivieren' : 'Archivieren'}
             </button>
           </div>
         )}
@@ -252,21 +252,21 @@ export function ProjektDashboard() {
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="card p-4">
-          <div className="text-2xl font-semibold text-text">{offeneMaengel}</div>
+          <div className="text-2xl font-semibold text-text">{offeneAufgaben}</div>
           <div className="text-xs text-text-muted">Offene Aufgaben</div>
-          {hochPrioMaengel > 0 && (
-            <div className="mt-1 text-xs text-red-600 dark:text-red-400">{hochPrioMaengel} hoch priorisiert</div>
+          {hochPrioAufgaben > 0 && (
+            <div className="mt-1 text-xs text-red-600 dark:text-red-400">{hochPrioAufgaben} hoch priorisiert</div>
           )}
         </div>
         <div className="card p-4">
           <div className="text-2xl font-semibold text-text">{ueberfaellig.length}</div>
           <div className="text-xs text-text-muted">Verzögerte Termine</div>
         </div>
-        {baustelle?.projekt_ende && (
+        {projekt?.projekt_ende && (
           <div className="card p-4">
-            <div className="text-2xl font-semibold text-text">{formatDatum(baustelle.projekt_ende)}</div>
+            <div className="text-2xl font-semibold text-text">{formatDatum(projekt.projekt_ende)}</div>
             <div className="text-xs text-text-muted">Projekt fällig bis</div>
-            {baustelle.projekt_ende < heute() && (
+            {projekt.projekt_ende < heute() && (
               <div className="mt-1 text-xs text-red-600 dark:text-red-400">Überfällig</div>
             )}
           </div>
@@ -308,7 +308,6 @@ export function ProjektDashboard() {
           <h2 className="mb-1 text-sm font-medium text-text">Letzter Tagesbericht</h2>
           <p className="text-sm text-text-muted">
             {formatDatum(letzterBericht.datum)}
-            {letzterBericht.wetter && ` · ${letzterBericht.wetter}`}
             {letzterBericht.personal_anzahl !== null && ` · ${letzterBericht.personal_anzahl} Personal`}
           </p>
         </div>
@@ -320,7 +319,7 @@ export function ProjektDashboard() {
           .map((l) => (
           <Link
             key={l.to}
-            to={`/baustellen/${baustelleId}/${l.to}`}
+            to={`/projekte/${projektId}/${l.to}`}
             className="card flex flex-col items-center gap-1 p-4 text-center transition-colors hover:border-brand/40 hover:bg-brand-soft/40"
           >
             <l.icon className="h-5 w-5 text-brand" strokeWidth={2.25} />

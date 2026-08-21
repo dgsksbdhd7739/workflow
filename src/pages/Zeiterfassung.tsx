@@ -10,7 +10,7 @@ const heute = () => new Date().toISOString().slice(0, 10)
 const jetzt = () => new Date().toTimeString().slice(0, 5)
 
 export function Zeiterfassung() {
-  const { id: baustelleId } = useParams<{ id: string }>()
+  const { id: projektId } = useParams<{ id: string }>()
   const { user, role } = useAuth()
   const { profiles, nameOf } = useProfiles()
   const [eintraege, setEintraege] = useState<ZeiterfassungEntry[]>([])
@@ -27,12 +27,12 @@ export function Zeiterfassung() {
   const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
-    if (!baustelleId) return
+    if (!projektId) return
     setLoading(true)
     const { data } = await supabase
       .from('zeiterfassung')
       .select('*')
-      .eq('baustelle_id', baustelleId)
+      .eq('projekt_id', projektId)
       .order('datum', { ascending: false })
       .order('start_zeit', { ascending: false })
     setEintraege(data ?? [])
@@ -42,7 +42,7 @@ export function Zeiterfassung() {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baustelleId])
+  }, [projektId])
 
   const toggleMitarbeiter = (id: string) => {
     setAusgewaehlt((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
@@ -55,11 +55,11 @@ export function Zeiterfassung() {
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user || !baustelleId || ausgewaehlt.length === 0) return
+    if (!user || !projektId || ausgewaehlt.length === 0) return
     setSaving(true)
     setFehler(null)
     const eintraege = ausgewaehlt.map((userId) => ({
-      baustelle_id: baustelleId,
+      projekt_id: projektId,
       user_id: userId,
       datum,
       start_zeit: startZeit,

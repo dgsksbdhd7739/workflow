@@ -3,42 +3,42 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
 import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { MangelDetails } from '../components/MangelDetails'
+import { AufgabeDetails } from '../components/AufgabeDetails'
 import { Arbeitszeit } from '../components/Arbeitszeit'
 import { erkenneMarkierungenMitOcr, ladeCanvasAusBild, type ErkannteMarkierung } from '../lib/planOcr'
-import type { Mangel, MangelPrioritaet, MangelStatus, Plan, StatusVorlageWert } from '../types/database'
+import type { Aufgabe, AufgabePrioritaet, AufgabeStatus, Plan, StatusVorlageWert } from '../types/database'
 
 interface VorschauMarkierung extends ErkannteMarkierung {
   id: string
   ausgewaehlt: boolean
 }
 
-const statusLabel: Record<MangelStatus, string> = {
+const statusLabel: Record<AufgabeStatus, string> = {
   offen: 'Stopp',
   in_bearbeitung: 'In Arbeit',
   erledigt: 'Abgeschlossen',
 }
 
-const prioritaetLabel: Record<MangelPrioritaet, string> = {
+const prioritaetLabel: Record<AufgabePrioritaet, string> = {
   niedrig: 'Niedrig',
   mittel: 'Mittel',
   hoch: 'Hoch',
 }
 
-const statusFarbe: Record<MangelStatus, string> = {
+const statusFarbe: Record<AufgabeStatus, string> = {
   offen: '#dc2626',
   in_bearbeitung: '#d97706',
   erledigt: '#16a34a',
 }
 
-function pinFarbe(m: Mangel, werte: StatusVorlageWert[]) {
+function pinFarbe(m: Aufgabe, werte: StatusVorlageWert[]) {
   if (m.farbe) return m.farbe
   const wert = werte.find((w) => w.id === m.status_wert_id)
   if (wert) return wert.farbe
   return statusFarbe[m.status]
 }
 
-function istLetzterWert(m: Mangel, werte: StatusVorlageWert[]) {
+function istLetzterWert(m: Aufgabe, werte: StatusVorlageWert[]) {
   if (werte.length === 0) return m.status === 'erledigt'
   const maxReihenfolge = Math.max(...werte.map((w) => w.reihenfolge))
   const wert = werte.find((w) => w.id === m.status_wert_id)
@@ -66,16 +66,16 @@ function clampPan(pan: { x: number; y: number }, zoom: number, viewportW: number
 }
 
 export function PlanDetail() {
-  const { id: baustelleId, planId } = useParams<{ id: string; planId: string }>()
+  const { id: projektId, planId } = useParams<{ id: string; planId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, role } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const kannLoeschen = role === 'admin' || role === 'planer'
   const [plan, setPlan] = useState<Plan | null>(null)
-  const [pins, setPins] = useState<Mangel[]>([])
+  const [pins, setPins] = useState<Aufgabe[]>([])
   const [pinSuche, setPinSuche] = useState('')
   const [pendingPos, setPendingPos] = useState<{ x: number; y: number; x2?: number; y2?: number } | null>(null)
-  const [selectedPin, setSelectedPin] = useState<Mangel | null>(null)
+  const [selectedPin, setSelectedPin] = useState<Aufgabe | null>(null)
   const [saving, setSaving] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [pdfReady, setPdfReady] = useState(false)
@@ -97,11 +97,11 @@ export function PlanDetail() {
 
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
-  const [status, setStatus] = useState<MangelStatus>('in_bearbeitung')
-  const [prioritaet, setPrioritaet] = useState<MangelPrioritaet>('mittel')
+  const [status, setStatus] = useState<AufgabeStatus>('in_bearbeitung')
+  const [prioritaet, setPrioritaet] = useState<AufgabePrioritaet>('mittel')
 
-  const [editStatus, setEditStatus] = useState<MangelStatus>('offen')
-  const [editPrioritaet, setEditPrioritaet] = useState<MangelPrioritaet>('mittel')
+  const [editStatus, setEditStatus] = useState<AufgabeStatus>('offen')
+  const [editPrioritaet, setEditPrioritaet] = useState<AufgabePrioritaet>('mittel')
 
   const [statusWertId, setStatusWertId] = useState('')
   const [werte, setWerte] = useState<StatusVorlageWert[]>([])
@@ -147,7 +147,7 @@ export function PlanDetail() {
     if (!planId) return
     const [{ data: planData }, { data: pinsData }] = await Promise.all([
       supabase.from('plaene').select('*').eq('id', planId).single(),
-      supabase.from('maengel').select('*').eq('plan_id', planId).order('erstellt_am'),
+      supabase.from('aufgaben').select('*').eq('plan_id', planId).order('erstellt_am'),
     ])
     setPlan(planData)
     setPins(pinsData ?? [])
@@ -383,7 +383,7 @@ export function PlanDetail() {
   }
 
   const uebernehmeErkennung = async () => {
-    if (!vorschauMarkierungen || !user || !baustelleId || !planId) return
+    if (!vorschauMarkierungen || !user || !projektId || !planId) return
     const ausgewaehlt = vorschauMarkierungen.filter((m) => m.ausgewaehlt && m.code.trim())
     if (ausgewaehlt.length === 0) return
     setUebernehmeLaeuft(true)
@@ -392,20 +392,20 @@ export function PlanDetail() {
     const eintraege = ausgewaehlt.map((m) => {
       const code = m.code.trim()
       return {
-        baustelle_id: baustelleId,
+        projekt_id: projektId,
         titel: code,
         beschreibung: code,
-        prioritaet: 'mittel' as MangelPrioritaet,
+        prioritaet: 'mittel' as AufgabePrioritaet,
         plan_id: planId,
         position_x: m.x,
         position_y: m.y,
         farbe: m.farbe,
         status_wert_id: standard,
-        status: 'offen' as MangelStatus,
+        status: 'offen' as AufgabeStatus,
         erstellt_von: user.id,
       }
     })
-    const { error } = await supabase.from('maengel').insert(eintraege)
+    const { error } = await supabase.from('aufgaben').insert(eintraege)
     setUebernehmeLaeuft(false)
     if (error) {
       setFehler(error.message)
@@ -424,7 +424,7 @@ export function PlanDetail() {
     panDragRef.current = { startX: e.clientX, startY: e.clientY, startPan: panRef.current, dragging: false }
   }
 
-  const handlePinClick = (e: MouseEvent, pin: Mangel) => {
+  const handlePinClick = (e: MouseEvent, pin: Aufgabe) => {
     e.stopPropagation()
     setPendingPos(null)
     setSelectedPin(pin)
@@ -559,11 +559,11 @@ export function PlanDetail() {
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
-    if (!pendingPos || !user || !baustelleId || !planId) return
+    if (!pendingPos || !user || !projektId || !planId) return
     setSaving(true)
     setFehler(null)
-    const { error } = await supabase.from('maengel').insert({
-      baustelle_id: baustelleId,
+    const { error } = await supabase.from('aufgaben').insert({
+      projekt_id: projektId,
       titel,
       beschreibung: beschreibung || null,
       prioritaet,
@@ -591,7 +591,7 @@ export function PlanDetail() {
     setSaving(true)
     setFehler(null)
     const { error } = await supabase
-      .from('maengel')
+      .from('aufgaben')
       .update({
         status: editStatus,
         prioritaet: editPrioritaet,
@@ -612,7 +612,7 @@ export function PlanDetail() {
     setSaving(true)
     setFehler(null)
     const { error } = await supabase
-      .from('maengel')
+      .from('aufgaben')
       .update({ plan_id: null, position_x: null, position_y: null })
       .eq('id', selectedPin.id)
     setSaving(false)
@@ -624,12 +624,12 @@ export function PlanDetail() {
     load()
   }
 
-  const handleDeleteMangel = async () => {
+  const handleDeleteAufgabe = async () => {
     if (!selectedPin) return
     if (!window.confirm('Aufgabe wirklich endgültig löschen? Das kann nicht rückgängig gemacht werden.')) return
     setSaving(true)
     setFehler(null)
-    const { error } = await supabase.from('maengel').delete().eq('id', selectedPin.id)
+    const { error } = await supabase.from('aufgaben').delete().eq('id', selectedPin.id)
     setSaving(false)
     if (error) {
       setFehler(error.message)
@@ -648,7 +648,7 @@ export function PlanDetail() {
 
   return (
     <div className="page">
-      <Link to={`/baustellen/${baustelleId}/plaene`} className="mb-3 inline-block text-sm text-brand">
+      <Link to={`/projekte/${projektId}/plaene`} className="mb-3 inline-block text-sm text-brand">
         ← Zurück zu Plänen
       </Link>
       <h1 className="mb-4 text-xl font-semibold text-text">{plan.name}</h1>
@@ -949,7 +949,7 @@ export function PlanDetail() {
               </div>
               <div>
                 <label className="field-label">Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value as MangelStatus)} className="field-input">
+                <select value={status} onChange={(e) => setStatus(e.target.value as AufgabeStatus)} className="field-input">
                   {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
                     <option key={s} value={s}>
                       {statusLabel[s]}
@@ -977,7 +977,7 @@ export function PlanDetail() {
                 <label className="field-label">Priorität</label>
                 <select
                   value={prioritaet}
-                  onChange={(e) => setPrioritaet(e.target.value as MangelPrioritaet)}
+                  onChange={(e) => setPrioritaet(e.target.value as AufgabePrioritaet)}
                   className="field-input"
                 >
                   {(['niedrig', 'mittel', 'hoch'] as const).map((p) => (
@@ -1070,7 +1070,7 @@ export function PlanDetail() {
                 </button>
               </div>
               {selectedPin.beschreibung && <p className="text-sm text-text-muted">{selectedPin.beschreibung}</p>}
-              <Arbeitszeit mangel={selectedPin} onChange={load} />
+              <Arbeitszeit aufgabe={selectedPin} onChange={load} />
               {!kannBearbeiten ? (
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
                   <span>Priorität: {prioritaetLabel[selectedPin.prioritaet]}</span>
@@ -1081,7 +1081,7 @@ export function PlanDetail() {
                 <label className="field-label">Status</label>
                 <select
                   value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as MangelStatus)}
+                  onChange={(e) => setEditStatus(e.target.value as AufgabeStatus)}
                   className="field-input"
                 >
                   {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
@@ -1095,7 +1095,7 @@ export function PlanDetail() {
                 <label className="field-label">Priorität</label>
                 <select
                   value={editPrioritaet}
-                  onChange={(e) => setEditPrioritaet(e.target.value as MangelPrioritaet)}
+                  onChange={(e) => setEditPrioritaet(e.target.value as AufgabePrioritaet)}
                   className="field-input"
                 >
                   {(['niedrig', 'mittel', 'hoch'] as const).map((p) => (
@@ -1114,7 +1114,7 @@ export function PlanDetail() {
                 </button>
                 {kannLoeschen && (
                   <button
-                    onClick={handleDeleteMangel}
+                    onClick={handleDeleteAufgabe}
                     disabled={saving}
                     className="btn-secondary text-red-600 dark:text-red-400"
                   >
@@ -1125,8 +1125,8 @@ export function PlanDetail() {
               </>
               )}
               <div className="border-t border-border pt-3">
-                <MangelDetails
-                  mangelId={selectedPin.id}
+                <AufgabeDetails
+                  aufgabeId={selectedPin.id}
                   werte={werte}
                   vorlageId={plan.statusvorlage_id}
                   onChange={load}

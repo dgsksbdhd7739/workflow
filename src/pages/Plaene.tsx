@@ -5,7 +5,7 @@ import { supabase, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { SignedImage } from '../components/SignedImage'
 import { PdfThumbnail } from '../components/PdfThumbnail'
-import type { Mangel, MangelStatus, Plan, StatusVorlageWert } from '../types/database'
+import type { Aufgabe, AufgabeStatus, Plan, StatusVorlageWert } from '../types/database'
 
 // Der Android-Dateipicker liefert bei manchen Dokumentanbietern (z. B. Google
 // Drive) einen Dateinamen ohne Endung UND einen leeren/generischen MIME-Typ
@@ -30,19 +30,19 @@ async function dateinameMitEndung(file: File): Promise<string> {
   return treffer ? `${file.name}.${treffer.endung}` : file.name
 }
 
-const statusFarbeFallback: Record<MangelStatus, string> = {
+const statusFarbeFallback: Record<AufgabeStatus, string> = {
   offen: '#dc2626',
   in_bearbeitung: '#d97706',
   erledigt: '#16a34a',
 }
 
 export function Plaene() {
-  const { id: baustelleId } = useParams<{ id: string }>()
+  const { id: projektId } = useParams<{ id: string }>()
   const { user, role } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const kannLoeschen = role === 'admin' || role === 'planer'
   const [plaene, setPlaene] = useState<Plan[]>([])
-  const [markierungen, setMarkierungen] = useState<Mangel[]>([])
+  const [markierungen, setMarkierungen] = useState<Aufgabe[]>([])
   const [werteMap, setWerteMap] = useState<Record<string, StatusVorlageWert>>({})
   const [suche, setSuche] = useState('')
   const [loading, setLoading] = useState(true)
@@ -50,11 +50,11 @@ export function Plaene() {
   const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
-    if (!baustelleId) return
+    if (!projektId) return
     setLoading(true)
     const [{ data }, { data: markierungenData }, { data: werteData }] = await Promise.all([
-      supabase.from('plaene').select('*').eq('baustelle_id', baustelleId).order('erstellt_am', { ascending: false }),
-      supabase.from('maengel').select('*').eq('baustelle_id', baustelleId).not('plan_id', 'is', null),
+      supabase.from('plaene').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
+      supabase.from('aufgaben').select('*').eq('projekt_id', projektId).not('plan_id', 'is', null),
       supabase.from('statusvorlage_werte').select('*'),
     ])
     setPlaene(data ?? [])
@@ -68,14 +68,14 @@ export function Plaene() {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baustelleId])
+  }, [projektId])
 
   const sucheNormalisiert = suche.trim().toLowerCase()
   const suchtreffer = sucheNormalisiert
     ? markierungen.filter((m) => m.titel.toLowerCase().includes(sucheNormalisiert))
     : []
 
-  function markierungFarbe(m: Mangel) {
+  function markierungFarbe(m: Aufgabe) {
     if (m.farbe) return m.farbe
     const wert = m.status_wert_id ? werteMap[m.status_wert_id] : undefined
     if (wert) return wert.farbe
@@ -84,13 +84,13 @@ export function Plaene() {
 
   const handleUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !user || !baustelleId) return
+    if (!file || !user || !projektId) return
     setUploading(true)
     setFehler(null)
 
     const dateiname = await dateinameMitEndung(file)
     const fileMitEndung = dateiname === file.name ? file : new File([file], dateiname, { type: file.type })
-    const { path, error: uploadError } = await uploadFile('plaene', baustelleId, fileMitEndung)
+    const { path, error: uploadError } = await uploadFile('plaene', projektId, fileMitEndung)
     if (uploadError) {
       setFehler(uploadError)
       setUploading(false)
@@ -107,7 +107,7 @@ export function Plaene() {
       .limit(1)
       .maybeSingle()
     const { error } = await supabase.from('plaene').insert({
-      baustelle_id: baustelleId,
+      projekt_id: projektId,
       name: dateiname,
       datei_pfad: path,
       statusvorlage_id: standardVorlage?.id ?? null,
@@ -179,7 +179,7 @@ export function Plaene() {
                   return (
                     <Link
                       key={m.id}
-                      to={`/baustellen/${baustelleId}/plaene/${m.plan_id}?markierung=${m.id}`}
+                      to={`/projekte/${projektId}/plaene/${m.plan_id}?markierung=${m.id}`}
                       className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-surface-hover"
                     >
                       <span
@@ -209,7 +209,7 @@ export function Plaene() {
           {plaene.map((p) => (
             <li key={p.id} className="relative">
               <Link
-                to={`/baustellen/${baustelleId}/plaene/${p.id}`}
+                to={`/projekte/${projektId}/plaene/${p.id}`}
                 className="card block overflow-hidden transition-colors hover:border-brand/40"
               >
                 <div className="aspect-square bg-surface-hover">

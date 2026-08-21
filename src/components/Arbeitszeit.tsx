@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { SignedImage } from './SignedImage'
 import { formatDatum } from '../lib/datum'
 import { komprimiereBild } from '../lib/bildKompression'
-import type { Mangel, Zeiterfassung } from '../types/database'
+import type { Aufgabe, Zeiterfassung } from '../types/database'
 
 function minutenVonZeit(zeit: string) {
   const [h, m] = zeit.split(':').map(Number)
@@ -25,7 +25,7 @@ function formatDauer(minuten: number) {
   return `${h}h ${m}min`
 }
 
-export function Arbeitszeit({ mangel, onChange }: { mangel: Mangel; onChange?: () => void }) {
+export function Arbeitszeit({ aufgabe, onChange }: { aufgabe: Aufgabe; onChange?: () => void }) {
   const { user, role } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const [zeiten, setZeiten] = useState<Zeiterfassung[]>([])
@@ -42,7 +42,7 @@ export function Arbeitszeit({ mangel, onChange }: { mangel: Mangel; onChange?: (
     const { data } = await supabase
       .from('zeiterfassung')
       .select('*')
-      .eq('mangel_id', mangel.id)
+      .eq('aufgabe_id', aufgabe.id)
       .order('datum')
       .order('start_zeit')
     setZeiten(data ?? [])
@@ -52,7 +52,7 @@ export function Arbeitszeit({ mangel, onChange }: { mangel: Mangel; onChange?: (
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mangel.id])
+  }, [aufgabe.id])
 
   const laeuftGerade = zeiten.some((z) => !z.end_zeit)
 
@@ -68,12 +68,12 @@ export function Arbeitszeit({ mangel, onChange }: { mangel: Mangel; onChange?: (
     setSaving(true)
     const jetztDate = new Date()
     const { error } = await supabase.from('zeiterfassung').insert({
-      baustelle_id: mangel.baustelle_id,
+      projekt_id: aufgabe.projekt_id,
       user_id: user.id,
-      mangel_id: mangel.id,
+      aufgabe_id: aufgabe.id,
       datum: jetztDate.toISOString().slice(0, 10),
       start_zeit: jetztDate.toTimeString().slice(0, 8),
-      taetigkeit: mangel.titel,
+      taetigkeit: aufgabe.titel,
     })
     setSaving(false)
     if (error) {
@@ -90,7 +90,7 @@ export function Arbeitszeit({ mangel, onChange }: { mangel: Mangel; onChange?: (
     setSaving(true)
 
     const stoppFotoKomprimiert = await komprimiereBild(stoppFoto)
-    const { path, error: uploadError } = await uploadFile('mangel-fotos', `zeiterfassung/${mangel.id}`, stoppFotoKomprimiert)
+    const { path, error: uploadError } = await uploadFile('mangel-fotos', `zeiterfassung/${aufgabe.id}`, stoppFotoKomprimiert)
     if (uploadError) {
       setSaving(false)
       setFehler(`Foto-Upload fehlgeschlagen: ${uploadError}`)

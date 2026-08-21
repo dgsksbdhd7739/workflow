@@ -7,17 +7,17 @@ import { ProjektForm } from '../components/ProjektForm'
 import { SignedImage } from '../components/SignedImage'
 import { formatProjektAdresse, kartenUrl } from '../lib/adresse'
 import { formatDatum } from '../lib/datum'
-import type { Baustelle, Tagesbericht } from '../types/database'
+import type { Projekt, Tagesbericht } from '../types/database'
 
 interface TagesberichtMitProjekt extends Tagesbericht {
-  baustelle_name: string
+  projekt_name: string
 }
 
 export function Dashboard() {
   const { user, role } = useAuth()
   const kannAnlegen = role === 'admin' || role === 'planer'
   const kannUebersichtSehen = role === 'admin' || role === 'planer'
-  const [baustellen, setBaustellen] = useState<Baustelle[]>([])
+  const [projekte, setProjekte] = useState<Projekt[]>([])
   const [favoritenIds, setFavoritenIds] = useState<Set<string>>(new Set())
   const [neuesteTagesberichte, setNeuesteTagesberichte] = useState<TagesberichtMitProjekt[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,26 +26,26 @@ export function Dashboard() {
   const load = async () => {
     if (!user) return
     setLoading(true)
-    const [{ data: baustellenData }, { data: favoritenData }] = await Promise.all([
-      supabase.from('baustellen').select('*').eq('archiviert', false).order('created_at', { ascending: false }),
-      supabase.from('favoriten').select('baustelle_id').eq('user_id', user.id),
+    const [{ data: projekteData }, { data: favoritenData }] = await Promise.all([
+      supabase.from('projekte').select('*').eq('archiviert', false).order('created_at', { ascending: false }),
+      supabase.from('favoriten').select('projekt_id').eq('user_id', user.id),
     ])
-    setBaustellen(baustellenData ?? [])
-    setFavoritenIds(new Set((favoritenData ?? []).map((f) => f.baustelle_id)))
+    setProjekte(projekteData ?? [])
+    setFavoritenIds(new Set((favoritenData ?? []).map((f) => f.projekt_id)))
 
     if (kannUebersichtSehen) {
-      const ids = (baustellenData ?? []).map((b) => b.id)
+      const ids = (projekteData ?? []).map((b) => b.id)
       if (ids.length > 0) {
         const { data: tagesberichteData } = await supabase
           .from('tagesberichte')
           .select('*')
-          .in('baustelle_id', ids)
+          .in('projekt_id', ids)
           .order('datum', { ascending: false })
           .order('erstellt_am', { ascending: false })
           .limit(8)
-        const namenMap = Object.fromEntries((baustellenData ?? []).map((b) => [b.id, b.name]))
+        const namenMap = Object.fromEntries((projekteData ?? []).map((b) => [b.id, b.name]))
         setNeuesteTagesberichte(
-          (tagesberichteData ?? []).map((t) => ({ ...t, baustelle_name: namenMap[t.baustelle_id] ?? '—' })),
+          (tagesberichteData ?? []).map((t) => ({ ...t, projekt_name: namenMap[t.projekt_id] ?? '—' })),
         )
       } else {
         setNeuesteTagesberichte([])
@@ -60,23 +60,23 @@ export function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const toggleFavorit = async (baustelleId: string) => {
+  const toggleFavorit = async (projektId: string) => {
     if (!user) return
-    const istFavorit = favoritenIds.has(baustelleId)
+    const istFavorit = favoritenIds.has(projektId)
     setFavoritenIds((prev) => {
       const next = new Set(prev)
-      if (istFavorit) next.delete(baustelleId)
-      else next.add(baustelleId)
+      if (istFavorit) next.delete(projektId)
+      else next.add(projektId)
       return next
     })
     if (istFavorit) {
-      await supabase.from('favoriten').delete().eq('user_id', user.id).eq('baustelle_id', baustelleId)
+      await supabase.from('favoriten').delete().eq('user_id', user.id).eq('projekt_id', projektId)
     } else {
-      await supabase.from('favoriten').insert({ user_id: user.id, baustelle_id: baustelleId })
+      await supabase.from('favoriten').insert({ user_id: user.id, projekt_id: projektId })
     }
   }
 
-  const sortiert = [...baustellen].sort((a, b) => {
+  const sortiert = [...projekte].sort((a, b) => {
     const aFav = favoritenIds.has(a.id) ? 1 : 0
     const bFav = favoritenIds.has(b.id) ? 1 : 0
     return bFav - aFav
@@ -94,11 +94,11 @@ export function Dashboard() {
             {neuesteTagesberichte.map((t) => (
               <li key={t.id}>
                 <Link
-                  to={`/baustellen/${t.baustelle_id}/tagesberichte`}
+                  to={`/projekte/${t.projekt_id}/tagesberichte`}
                   className="card flex items-center justify-between gap-3 p-3 text-sm transition-colors hover:border-brand/40 hover:bg-brand-soft/40"
                 >
                   <div className="min-w-0">
-                    <div className="truncate font-medium text-text">{t.baustelle_name}</div>
+                    <div className="truncate font-medium text-text">{t.projekt_name}</div>
                     {t.besonderheiten && (
                       <div className="truncate text-xs text-amber-700 dark:text-amber-400">⚠ {t.besonderheiten}</div>
                     )}
@@ -148,7 +148,7 @@ export function Dashboard() {
                 {favoritenIds.has(b.id) ? '★' : '☆'}
               </button>
               <Link
-                to={`/baustellen/${b.id}`}
+                to={`/projekte/${b.id}`}
                 className="card flex flex-1 items-center gap-3 p-4 transition-colors hover:border-brand/40 hover:bg-brand-soft/40"
               >
                 {b.logo_pfad && (

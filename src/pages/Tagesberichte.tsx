@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { jsPDF } from 'jspdf'
 import { useParams } from 'react-router-dom'
-import { CalendarDays, CloudSun, Loader2, Search, Trash2, X } from 'lucide-react'
+import { CalendarDays, Search, Trash2, X } from 'lucide-react'
 import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
@@ -9,14 +9,13 @@ import { SignedImage } from '../components/SignedImage'
 import { PdfViewerModal } from '../components/PdfViewerModal'
 import { erzeugeEinzelnenTagesberichtPdf, exportTagesberichtePdf, pdfSpeichernOderTeilen } from '../lib/pdf'
 import { formatDatum } from '../lib/datum'
-import { holeWetterFuerBaustelle, projektOrt } from '../lib/wetter'
-import { standVonMangel } from '../lib/mangelStand'
+import { standVonAufgabe } from '../lib/aufgabeStand'
 import { tagesberichtName, tagesberichtNummern } from '../lib/tagesberichtName'
 import type {
-  Baustelle,
-  Mangel,
-  MangelKommentar,
-  MangelMaterial,
+  Projekt,
+  Aufgabe,
+  AufgabeKommentar,
+  AufgabeMaterial,
   StatusVorlageWert,
   Tagesbericht,
   TagesberichtTuer,
@@ -57,17 +56,17 @@ function taetigkeitenAnzeige(text: string): string {
 }
 
 export function Tagesberichte() {
-  const { id: baustelleId } = useParams<{ id: string }>()
+  const { id: projektId } = useParams<{ id: string }>()
   const { user, role } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const kannLoeschen = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
-  const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
+  const [projekt, setProjekt] = useState<Projekt | null>(null)
   const [berichte, setBerichte] = useState<Tagesbericht[]>([])
   const [zeiten, setZeiten] = useState<Zeiterfassung[]>([])
-  const [maengel, setMaengel] = useState<Mangel[]>([])
-  const [material, setMaterial] = useState<MangelMaterial[]>([])
-  const [kommentare, setKommentare] = useState<MangelKommentar[]>([])
+  const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
+  const [material, setMaterial] = useState<AufgabeMaterial[]>([])
+  const [kommentare, setKommentare] = useState<AufgabeKommentar[]>([])
   const [tueren, setTueren] = useState<TagesberichtTuer[]>([])
   const [werteMap, setWerteMap] = useState<Record<string, StatusVorlageWert>>({})
   const [loading, setLoading] = useState(true)
@@ -80,42 +79,39 @@ export function Tagesberichte() {
   const [loeschendId, setLoeschendId] = useState<string | null>(null)
   const [exportAuswahlOffen, setExportAuswahlOffen] = useState(false)
   const [exportAusgewaehlt, setExportAusgewaehlt] = useState<Set<string>>(new Set())
-  const [wetterLaedt, setWetterLaedt] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
   const [suche, setSuche] = useState('')
   const [datumsFilter, setDatumsFilter] = useState('')
 
   const [datum, setDatum] = useState(heute())
-  const [wetter, setWetter] = useState('')
-  const [temperatur, setTemperatur] = useState('')
   const [personalAnzahl, setPersonalAnzahl] = useState('')
   const [taetigkeiten, setTaetigkeiten] = useState('')
   const [besonderheiten, setBesonderheiten] = useState('')
 
   const load = async () => {
-    if (!baustelleId) return
+    if (!projektId) return
     setLoading(true)
-    const [{ data }, { data: baustelleData }, { data: zeitenData }, { data: maengelData }, { data: werteData }] =
+    const [{ data }, { data: projektData }, { data: zeitenData }, { data: aufgabenData }, { data: werteData }] =
       await Promise.all([
-        supabase.from('tagesberichte').select('*').eq('baustelle_id', baustelleId).order('datum', { ascending: false }),
-        supabase.from('baustellen').select('*').eq('id', baustelleId).single(),
-        supabase.from('zeiterfassung').select('*').eq('baustelle_id', baustelleId).order('start_zeit'),
-        supabase.from('maengel').select('*').eq('baustelle_id', baustelleId),
+        supabase.from('tagesberichte').select('*').eq('projekt_id', projektId).order('datum', { ascending: false }),
+        supabase.from('projekte').select('*').eq('id', projektId).single(),
+        supabase.from('zeiterfassung').select('*').eq('projekt_id', projektId).order('start_zeit'),
+        supabase.from('aufgaben').select('*').eq('projekt_id', projektId),
         supabase.from('statusvorlage_werte').select('*'),
       ])
     setBerichte(data ?? [])
-    setBaustelle(baustelleData)
+    setProjekt(projektData)
     setZeiten(zeitenData ?? [])
-    setMaengel(maengelData ?? [])
+    setAufgaben(aufgabenData ?? [])
     const wMap: Record<string, StatusVorlageWert> = {}
     for (const w of werteData ?? []) wMap[w.id] = w
     setWerteMap(wMap)
 
-    const mangelIds = (maengelData ?? []).map((m) => m.id)
-    if (mangelIds.length > 0) {
+    const aufgabeIds = (aufgabenData ?? []).map((m) => m.id)
+    if (aufgabeIds.length > 0) {
       const [{ data: materialData }, { data: kommentareData }] = await Promise.all([
-        supabase.from('mangel_material').select('*').in('mangel_id', mangelIds),
-        supabase.from('mangel_kommentare').select('*').in('mangel_id', mangelIds),
+        supabase.from('aufgabe_material').select('*').in('aufgabe_id', aufgabeIds),
+        supabase.from('aufgabe_kommentare').select('*').in('aufgabe_id', aufgabeIds),
       ])
       setMaterial(materialData ?? [])
       setKommentare(kommentareData ?? [])
@@ -140,12 +136,12 @@ export function Tagesberichte() {
   }
 
   const tuerenSnapshotEinfuegen = async (tagesberichtId: string) => {
-    if (maengel.length === 0) return
-    const zeilen = maengel.map((m, i) => ({
+    if (aufgaben.length === 0) return
+    const zeilen = aufgaben.map((m, i) => ({
       tagesbericht_id: tagesberichtId,
-      mangel_id: m.id,
+      aufgabe_id: m.id,
       titel: m.titel,
-      stand: standVonMangel(m, werteMap),
+      stand: standVonAufgabe(m, werteMap),
       reihenfolge: i,
     }))
     await supabase.from('tagesbericht_tueren').insert(zeilen)
@@ -154,20 +150,18 @@ export function Tagesberichte() {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baustelleId])
+  }, [projektId])
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user || !baustelleId) return
+    if (!user || !projektId) return
     setSaving(true)
     setFehler(null)
     const { data: neuerBericht, error } = await supabase
       .from('tagesberichte')
       .insert({
-        baustelle_id: baustelleId,
+        projekt_id: projektId,
         datum,
-        wetter: wetter || null,
-        temperatur: temperatur ? Number(temperatur) : null,
         personal_anzahl: personalAnzahl ? Number(personalAnzahl) : null,
         taetigkeiten: taetigkeiten || null,
         besonderheiten: besonderheiten || null,
@@ -182,8 +176,6 @@ export function Tagesberichte() {
     }
     if (neuerBericht) await tuerenSnapshotEinfuegen(neuerBericht.id)
     setDatum(heute())
-    setWetter('')
-    setTemperatur('')
     setPersonalAnzahl('')
     setTaetigkeiten('')
     setBesonderheiten('')
@@ -192,7 +184,7 @@ export function Tagesberichte() {
   }
 
   const handleAutoErstellen = async () => {
-    if (!user || !baustelleId) return
+    if (!user || !projektId) return
     setAutoSaving(true)
     setFehler(null)
 
@@ -201,15 +193,15 @@ export function Tagesberichte() {
 
     const nachAufgabe = new Map<string, Zeiterfassung[]>()
     for (const z of zeitenHeute) {
-      if (!z.mangel_id) continue
-      const liste = nachAufgabe.get(z.mangel_id) ?? []
+      if (!z.aufgabe_id) continue
+      const liste = nachAufgabe.get(z.aufgabe_id) ?? []
       liste.push(z)
-      nachAufgabe.set(z.mangel_id, liste)
+      nachAufgabe.set(z.aufgabe_id, liste)
     }
 
     const erledigtZeilen: string[] = []
-    for (const [mangelId, eintraege] of nachAufgabe) {
-      const m = maengel.find((x) => x.id === mangelId)
+    for (const [aufgabeId, eintraege] of nachAufgabe) {
+      const m = aufgaben.find((x) => x.id === aufgabeId)
       if (!m || m.status !== 'erledigt') continue
       const technikerNamen = [...new Set(eintraege.map((e) => nameOf(e.user_id)))].join(', ')
       const minuten = eintraege.reduce((sum, e) => sum + eintragMinuten(e), 0)
@@ -227,7 +219,7 @@ export function Tagesberichte() {
     const { data: neuerBericht, error } = await supabase
       .from('tagesberichte')
       .insert({
-        baustelle_id: baustelleId,
+        projekt_id: projektId,
         datum: heuteDatum,
         personal_anzahl: technikerAnzahl || null,
         taetigkeiten: text,
@@ -248,27 +240,13 @@ export function Tagesberichte() {
     load()
   }
 
-  const handleWetterAbrufen = async () => {
-    if (!baustelle || !datum) return
-    setWetterLaedt(true)
-    setFehler(null)
-    const ergebnis = await holeWetterFuerBaustelle(baustelle, datum)
-    setWetterLaedt(false)
-    if (!ergebnis) {
-      setFehler('Wetter konnte nicht ermittelt werden. Bitte manuell eintragen.')
-      return
-    }
-    setWetter(ergebnis.wetter)
-    setTemperatur(String(ergebnis.temperatur))
-  }
-
   const handleExport = async () => {
-    if (!baustelle) return
+    if (!projekt) return
     const ausgewaehlteBerichte = berichte.filter((b) => exportAusgewaehlt.has(b.id))
     if (ausgewaehlteBerichte.length === 0) return
     setPdfExportiert(true)
     try {
-      await exportTagesberichtePdf(baustelle, ausgewaehlteBerichte, zeiten, maengel, material, kommentare, tueren, nameOf)
+      await exportTagesberichtePdf(projekt, ausgewaehlteBerichte, zeiten, aufgaben, material, kommentare, tueren, nameOf)
       setExportAuswahlOffen(false)
     } catch (err) {
       setFehler(err instanceof Error ? err.message : 'PDF-Export fehlgeschlagen.')
@@ -288,16 +266,16 @@ export function Tagesberichte() {
   const nummern = useMemo(() => tagesberichtNummern(berichte), [berichte])
 
   const handleOeffnen = async (b: Tagesbericht) => {
-    if (!baustelle) return
+    if (!projekt) return
     setOeffnendId(b.id)
     setFehler(null)
     try {
-      const dateiname = tagesberichtName(baustelle, b, nummern[b.id])
+      const dateiname = tagesberichtName(projekt, b, nummern[b.id])
       const doc = await erzeugeEinzelnenTagesberichtPdf(
-        baustelle,
+        projekt,
         b,
         zeiten,
-        maengel,
+        aufgaben,
         material,
         kommentare,
         tueren,
@@ -329,7 +307,7 @@ export function Tagesberichte() {
       if (datumsFilter && b.datum !== datumsFilter) return false
       if (suche.trim()) {
         const q = suche.trim().toLowerCase()
-        const name = tagesberichtName(baustelle ?? ({ name: '' } as Baustelle), b, nummern[b.id]).toLowerCase()
+        const name = tagesberichtName(projekt ?? ({ name: '' } as Projekt), b, nummern[b.id]).toLowerCase()
         const treffer =
           name.includes(q) ||
           formatDatum(b.datum).toLowerCase().includes(q) ||
@@ -339,7 +317,7 @@ export function Tagesberichte() {
       }
       return true
     })
-  }, [berichte, datumsFilter, suche, baustelle, nummern])
+  }, [berichte, datumsFilter, suche, projekt, nummern])
 
   return (
     <>
@@ -347,7 +325,7 @@ export function Tagesberichte() {
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-text">Bautagebuch</h1>
         <div className="flex gap-2">
-          {baustelle && berichte.length > 0 && (
+          {projekt && berichte.length > 0 && (
             <button
               onClick={() => {
                 setExportAusgewaehlt(new Set(berichte.map((b) => b.id)))
@@ -371,7 +349,7 @@ export function Tagesberichte() {
         </div>
       </div>
 
-      {exportAuswahlOffen && baustelle && (
+      {exportAuswahlOffen && projekt && (
         <div className="card mb-4 space-y-3 p-4">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium text-text">Tagesberichte für den Export auswählen</p>
@@ -397,7 +375,7 @@ export function Tagesberichte() {
                     onChange={() => toggleExportAuswahl(b.id)}
                     className="h-4 w-4 flex-shrink-0"
                   />
-                  <span className="min-w-0 flex-1 truncate text-text">{tagesberichtName(baustelle, b, nummern[b.id])}</span>
+                  <span className="min-w-0 flex-1 truncate text-text">{tagesberichtName(projekt, b, nummern[b.id])}</span>
                   <span className="flex-shrink-0 text-xs text-text-subtle">{formatDatum(b.datum)}</span>
                 </label>
               </li>
@@ -477,41 +455,6 @@ export function Tagesberichte() {
                 className="field-input"
               />
             </div>
-            <div>
-              <div className="mb-1 flex items-center justify-between gap-1">
-                <label className="field-label mb-0">Wetter</label>
-                {baustelle && projektOrt(baustelle) && (
-                  <button
-                    type="button"
-                    onClick={handleWetterAbrufen}
-                    disabled={wetterLaedt || !datum}
-                    className="flex flex-shrink-0 items-center gap-1 text-xs font-medium text-brand disabled:opacity-50"
-                  >
-                    {wetterLaedt ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.25} />
-                    ) : (
-                      <CloudSun className="h-3.5 w-3.5" strokeWidth={2.25} />
-                    )}
-                    Abrufen
-                  </button>
-                )}
-              </div>
-              <input
-                value={wetter}
-                onChange={(e) => setWetter(e.target.value)}
-                placeholder="z. B. sonnig, 18°C"
-                className="field-input"
-              />
-            </div>
-            <div>
-              <label className="field-label">Temperatur (°C)</label>
-              <input
-                type="number"
-                value={temperatur}
-                onChange={(e) => setTemperatur(e.target.value)}
-                className="field-input"
-              />
-            </div>
           </div>
           <div>
             <label className="field-label">Tätigkeiten</label>
@@ -561,8 +504,8 @@ export function Tagesberichte() {
                 >
                   {oeffnendId === b.id
                     ? 'Öffnet…'
-                    : baustelle
-                      ? tagesberichtName(baustelle, b, nummern[b.id])
+                    : projekt
+                      ? tagesberichtName(projekt, b, nummern[b.id])
                       : formatDatum(b.datum)}
                 </button>
                 <div className="flex flex-shrink-0 items-center gap-2">
@@ -583,8 +526,6 @@ export function Tagesberichte() {
               </div>
               <div className="mb-1 text-xs text-text-subtle">{formatDatum(b.datum)}</div>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
-                {b.wetter && <span>Wetter: {b.wetter}</span>}
-                {b.temperatur !== null && <span>{b.temperatur}°C</span>}
                 {b.personal_anzahl !== null && <span>Personal: {b.personal_anzahl}</span>}
               </div>
               {b.taetigkeiten && taetigkeitenAnzeige(b.taetigkeiten) && (
@@ -619,7 +560,7 @@ export function Tagesberichte() {
                       <li key={z.id} className="flex items-center justify-between gap-2 text-xs text-text-muted">
                         <span className="min-w-0 truncate">
                           {nameOf(z.user_id)} —{' '}
-                          {z.mangel_id ? (maengel.find((m) => m.id === z.mangel_id)?.titel ?? 'Aufgabe') : 'Allgemein'}
+                          {z.aufgabe_id ? (aufgaben.find((m) => m.id === z.aufgabe_id)?.titel ?? 'Aufgabe') : 'Allgemein'}
                         </span>
                         <div className="flex flex-shrink-0 items-center gap-2">
                           {z.foto_pfad && (

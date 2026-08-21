@@ -1,6 +1,6 @@
-import type { Baustelle, Unternehmen } from '../types/database'
+import type { Projekt, Unternehmen } from '../types/database'
 
-export function formatProjektAdresse(b: Baustelle): string | null {
+export function formatProjektAdresse(b: Projekt): string | null {
   const zeile1 = [b.projekt_strasse, b.projekt_hausnummer].filter(Boolean).join(' ')
   const zeile2 = [b.projekt_plz, b.projekt_stadt].filter(Boolean).join(' ')
   const formatiert = [zeile1, zeile2].filter(Boolean).join(', ')
@@ -11,7 +11,7 @@ export function kartenUrl(adresse: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresse)}`
 }
 
-export function formatKundenAdresse(b: Baustelle): string | null {
+export function formatKundenAdresse(b: Projekt): string | null {
   const zeile1 = [b.kunden_strasse, b.kunden_hausnummer].filter(Boolean).join(' ')
   const zeile2 = [b.kunden_plz, b.kunden_stadt].filter(Boolean).join(' ')
   const formatiert = [zeile1, zeile2].filter(Boolean).join(', ')

@@ -5,19 +5,19 @@ import { useAuth } from '../contexts/AuthContext'
 import { SignedImage } from '../components/SignedImage'
 import { ProjektLoeschenDialog } from '../components/ProjektLoeschenDialog'
 import { formatProjektAdresse, kartenUrl } from '../lib/adresse'
-import type { Baustelle } from '../types/database'
+import type { Projekt } from '../types/database'
 
 export function Archiv() {
   const { role } = useAuth()
   const kannZugreifen = role === 'admin' || role === 'planer'
-  const [baustellen, setBaustellen] = useState<Baustelle[]>([])
+  const [projekte, setProjekte] = useState<Projekt[]>([])
   const [loading, setLoading] = useState(true)
   const [loeschenId, setLoeschenId] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
-    const { data } = await supabase.from('baustellen').select('*').eq('archiviert', true).order('name')
-    setBaustellen(data ?? [])
+    const { data } = await supabase.from('projekte').select('*').eq('archiviert', true).order('name')
+    setProjekte(data ?? [])
     setLoading(false)
   }
 
@@ -27,8 +27,8 @@ export function Archiv() {
   }, [kannZugreifen])
 
   const reaktivieren = async (id: string) => {
-    setBaustellen((prev) => prev.filter((b) => b.id !== id))
-    const { error } = await supabase.from('baustellen').update({ archiviert: false }).eq('id', id)
+    setProjekte((prev) => prev.filter((b) => b.id !== id))
+    const { error } = await supabase.from('projekte').update({ archiviert: false }).eq('id', id)
     if (error) load()
   }
 
@@ -47,25 +47,25 @@ export function Archiv() {
 
       {loading ? (
         <p className="text-sm text-text-muted">Lädt…</p>
-      ) : baustellen.length === 0 ? (
+      ) : projekte.length === 0 ? (
         <p className="text-sm text-text-muted">Keine archivierten Projekte.</p>
       ) : (
         <ul className="space-y-2">
-          {baustellen.map((b) => (
+          {projekte.map((b) => (
             <li key={b.id}>
               {loeschenId === b.id ? (
                 <ProjektLoeschenDialog
-                  baustelle={b}
+                  projekt={b}
                   onCancel={() => setLoeschenId(null)}
                   onDeleted={() => {
                     setLoeschenId(null)
-                    setBaustellen((prev) => prev.filter((x) => x.id !== b.id))
+                    setProjekte((prev) => prev.filter((x) => x.id !== b.id))
                   }}
                 />
               ) : (
                 <div className="flex items-center gap-2">
                   <Link
-                    to={`/baustellen/${b.id}`}
+                    to={`/projekte/${b.id}`}
                     className="card flex flex-1 items-center gap-3 p-4 opacity-75 transition-colors hover:border-brand/40 hover:bg-brand-soft/40"
                   >
                     {b.logo_pfad && (

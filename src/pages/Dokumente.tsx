@@ -5,15 +5,15 @@ import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { formatDatum } from '../lib/datum'
-import type { Dokument, DokumentKategorie, Mangel } from '../types/database'
+import type { Dokument, DokumentKategorie, Aufgabe } from '../types/database'
 
 function UploadForm({
   kategorie,
-  baustelleId,
+  projektId,
   onDone,
 }: {
   kategorie: DokumentKategorie
-  baustelleId: string
+  projektId: string
   onDone: () => void
 }) {
   const { user } = useAuth()
@@ -28,7 +28,7 @@ function UploadForm({
     setUploading(true)
     setFehler(null)
 
-    const { path, error: uploadError } = await uploadFile('dokumente', baustelleId, datei)
+    const { path, error: uploadError } = await uploadFile('dokumente', projektId, datei)
     if (uploadError) {
       setUploading(false)
       setFehler(`Upload fehlgeschlagen: ${uploadError}`)
@@ -36,7 +36,7 @@ function UploadForm({
     }
 
     const { error } = await supabase.from('dokumente').insert({
-      baustelle_id: baustelleId,
+      projekt_id: projektId,
       kategorie,
       name: name.trim() || datei.name,
       datei_pfad: path,
@@ -60,7 +60,7 @@ function UploadForm({
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={kategorie === 'projekt' ? 'z. B. Baustellenordnung' : 'z. B. Schaltplan EG, Kabelschema Verteiler 3'}
+          placeholder={kategorie === 'projekt' ? 'z. B. Projektordnung' : 'z. B. Schaltplan EG, Kabelschema Verteiler 3'}
           className="field-input"
         />
       </div>
@@ -81,33 +81,33 @@ function UploadForm({
 }
 
 export function Dokumente() {
-  const { id: baustelleId } = useParams<{ id: string }>()
+  const { id: projektId } = useParams<{ id: string }>()
   const { role } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const kannLoeschen = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
   const [dokumente, setDokumente] = useState<Dokument[]>([])
-  const [maengel, setMaengel] = useState<Mangel[]>([])
+  const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
   const [loading, setLoading] = useState(true)
   const [formOffen, setFormOffen] = useState<DokumentKategorie | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
-    if (!baustelleId) return
+    if (!projektId) return
     setLoading(true)
-    const [{ data }, { data: maengelData }] = await Promise.all([
-      supabase.from('dokumente').select('*').eq('baustelle_id', baustelleId).order('erstellt_am', { ascending: false }),
-      supabase.from('maengel').select('*').eq('baustelle_id', baustelleId).order('titel'),
+    const [{ data }, { data: aufgabenData }] = await Promise.all([
+      supabase.from('dokumente').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
+      supabase.from('aufgaben').select('*').eq('projekt_id', projektId).order('titel'),
     ])
     setDokumente(data ?? [])
-    setMaengel(maengelData ?? [])
+    setAufgaben(aufgabenData ?? [])
     setLoading(false)
   }
 
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baustelleId])
+  }, [projektId])
 
   const handleOeffnen = async (d: Dokument) => {
     const { url, error } = await getSignedUrl('dokumente', d.datei_pfad)
@@ -131,7 +131,7 @@ export function Dokumente() {
   const aufgabendokumente = dokumente.filter((d) => d.kategorie === 'aufgabe')
 
   const DokumentZeile = ({ d }: { d: Dokument }) => {
-    const aufgabe = d.mangel_id ? maengel.find((m) => m.id === d.mangel_id) : undefined
+    const aufgabe = d.aufgabe_id ? aufgaben.find((m) => m.id === d.aufgabe_id) : undefined
     return (
       <li className="card flex items-center gap-3 p-3">
         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-surface-hover text-text-muted">
@@ -199,10 +199,10 @@ export function Dokumente() {
               </button>
             )}
           </div>
-          {formOffen === 'projekt' && baustelleId && (
+          {formOffen === 'projekt' && projektId && (
             <UploadForm
               kategorie="projekt"
-              baustelleId={baustelleId}
+              projektId={projektId}
               onDone={() => {
                 setFormOffen(null)
                 load()
@@ -239,10 +239,10 @@ export function Dokumente() {
           <p className="mb-2 text-xs text-text-subtle">
             Hochgeladene Aufgabendokumente werden direkt an der Markierung bzw. Aufgabe zugeordnet.
           </p>
-          {formOffen === 'aufgabe' && baustelleId && (
+          {formOffen === 'aufgabe' && projektId && (
             <UploadForm
               kategorie="aufgabe"
-              baustelleId={baustelleId}
+              projektId={projektId}
               onDone={() => {
                 setFormOffen(null)
                 load()
@@ -266,7 +266,7 @@ export function Dokumente() {
       {!loading && dokumente.length > 0 && (
         <p className="mt-6 text-xs text-text-subtle">
           Zuordnung ändern: bei der jeweiligen{' '}
-          <Link to={`/baustellen/${baustelleId}/maengel`} className="text-brand hover:underline">
+          <Link to={`/projekte/${projektId}/aufgaben`} className="text-brand hover:underline">
             Aufgabe
           </Link>{' '}
           oder Markierung auf dem Plan unter „Fortschritt & Kommentare".

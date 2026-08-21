@@ -16,13 +16,13 @@ const schritte: Schritt[] = [
     icon: HardHat,
   },
   {
-    titel: 'Baustellen & Aufgaben',
-    text: 'Auf der Startseite siehst du alle Baustellen. In einer Baustelle verwaltest du Aufgaben (Mängel) mit Status, Fotos und Position auf dem Plan.',
+    titel: 'Projekte & Aufgaben',
+    text: 'Auf der Startseite siehst du alle Projekte. In einem Projekt verwaltest du Aufgaben mit Status, Fotos und Position auf dem Plan.',
     icon: ListChecks,
   },
   {
     titel: 'Tagesberichte & Zeiterfassung',
-    text: 'Tagesberichte dokumentieren, was an einem Tag erledigt wurde. Zeiterfassung protokolliert die Arbeitszeit je Mitarbeiter und Baustelle.',
+    text: 'Tagesberichte dokumentieren, was an einem Tag erledigt wurde. Zeiterfassung protokolliert die Arbeitszeit je Mitarbeiter und Projekt.',
     icon: ClipboardList,
   },
   {

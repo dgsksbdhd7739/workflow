@@ -1,6 +1,6 @@
 # Neue Firma anlegen
 
-WorkFlow ist mandantenfähig: mehrere Firmen können dieselbe App nutzen, ohne dass sie gegenseitig ihre Daten sehen (Baustellen, Aufgaben, Nutzer, Statusvorlagen etc. sind strikt pro Firma getrennt, siehe Migration `supabase/migrations/0033_mandantentrennung.sql`).
+WorkFlow ist mandantenfähig: mehrere Firmen können dieselbe App nutzen, ohne dass sie gegenseitig ihre Daten sehen (Projekte, Aufgaben, Nutzer, Statusvorlagen etc. sind strikt pro Firma getrennt, siehe Migration `supabase/migrations/0033_mandantentrennung.sql`).
 
 Es gibt bewusst **keine Selbstregistrierung** — eine neue Firma entsteht nur über das Skript unten. Kein Nutzer, auch kein Admin einer bestehenden Firma, kann selbst eine neue Firma anlegen oder eine fremde sehen.
 

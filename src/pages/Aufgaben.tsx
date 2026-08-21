@@ -4,57 +4,57 @@ import { AlertTriangle, CalendarClock, LayoutGrid, List, Map as MapIcon, Search 
 import { supabase, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
-import { MangelDetails } from '../components/MangelDetails'
+import { AufgabeDetails } from '../components/AufgabeDetails'
 import { Arbeitszeit } from '../components/Arbeitszeit'
 import { SignedImage } from '../components/SignedImage'
-import { exportMaengelPdf } from '../lib/pdf'
+import { exportAufgabenPdf } from '../lib/pdf'
 import { formatDatum } from '../lib/datum'
 import { komprimiereBild } from '../lib/bildKompression'
 import type {
-  Baustelle,
-  Mangel,
-  MangelKommentar,
-  MangelMaterial,
-  MangelPrioritaet,
-  MangelStatus,
+  Projekt,
+  Aufgabe,
+  AufgabeKommentar,
+  AufgabeMaterial,
+  AufgabePrioritaet,
+  AufgabeStatus,
   StatusVorlageWert,
 } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
 
-const statusLabel: Record<MangelStatus, string> = {
+const statusLabel: Record<AufgabeStatus, string> = {
   offen: 'Stopp',
   in_bearbeitung: 'In Arbeit',
   erledigt: 'Abgeschlossen',
 }
 
-const statusColor: Record<MangelStatus, string> = {
+const statusColor: Record<AufgabeStatus, string> = {
   offen: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300',
   in_bearbeitung: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
   erledigt: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
 }
 
-const statusSpalten: MangelStatus[] = ['offen', 'in_bearbeitung', 'erledigt']
+const statusSpalten: AufgabeStatus[] = ['offen', 'in_bearbeitung', 'erledigt']
 
-const prioritaetLabel: Record<MangelPrioritaet, string> = {
+const prioritaetLabel: Record<AufgabePrioritaet, string> = {
   niedrig: 'Niedrig',
   mittel: 'Mittel',
   hoch: 'Hoch',
 }
 
-function istUeberfaellig(m: Mangel) {
+function istUeberfaellig(m: Aufgabe) {
   return m.status !== 'erledigt' && !!m.faellig_am && m.faellig_am < heute()
 }
 
-interface MangelKarteProps {
-  m: Mangel
+interface AufgabeKarteProps {
+  m: Aufgabe
   wert?: StatusVorlageWert
-  baustelleId?: string
+  projektId?: string
   kannBearbeiten: boolean
   kannLoeschen: boolean
   geoeffnet: boolean
   onToggleDetails: () => void
-  onStatusChange: (status: MangelStatus) => void
+  onStatusChange: (status: AufgabeStatus) => void
   onDelete: () => void
   onDetailsChange: () => void
   nameOf: (id: string | null) => string
@@ -64,10 +64,10 @@ interface MangelKarteProps {
   onToggleAuswahl: () => void
 }
 
-function MangelKarte({
+function AufgabeKarte({
   m,
   wert,
-  baustelleId,
+  projektId,
   kannBearbeiten,
   kannLoeschen,
   geoeffnet,
@@ -80,7 +80,7 @@ function MangelKarte({
   onDragStart,
   ausgewaehlt,
   onToggleAuswahl,
-}: MangelKarteProps) {
+}: AufgabeKarteProps) {
   const ueberfaellig = istUeberfaellig(m)
   return (
     <div className={`card p-4 ${ausgewaehlt ? 'ring-2 ring-brand' : ''}`} draggable={draggable} onDragStart={onDragStart}>
@@ -112,7 +112,7 @@ function MangelKarte({
         )}
       </div>
       <div className="mt-3">
-        <Arbeitszeit mangel={m} onChange={onDetailsChange} />
+        <Arbeitszeit aufgabe={m} onChange={onDetailsChange} />
       </div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
@@ -141,7 +141,7 @@ function MangelKarte({
         {kannBearbeiten && (
           <select
             value={m.status}
-            onChange={(e) => onStatusChange(e.target.value as MangelStatus)}
+            onChange={(e) => onStatusChange(e.target.value as AufgabeStatus)}
             className="rounded-lg border border-border-strong bg-surface px-2 py-1 text-xs text-text"
           >
             {(['offen', 'in_bearbeitung', 'erledigt'] as const).map((s) => (
@@ -153,7 +153,7 @@ function MangelKarte({
         )}
       </div>
       {m.plan_id && (
-        <Link to={`/baustellen/${baustelleId}/plaene/${m.plan_id}`} className="mt-2 inline-flex items-center gap-1 text-xs text-brand">
+        <Link to={`/projekte/${projektId}/plaene/${m.plan_id}`} className="mt-2 inline-flex items-center gap-1 text-xs text-brand">
           <MapIcon className="h-3 w-3" strokeWidth={2.25} />
           Position auf Plan ansehen
         </Link>
@@ -170,59 +170,59 @@ function MangelKarte({
       </div>
       {geoeffnet && (
         <div className="mt-3 border-t border-border pt-3">
-          <MangelDetails mangelId={m.id} onChange={onDetailsChange} />
+          <AufgabeDetails aufgabeId={m.id} onChange={onDetailsChange} />
         </div>
       )}
     </div>
   )
 }
 
-export function Maengel() {
-  const { id: baustelleId } = useParams<{ id: string }>()
+export function Aufgaben() {
+  const { id: projektId } = useParams<{ id: string }>()
   const { user, role } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const kannLoeschen = role === 'admin' || role === 'planer'
   const { profiles, nameOf } = useProfiles()
-  const [baustelle, setBaustelle] = useState<Baustelle | null>(null)
-  const [maengel, setMaengel] = useState<Mangel[]>([])
+  const [projekt, setProjekt] = useState<Projekt | null>(null)
+  const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [filterStatus, setFilterStatus] = useState<MangelStatus | 'alle' | 'ueberfaellig'>('alle')
+  const [filterStatus, setFilterStatus] = useState<AufgabeStatus | 'alle' | 'ueberfaellig'>('alle')
   const [suche, setSuche] = useState('')
   const [ansicht, setAnsicht] = useState<'liste' | 'board'>('liste')
   const [ziehtId, setZiehtId] = useState<string | null>(null)
-  const [dragZielSpalte, setDragZielSpalte] = useState<MangelStatus | null>(null)
+  const [dragZielSpalte, setDragZielSpalte] = useState<AufgabeStatus | null>(null)
   const [geoeffnetId, setGeoeffnetId] = useState<string | null>(null)
   const [werteMap, setWerteMap] = useState<Record<string, StatusVorlageWert>>({})
-  const [material, setMaterial] = useState<MangelMaterial[]>([])
-  const [kommentare, setKommentare] = useState<MangelKommentar[]>([])
+  const [material, setMaterial] = useState<AufgabeMaterial[]>([])
+  const [kommentare, setKommentare] = useState<AufgabeKommentar[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [ausgewaehlt, setAusgewaehlt] = useState<Set<string>>(new Set())
 
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
-  const [prioritaet, setPrioritaet] = useState<MangelPrioritaet>('mittel')
+  const [prioritaet, setPrioritaet] = useState<AufgabePrioritaet>('mittel')
   const [verantwortlicherId, setVerantwortlicherId] = useState('')
   const [faelligAm, setFaelligAm] = useState('')
   const [foto, setFoto] = useState<File | null>(null)
 
   const load = async () => {
-    if (!baustelleId) return
+    if (!projektId) return
     setLoading(true)
-    const [{ data }, { data: baustelleData }] = await Promise.all([
-      supabase.from('maengel').select('*').eq('baustelle_id', baustelleId).order('erstellt_am', { ascending: false }),
-      supabase.from('baustellen').select('*').eq('id', baustelleId).single(),
+    const [{ data }, { data: projektData }] = await Promise.all([
+      supabase.from('aufgaben').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
+      supabase.from('projekte').select('*').eq('id', projektId).single(),
     ])
-    setMaengel(data ?? [])
-    setBaustelle(baustelleData)
+    setAufgaben(data ?? [])
+    setProjekt(projektData)
 
     // Fuer den PDF-Export (Fortschritt, Material, Kommentare je Aufgabe).
-    const mangelIds = (data ?? []).map((m) => m.id)
-    if (mangelIds.length > 0) {
+    const aufgabeIds = (data ?? []).map((m) => m.id)
+    if (aufgabeIds.length > 0) {
       const [{ data: materialData }, { data: kommentareData }] = await Promise.all([
-        supabase.from('mangel_material').select('*').in('mangel_id', mangelIds),
-        supabase.from('mangel_kommentare').select('*').in('mangel_id', mangelIds),
+        supabase.from('aufgabe_material').select('*').in('aufgabe_id', aufgabeIds),
+        supabase.from('aufgabe_kommentare').select('*').in('aufgabe_id', aufgabeIds),
       ])
       setMaterial(materialData ?? [])
       setKommentare(kommentareData ?? [])
@@ -246,18 +246,18 @@ export function Maengel() {
         setWerteMap(map)
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baustelleId])
+  }, [projektId])
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
-    if (!user || !baustelleId) return
+    if (!user || !projektId) return
     setSaving(true)
     setFehler(null)
 
     let foto_pfad: string | null = null
     if (foto) {
       const fotoKomprimiert = await komprimiereBild(foto)
-      const { path, error: uploadError } = await uploadFile('mangel-fotos', baustelleId, fotoKomprimiert)
+      const { path, error: uploadError } = await uploadFile('mangel-fotos', projektId, fotoKomprimiert)
       if (uploadError) {
         setSaving(false)
         setFehler(`Foto-Upload fehlgeschlagen: ${uploadError}`)
@@ -266,8 +266,8 @@ export function Maengel() {
       foto_pfad = path
     }
 
-    const { error } = await supabase.from('maengel').insert({
-      baustelle_id: baustelleId,
+    const { error } = await supabase.from('aufgaben').insert({
+      projekt_id: projektId,
       titel,
       beschreibung: beschreibung || null,
       prioritaet,
@@ -292,20 +292,20 @@ export function Maengel() {
     load()
   }
 
-  const updateStatus = async (mangelId: string, status: MangelStatus) => {
+  const updateStatus = async (aufgabeId: string, status: AufgabeStatus) => {
     setFehler(null)
-    setMaengel((prev) => prev.map((m) => (m.id === mangelId ? { ...m, status } : m)))
-    const { error } = await supabase.from('maengel').update({ status }).eq('id', mangelId)
+    setAufgaben((prev) => prev.map((m) => (m.id === aufgabeId ? { ...m, status } : m)))
+    const { error } = await supabase.from('aufgaben').update({ status }).eq('id', aufgabeId)
     if (error) {
       setFehler(error.message)
       load()
     }
   }
 
-  const handleDelete = async (m: Mangel) => {
+  const handleDelete = async (m: Aufgabe) => {
     if (!window.confirm(`"${m.titel}" wirklich endgültig löschen? Das kann nicht rückgängig gemacht werden.`)) return
     setFehler(null)
-    const { error } = await supabase.from('maengel').delete().eq('id', m.id)
+    const { error } = await supabase.from('aufgaben').delete().eq('id', m.id)
     if (error) {
       setFehler(error.message)
       return
@@ -329,7 +329,7 @@ export function Maengel() {
       return
     }
     setFehler(null)
-    const { error } = await supabase.from('maengel').delete().in('id', ids)
+    const { error } = await supabase.from('aufgaben').delete().in('id', ids)
     if (error) {
       setFehler(error.message)
       return
@@ -340,10 +340,10 @@ export function Maengel() {
 
   const nachStatus =
     filterStatus === 'alle'
-      ? maengel
+      ? aufgaben
       : filterStatus === 'ueberfaellig'
-        ? maengel.filter(istUeberfaellig)
-        : maengel.filter((m) => m.status === filterStatus)
+        ? aufgaben.filter(istUeberfaellig)
+        : aufgaben.filter((m) => m.status === filterStatus)
 
   const sucheNormalisiert = suche.trim().toLowerCase()
   const gefiltert = sucheNormalisiert
@@ -354,15 +354,15 @@ export function Maengel() {
       )
     : nachStatus
 
-  const ueberfaelligAnzahl = maengel.filter(istUeberfaellig).length
+  const ueberfaelligAnzahl = aufgaben.filter(istUeberfaellig).length
 
   return (
     <div className={ansicht === 'board' ? 'mx-auto max-w-6xl px-4 py-6' : 'page'}>
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-text">Aufgaben</h1>
-          {baustelle?.projekt_ende && (
-            <p className="text-xs text-text-muted">Projekt fällig bis {formatDatum(baustelle.projekt_ende)}</p>
+          {projekt?.projekt_ende && (
+            <p className="text-xs text-text-muted">Projekt fällig bis {formatDatum(projekt.projekt_ende)}</p>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -386,9 +386,9 @@ export function Maengel() {
               <LayoutGrid className="h-4 w-4" strokeWidth={2.25} />
             </button>
           </div>
-          {baustelle && gefiltert.length > 0 && (
+          {projekt && gefiltert.length > 0 && (
             <button
-              onClick={() => exportMaengelPdf(baustelle, gefiltert, material, kommentare, werteMap, nameOf)}
+              onClick={() => exportAufgabenPdf(projekt, gefiltert, material, kommentare, werteMap, nameOf)}
               className="btn-secondary"
             >
               PDF exportieren
@@ -482,7 +482,7 @@ export function Maengel() {
               <label className="field-label">Priorität</label>
               <select
                 value={prioritaet}
-                onChange={(e) => setPrioritaet(e.target.value as MangelPrioritaet)}
+                onChange={(e) => setPrioritaet(e.target.value as AufgabePrioritaet)}
                 className="field-input"
               >
                 {(['niedrig', 'mittel', 'hoch'] as const).map((p) => (
@@ -541,10 +541,10 @@ export function Maengel() {
         <ul className="space-y-3">
           {gefiltert.map((m) => (
             <li key={m.id}>
-              <MangelKarte
+              <AufgabeKarte
                 m={m}
                 wert={m.status_wert_id ? werteMap[m.status_wert_id] : undefined}
-                baustelleId={baustelleId}
+                projektId={projektId}
                 kannBearbeiten={kannBearbeiten}
                 kannLoeschen={kannLoeschen}
                 geoeffnet={geoeffnetId === m.id}
@@ -588,10 +588,10 @@ export function Maengel() {
                 </div>
                 {karten.map((m) => (
                   <div key={m.id} className={kannBearbeiten ? 'cursor-grab active:cursor-grabbing' : ''}>
-                    <MangelKarte
+                    <AufgabeKarte
                       m={m}
                       wert={m.status_wert_id ? werteMap[m.status_wert_id] : undefined}
-                      baustelleId={baustelleId}
+                      projektId={projektId}
                       kannBearbeiten={kannBearbeiten}
                       kannLoeschen={kannLoeschen}
                       geoeffnet={geoeffnetId === m.id}

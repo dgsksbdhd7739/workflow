@@ -1,27 +1,27 @@
 import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import type { Baustelle } from '../types/database'
+import type { Projekt } from '../types/database'
 
 export function ProjektLoeschenDialog({
-  baustelle,
+  projekt,
   onDeleted,
   onCancel,
 }: {
-  baustelle: Baustelle
+  projekt: Projekt
   onDeleted: () => void
   onCancel: () => void
 }) {
   const [eingabe, setEingabe] = useState('')
   const [loescht, setLoescht] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
-  const stimmtUeberein = eingabe.trim() === baustelle.name
+  const stimmtUeberein = eingabe.trim() === projekt.name
 
   const handleDelete = async () => {
     if (!stimmtUeberein) return
     setLoescht(true)
     setFehler(null)
-    const { error } = await supabase.from('baustellen').delete().eq('id', baustelle.id)
+    const { error } = await supabase.from('projekte').delete().eq('id', projekt.id)
     setLoescht(false)
     if (error) {
       setFehler(error.message)
@@ -37,14 +37,14 @@ export function ProjektLoeschenDialog({
         <div>
           <p className="text-sm font-semibold text-text">Projekt endgültig löschen</p>
           <p className="mt-1 text-xs text-text-muted">
-            Alle Aufgaben, Pläne, Tagesberichte, Termine, Zeiterfassungen und Dokumente von „{baustelle.name}“ werden
+            Alle Aufgaben, Pläne, Tagesberichte, Termine, Zeiterfassungen und Dokumente von „{projekt.name}“ werden
             unwiderruflich gelöscht. Das kann nicht rückgängig gemacht werden.
           </p>
         </div>
       </div>
       {fehler && <p className="banner-error">Fehler: {fehler}</p>}
       <div>
-        <label className="field-label">Zum Bestätigen Projektnamen eingeben: „{baustelle.name}“</label>
+        <label className="field-label">Zum Bestätigen Projektnamen eingeben: „{projekt.name}“</label>
         <input autoFocus value={eingabe} onChange={(e) => setEingabe(e.target.value)} className="field-input" />
       </div>
       <div className="flex gap-2">

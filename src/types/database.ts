@@ -90,6 +90,8 @@ export interface Aufgabe {
   position_y: number | null
   position_x2: number | null
   position_y2: number | null
+  label_x: number | null
+  label_y: number | null
   farbe: string | null
   status_wert_id: string | null
   abnahme_nummer: string | null

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type TouchEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type FormEvent, type MouseEvent, type TouchEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, List, Search, X } from 'lucide-react'
 import { supabase, getSignedUrl } from '../lib/supabase'
@@ -74,7 +74,16 @@ export function PlanDetail() {
   const [plan, setPlan] = useState<Plan | null>(null)
   const [pins, setPins] = useState<Aufgabe[]>([])
   const [pinSuche, setPinSuche] = useState('')
-  const [pendingPos, setPendingPos] = useState<{ x: number; y: number; x2?: number; y2?: number } | null>(null)
+  // x/y ist die Position des Kastens (Labels); bei einer Punkt-Markierung
+  // haelt ankerX/ankerY zusaetzlich die tatsaechliche, per 1. Klick gesetzte
+  // Stelle fest, falls der Kasten per 2. Klick woanders platziert wird --
+  // beide werden separat gespeichert (aufgaben.position_x/y = Anker,
+  // aufgaben.label_x/y = Kasten), damit die Verbindungslinie auch nach dem
+  // Speichern nachvollziehbar bleibt.
+  const [pendingPos, setPendingPos] = useState<
+    { x: number; y: number; x2?: number; y2?: number; ankerX?: number; ankerY?: number } | null
+  >(null)
+  const [pendingFixiert, setPendingFixiert] = useState(false)
   const [selectedPin, setSelectedPin] = useState<Aufgabe | null>(null)
   const [saving, setSaving] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -318,8 +327,29 @@ export function PlanDetail() {
     const rect = e.currentTarget.getBoundingClientRect()
     const pos = relPos(e.clientX, e.clientY, rect)
     setSelectedPin(null)
-    resetNeuForm()
-    setPendingPos(pos)
+    // Zwei-Klick-Platzierung: 1. Klick oeffnet den Kasten (noch frei
+    // verschiebbar, Formular bleibt zu), 2. Klick fixiert die Position und
+    // oeffnet erst dann das Formular -- praeziser auf einem Touchscreen als
+    // ein einzelner Tipp.
+    if (!pendingPos || pendingFixiert) {
+      resetNeuForm()
+      setPendingPos({ x: pos.x, y: pos.y, ankerX: pos.x, ankerY: pos.y })
+      setPendingFixiert(false)
+    } else {
+      setPendingPos((prev) => (prev ? { ...prev, x: pos.x, y: pos.y } : prev))
+      setPendingFixiert(true)
+    }
+  }
+
+  // Waehrend der Kasten noch nicht fixiert ist, folgt er mit der Maus (auf
+  // Touch gibt es zwischen den beiden Tipps keine Hover-Position -- dort
+  // bleibt er bis zum 2. Tipp einfach am Anker stehen). Der Pfeil vom Anker
+  // zur aktuellen Position macht die freie Positionierung sichtbar.
+  const handlePunktHover = (e: MouseEvent<HTMLDivElement>) => {
+    if (!pendingPos || pendingPos.ankerX === undefined || pendingFixiert || zeichenModus !== 'punkt') return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const pos = relPos(e.clientX, e.clientY, rect)
+    setPendingPos((prev) => (prev ? { ...prev, x: pos.x, y: pos.y } : prev))
   }
 
   const istNaheBestehendemPin = (t: ErkannteMarkierung) =>
@@ -547,16 +577,26 @@ export function PlanDetail() {
     if (!pendingPos || !user || !projektId || !planId) return
     setSaving(true)
     setFehler(null)
+    // position_x/y bleiben die tatsaechliche, praezise Stelle auf dem Plan
+    // (1. Klick bzw. Anker) -- label_x/y nur gesetzt, wenn der Kasten per
+    // 2. Klick sichtbar woanders platziert wurde, damit die Verbindungslinie
+    // auch nach dem Speichern erhalten bleibt.
+    const hatVersatz =
+      pendingPos.ankerX !== undefined &&
+      pendingPos.ankerY !== undefined &&
+      (pendingPos.ankerX !== pendingPos.x || pendingPos.ankerY !== pendingPos.y)
     const { error } = await supabase.from('aufgaben').insert({
       projekt_id: projektId,
       titel,
       beschreibung: beschreibung || null,
       prioritaet,
       plan_id: planId,
-      position_x: pendingPos.x,
-      position_y: pendingPos.y,
+      position_x: pendingPos.ankerX ?? pendingPos.x,
+      position_y: pendingPos.ankerY ?? pendingPos.y,
       position_x2: pendingPos.x2 ?? null,
       position_y2: pendingPos.y2 ?? null,
+      label_x: hatVersatz ? pendingPos.x : null,
+      label_y: hatVersatz ? pendingPos.y : null,
       status_wert_id: werte.length > 0 ? statusWertId || null : null,
       status,
       erstellt_von: user.id,
@@ -598,7 +638,7 @@ export function PlanDetail() {
     setFehler(null)
     const { error } = await supabase
       .from('aufgaben')
-      .update({ plan_id: null, position_x: null, position_y: null })
+      .update({ plan_id: null, position_x: null, position_y: null, label_x: null, label_y: null })
       .eq('id', selectedPin.id)
     setSaving(false)
     if (error) {
@@ -661,9 +701,15 @@ export function PlanDetail() {
     )
   }
 
+  // Bei einer Punkt-Markierung (kein Rechteck, erkennbar an fehlendem x2)
+  // erst nach dem zweiten, positionsfixierenden Klick oeffnen -- sonst
+  // wuerde das Formular schon beim ersten Klick ueber dem noch frei
+  // verschiebbaren Kasten aufklappen.
+  const pendingBereitFuerFormular = Boolean(pendingPos) && (pendingPos!.x2 !== undefined || pendingFixiert)
+
   const panel = vorschauMarkierungen
     ? 'erkennung'
-    : pendingPos
+    : pendingBereitFuerFormular
       ? 'neu'
       : selectedPin
         ? 'details'
@@ -785,13 +831,18 @@ export function PlanDetail() {
           ? 'PDF wird geladen…'
           : zeichenModus === 'rechteck'
             ? 'Auf dem Plan ziehen, um ein Rechteck (z. B. um eine Tür) zu markieren.'
-            : 'Auf den Plan tippen, um eine Aufgabe zu markieren. Vorhandene Markierung antippen zum Bearbeiten.'}
+            : pendingPos && pendingPos.x2 === undefined && !pendingFixiert
+              ? 'Nochmal auf den Plan tippen, um den Kasten an dieser Stelle zu platzieren.'
+              : 'Auf den Plan tippen, um eine Aufgabe zu markieren. Vorhandene Markierung antippen zum Bearbeiten.'}
       </p>
       <div ref={viewportRef} className="relative flex-1 overflow-hidden">
             <div
               onClick={handlePlanClick}
               onMouseDown={handleContentMouseDown}
-              onMouseMove={(e) => rechteckStart && handleRectMouseMove(e)}
+              onMouseMove={(e) => {
+                if (rechteckStart) handleRectMouseMove(e)
+                else handlePunktHover(e)
+              }}
               onMouseUp={() => rechteckStart && handleRectMouseUp()}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
@@ -816,9 +867,45 @@ export function PlanDetail() {
               {zeigePunkte &&
                 pins.map((m) => {
                   const gedimmt = Boolean(pinSuche.trim()) && !m.titel.toLowerCase().includes(pinSuche.trim().toLowerCase())
-                  return m.position_x2 != null && m.position_y2 != null ? (
+                  const labelX = m.label_x ?? m.position_x
+                  const labelY = m.label_y ?? m.position_y
+                  const hatVersatz = m.label_x != null && m.label_y != null && m.position_x != null && m.position_y != null
+                  return (
+                    <Fragment key={m.id}>
+                      {hatVersatz && (
+                        <>
+                          <svg
+                            viewBox="0 0 100 100"
+                            preserveAspectRatio="none"
+                            className="pointer-events-none absolute inset-0 h-full w-full"
+                            style={{ zIndex: 4, opacity: gedimmt ? 0.25 : 1, transition: 'opacity 150ms' }}
+                          >
+                            <line
+                              x1={m.position_x!}
+                              y1={m.position_y!}
+                              x2={labelX!}
+                              y2={labelY!}
+                              stroke={pinFarbe(m, werte)}
+                              strokeWidth={0.4}
+                              strokeDasharray="1.5 1.5"
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          </svg>
+                          <div
+                            style={{
+                              left: `${m.position_x}%`,
+                              top: `${m.position_y}%`,
+                              borderColor: pinFarbe(m, werte),
+                              zIndex: 5,
+                              opacity: gedimmt ? 0.25 : 1,
+                              transition: 'opacity 150ms',
+                            }}
+                            className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white"
+                          />
+                        </>
+                      )}
+                      {m.position_x2 != null && m.position_y2 != null ? (
                     <div
-                      key={m.id}
                       onClick={(e) => handlePinClick(e, m)}
                       style={{
                         left: `${Math.min(m.position_x!, m.position_x2)}%`,
@@ -845,9 +932,8 @@ export function PlanDetail() {
                     </div>
                   ) : (
                     <div
-                      key={m.id}
                       onClick={(e) => handlePinClick(e, m)}
-                      style={{ left: `${m.position_x}%`, top: `${m.position_y}%`, opacity: gedimmt ? 0.25 : 1, transition: 'opacity 150ms' }}
+                      style={{ left: `${labelX}%`, top: `${labelY}%`, opacity: gedimmt ? 0.25 : 1, transition: 'opacity 150ms' }}
                       className="absolute -translate-x-1/2 -translate-y-full cursor-pointer"
                     >
                       <div className="flex flex-col items-center">
@@ -864,8 +950,40 @@ export function PlanDetail() {
                         />
                       </div>
                     </div>
+                      )}
+                    </Fragment>
                   )
                 })}
+              {pendingPos && pendingPos.ankerX !== undefined && pendingPos.ankerY !== undefined && (
+                <>
+                  <svg
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                    className="pointer-events-none absolute inset-0 h-full w-full"
+                    style={{ zIndex: 4 }}
+                  >
+                    <line
+                      x1={pendingPos.ankerX}
+                      y1={pendingPos.ankerY}
+                      x2={pendingPos.x}
+                      y2={pendingPos.y}
+                      stroke={vorschauFarbe}
+                      strokeWidth={0.4}
+                      strokeDasharray="1.5 1.5"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+                  <div
+                    style={{
+                      left: `${pendingPos.ankerX}%`,
+                      top: `${pendingPos.ankerY}%`,
+                      borderColor: vorschauFarbe,
+                      zIndex: 5,
+                    }}
+                    className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white"
+                  />
+                </>
+              )}
               {pendingPos && pendingPos.x2 !== undefined && pendingPos.y2 !== undefined ? (
                 <div
                   style={{
@@ -914,9 +1032,11 @@ export function PlanDetail() {
                       </button>
                       <div
                         style={{ backgroundColor: vorschauFarbe }}
-                        className="max-w-[10rem] truncate rounded-md px-2 py-1 text-xs font-semibold text-white shadow-md ring-1 ring-white/70"
+                        className={`max-w-[10rem] truncate rounded-md px-2 py-1 text-xs font-semibold text-white shadow-md ${
+                          pendingFixiert ? 'ring-1 ring-white/70' : 'ring-2 ring-dashed ring-white'
+                        }`}
                       >
-                        {titel || 'Neue Markierung'}
+                        {pendingFixiert ? titel || 'Neue Markierung' : 'Kasten platzieren…'}
                       </div>
                       <div
                         style={{ borderTopColor: vorschauFarbe }}

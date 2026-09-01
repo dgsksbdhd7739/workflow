@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.4.4',
+    datum: '2026-08-21',
+    aenderungen: [
+      'Neue Punkt-Markierung auf Plänen: 1. Klick öffnet den Kasten, ein gestrichelter Pfeil vom Ausgangspunkt zeigt beim Bewegen der Maus die freie Positionierung, 2. Klick platziert ihn fest — erst danach öffnet sich das Formular. Präziser als ein einzelner Klick, vor allem am Handy.',
+      'Wurde der Kasten dabei versetzt zur eigentlichen Stelle platziert, bleiben Punkt und Kasten dauerhaft durch eine gestrichelte Linie verbunden — auch nach dem Speichern, damit auf dem Plan jederzeit nachvollziehbar bleibt, wohin die Aufgabe gehört.',
+    ],
+  },
+  {
     version: '1.4.3',
     datum: '2026-08-21',
     aenderungen: [

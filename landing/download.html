@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4f46e5" />
+    <title>WorkFlow — Android-App herunterladen</title>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --border: #e2e8f0;
+        --text: #0f172a;
+        --text-muted: #475569;
+        --brand: #4f46e5;
+        --brand-2: #2563eb;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0a0e1a;
+          --surface: #131a2b;
+          --border: #232e46;
+          --text: #f1f5f9;
+          --text-muted: #94a3b8;
+          --brand: #818cf8;
+          --brand-2: #60a5fa;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.25rem;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        text-align: center;
+        padding: 2rem 1.5rem;
+      }
+      .logo {
+        display: flex;
+        height: 3.5rem;
+        width: 3.5rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.9rem;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        box-shadow: 0 4px 16px -4px rgba(79, 70, 229, 0.5);
+      }
+      h1 {
+        font-size: 1.375rem;
+        margin: 0;
+      }
+      p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        max-width: 26rem;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        padding: 0.85rem 1.75rem;
+        border-radius: 0.75rem;
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        color: white;
+        font-weight: 600;
+        font-size: 1rem;
+        text-decoration: none;
+        box-shadow: 0 6px 20px -6px rgba(79, 70, 229, 0.6);
+      }
+      .hinweis {
+        margin-top: 1.5rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.6rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        max-width: 26rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="logo">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 18a8 8 0 0 1 16 0Z" />
+        <path d="M4 18h16" />
+        <path d="M12 10v-3" />
+      </svg>
+    </div>
+    <h1>WorkFlow für Android</h1>
+    <p>Direkter Download der aktuellen Version, solange die eigene Domain noch nicht aktiv ist.</p>
+    <a class="btn" href="assets/workflow.apk" download="WorkFlow-v1.5.0.apk">⬇ WorkFlow-v1.5.0.apk herunterladen</a>
+    <div class="hinweis">
+      Beim Installieren fragt Android eventuell nach der Erlaubnis "Apps aus unbekannten Quellen" — das ist normal,
+      da die App nicht über den Play Store verteilt wird.
+    </div>
+  </body>
+</html>

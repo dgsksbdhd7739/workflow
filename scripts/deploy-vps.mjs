@@ -39,10 +39,12 @@ if (!existsSync(keyPath)) {
   process.exit(1)
 }
 
-const run = (cmd, args) => execFileSync(cmd, args, { stdio: 'inherit' })
+const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'inherit', ...opts })
 
 console.log('Baue Projekt (npm run build) ...')
-run('npm', ['run', 'build'])
+// npm ist unter Windows ein .cmd-Skript, das execFileSync nur mit shell:true findet;
+// die Argumente hier sind fest verdrahtet (kein Nutzereingriff), daher unbedenklich.
+run('npm', ['run', 'build'], { shell: process.platform === 'win32' })
 
 const distDir = path.join(projectRoot, 'dist')
 const landingDir = path.join(projectRoot, 'landing')

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "android": "cap sync android && cap open android",
-    "publish-update": "node scripts/publish-update.mjs"
+    "publish-update": "node scripts/publish-update.mjs",
+    "deploy-vps": "node scripts/deploy-vps.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",

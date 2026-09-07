@@ -30,7 +30,7 @@ WorkFlow — Projekt-Management-App für Bau-/Handwerksbetriebe: Aufgabenmanagem
 - **APK-Name:** Jede generierte Release-APK heißt `WorkFlow-v{versionName}.apk` (siehe `landing/index.html`, Download-Link).
 - **Doku-Pflicht pro Arbeitspaket** (siehe Agents.md für den vollen Ablauf): betroffene READMEs/docs und bei nutzersichtbaren Änderungen der in-App-Changelog (`src/lib/changelog.ts`) im selben Arbeitspaket aktualisieren — keine Abschlussmeldung ohne synchronen Stand.
 - **Backup-Integrität:** Vor jedem finalen Projekt-Backup Kompilierbarkeit (`npm run build`) und saubere Imports/Paketstrukturen prüfen.
-- **Vier getrennte Deploy-Pfade, alle manuell** (kein CI/CD) — siehe Agents.md/Deploy-Pipeline-Notizen: Web-Live-Update, Android-APK-Rebuild, Root-SPA-Vercel-Projekt, Landing-Vercel-Projekt (zwei separate Vercel-Projekte — beide deployen, sonst liefert die APK-Download-Seite eine veraltete Datei aus).
+- **Vier getrennte Deploy-Pfade, alle manuell** (kein CI/CD) — siehe Agents.md/Deploy-Pipeline-Notizen: Web-Live-Update, Android-APK-Rebuild, Root-SPA (migriert auf eigenen STRATO-VPS, `npm run deploy-vps`), Landing-Vercel-Projekt (bleibt vorerst auf Vercel, unkritisch da noch nicht öffentlich beworben).
 
 ## Bekannter Sonderfall: Login/Backend
 

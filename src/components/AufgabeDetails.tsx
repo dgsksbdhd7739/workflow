@@ -6,7 +6,15 @@ import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { SignedImage } from './SignedImage'
 import { komprimiereBild } from '../lib/bildKompression'
-import type { Dokument, Aufgabe, AufgabeKommentar, AufgabeMaterial, MaterialStamm, StatusVorlageWert } from '../types/database'
+import type {
+  Dokument,
+  Aufgabe,
+  AufgabeKommentar,
+  AufgabeMaterial,
+  AufgabeTicket,
+  MaterialStamm,
+  StatusVorlageWert,
+} from '../types/database'
 
 // Gruen ist standardmaessig fuer "Abnahme" reserviert, deshalb hier nicht zur Auswahl.
 const fortschrittFarbPalette = ['#dc2626', '#ea580c', '#f59e0b', '#eab308', '#2563eb', '#9333ea', '#d946ef', '#6b7280']
@@ -38,6 +46,8 @@ export function AufgabeDetails({
   const kannMaterialDefinieren = role === 'admin' || role === 'planer'
   const kannMaterialAbhaken = role !== 'kunde'
   const kannFortschrittDefinieren = role === 'admin' || role === 'planer'
+  const kannTicketErstellen = role === 'admin' || role === 'planer' || role === 'kunde'
+  const kannTicketAbschliessen = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
   const [aufgabe, setAufgabe] = useState<Aufgabe | null>(null)
   const [werteLokal, setWerteLokal] = useState<StatusVorlageWert[]>([])
@@ -45,6 +55,7 @@ export function AufgabeDetails({
   const werte = werteProp ?? werteLokal
   const vorlageId = werteProp ? (vorlageIdProp ?? null) : vorlageIdLokal
   const [kommentare, setKommentare] = useState<AufgabeKommentar[]>([])
+  const [tickets, setTickets] = useState<AufgabeTicket[]>([])
   const [material, setMaterial] = useState<AufgabeMaterial[]>([])
   const [dokumente, setDokumente] = useState<Dokument[]>([])
   const [freieDokumente, setFreieDokumente] = useState<Dokument[]>([])
@@ -71,18 +82,22 @@ export function AufgabeDetails({
   const [kommentarText, setKommentarText] = useState('')
   const [kommentarFoto, setKommentarFoto] = useState<File | null>(null)
   const [kommentarSaving, setKommentarSaving] = useState(false)
+  const [ticketText, setTicketText] = useState('')
+  const [ticketSaving, setTicketSaving] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
-    const [{ data: aufgabeData }, { data: kommentareData }, { data: materialData }, { data: dokumenteData }] = await Promise.all([
+    const [{ data: aufgabeData }, { data: kommentareData }, { data: ticketsData }, { data: materialData }, { data: dokumenteData }] = await Promise.all([
       supabase.from('aufgaben').select('*').eq('id', aufgabeId).single(),
       supabase.from('aufgabe_kommentare').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am'),
+      supabase.from('aufgabe_tickets').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am', { ascending: false }),
       supabase.from('aufgabe_material').select('*').eq('aufgabe_id', aufgabeId).order('reihenfolge'),
       supabase.from('dokumente').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am', { ascending: false }),
     ])
     setAufgabe(aufgabeData)
     setKommentare(kommentareData ?? [])
+    setTickets(ticketsData ?? [])
     setMaterial(materialData ?? [])
     setDokumente(dokumenteData ?? [])
 
@@ -356,6 +371,40 @@ export function AufgabeDetails({
     load()
   }
 
+  const handleTicketSenden = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!user || !ticketText.trim()) return
+    setTicketSaving(true)
+    setFehler(null)
+    const { error } = await supabase.from('aufgabe_tickets').insert({
+      aufgabe_id: aufgabeId,
+      text: ticketText.trim(),
+      erstellt_von: user.id,
+    })
+    setTicketSaving(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
+    setTicketText('')
+    load()
+  }
+
+  const toggleTicketStatus = async (ticket: AufgabeTicket) => {
+    if (!user) return
+    setFehler(null)
+    const erledigt = ticket.status !== 'erledigt'
+    const updates = erledigt
+      ? { status: 'erledigt' as const, erledigt_von: user.id, erledigt_am: new Date().toISOString() }
+      : { status: 'offen' as const, erledigt_von: null, erledigt_am: null }
+    setTickets((prev) => prev.map((t) => (t.id === ticket.id ? { ...t, ...updates } : t)))
+    const { error } = await supabase.from('aufgabe_tickets').update(updates).eq('id', ticket.id)
+    if (error) {
+      setFehler(error.message)
+      load()
+    }
+  }
+
   if (loading) return <p className="text-sm text-text-muted">Lädt…</p>
 
   return (
@@ -461,6 +510,76 @@ export function AufgabeDetails({
 
         {aufgabe?.abnahme_nummer && (
           <p className="mt-1 text-xs text-text-subtle">Abnahme-Nummer: {aufgabe.abnahme_nummer}</p>
+        )}
+      </div>
+
+      <div>
+        <h3 className="mb-2 text-sm font-medium text-text">
+          Tickets{tickets.filter((t) => t.status === 'offen').length > 0 && (
+            <span className="ml-1.5 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/50 dark:text-red-300">
+              {tickets.filter((t) => t.status === 'offen').length} offen
+            </span>
+          )}
+        </h3>
+        <p className="mb-2 text-xs text-text-subtle">
+          Für Mängel/Probleme, die z. B. bei einer Vor-Ort-Abnahme festgestellt werden — sichtbar für Admin und
+          Planer.
+        </p>
+
+        {tickets.length > 0 && (
+          <ul className="mb-3 space-y-2">
+            {tickets.map((t) => (
+              <li
+                key={t.id}
+                className={`rounded-lg border px-3 py-2 ${
+                  t.status === 'erledigt' ? 'border-border' : 'border-red-300 dark:border-red-900'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs font-medium text-text">{nameOf(t.erstellt_von)}</span>
+                      <span className="text-xs text-text-subtle">{relativZeit(t.erstellt_am)}</span>
+                    </div>
+                    <p className="mt-0.5 text-sm text-text-muted">{t.text}</p>
+                  </div>
+                  <span
+                    className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      t.status === 'erledigt'
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                        : 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300'
+                    }`}
+                  >
+                    {t.status === 'erledigt' ? 'Erledigt' : 'Offen'}
+                  </span>
+                </div>
+                {kannTicketAbschliessen && (
+                  <button
+                    type="button"
+                    onClick={() => toggleTicketStatus(t)}
+                    className="mt-1.5 text-xs font-medium text-brand"
+                  >
+                    {t.status === 'erledigt' ? 'Wieder öffnen' : 'Als erledigt markieren'}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {kannTicketErstellen && (
+          <form onSubmit={handleTicketSenden} className="flex items-end gap-2">
+            <textarea
+              value={ticketText}
+              onChange={(e) => setTicketText(e.target.value)}
+              rows={2}
+              placeholder="Mangel/Problem beschreiben…"
+              className="field-input"
+            />
+            <button type="submit" disabled={ticketSaving || !ticketText.trim()} className="btn-primary flex-shrink-0">
+              {ticketSaving ? 'Sendet…' : 'Ticket erstellen'}
+            </button>
+          </form>
         )}
       </div>
 

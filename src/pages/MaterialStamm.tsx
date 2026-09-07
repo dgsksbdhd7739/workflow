@@ -12,6 +12,8 @@ export function MaterialStamm() {
 
   const [neueBezeichnung, setNeueBezeichnung] = useState('')
   const [neueEinheit, setNeueEinheit] = useState('')
+  const [neuerHersteller, setNeuerHersteller] = useState('')
+  const [neueArtikelnummer, setNeueArtikelnummer] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
@@ -40,6 +42,8 @@ export function MaterialStamm() {
       unternehmen_id: unternehmenId,
       bezeichnung: neueBezeichnung.trim(),
       einheit: neueEinheit.trim() || null,
+      hersteller: neuerHersteller.trim() || null,
+      artikelnummer: neueArtikelnummer.trim() || null,
       erstellt_von: user.id,
     })
     setSaving(false)
@@ -49,6 +53,8 @@ export function MaterialStamm() {
     }
     setNeueBezeichnung('')
     setNeueEinheit('')
+    setNeuerHersteller('')
+    setNeueArtikelnummer('')
     load()
   }
 
@@ -95,6 +101,18 @@ export function MaterialStamm() {
           placeholder="Einheit (Stk., m, kg …)"
           className="field-input w-40"
         />
+        <input
+          value={neuerHersteller}
+          onChange={(e) => setNeuerHersteller(e.target.value)}
+          placeholder="Hersteller"
+          className="field-input min-w-[10rem] flex-1"
+        />
+        <input
+          value={neueArtikelnummer}
+          onChange={(e) => setNeueArtikelnummer(e.target.value)}
+          placeholder="Artikelnummer"
+          className="field-input w-40"
+        />
         <button type="submit" disabled={saving} className="btn-primary flex-shrink-0">
           {saving ? 'Speichert…' : '+ Anlegen'}
         </button>
@@ -111,6 +129,11 @@ export function MaterialStamm() {
               <span className="min-w-0 truncate text-text">
                 {m.bezeichnung}
                 {m.einheit && <span className="ml-1 text-xs text-text-subtle">({m.einheit})</span>}
+                {(m.hersteller || m.artikelnummer) && (
+                  <span className="ml-2 truncate text-xs text-text-subtle">
+                    {[m.hersteller, m.artikelnummer].filter(Boolean).join(' · ')}
+                  </span>
+                )}
               </span>
               <button
                 onClick={() => handleDelete(m.id)}

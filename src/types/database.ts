@@ -177,6 +177,8 @@ export interface MaterialStamm {
   unternehmen_id: string
   bezeichnung: string
   einheit: string | null
+  hersteller: string | null
+  artikelnummer: string | null
   erstellt_von: string
   erstellt_am: string
 }
@@ -188,6 +190,19 @@ export interface AufgabeKommentar {
   foto_pfad: string | null
   erstellt_von: string
   erstellt_am: string
+}
+
+export type AufgabeTicketStatus = 'offen' | 'erledigt'
+
+export interface AufgabeTicket {
+  id: string
+  aufgabe_id: string
+  text: string
+  status: AufgabeTicketStatus
+  erstellt_von: string
+  erstellt_am: string
+  erledigt_von: string | null
+  erledigt_am: string | null
 }
 
 export interface StatusVorlage {

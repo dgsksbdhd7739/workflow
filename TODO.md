@@ -5,6 +5,7 @@ Regeln für Claude:
 - Nach Erledigung: Punkt abhaken `[x]` und kurze Notiz (was gemacht wurde / Commit) dranschreiben.
 - Wenn ein Punkt unklar ist und wirklich nicht ohne Rückfrage lösbar ist: als `[?]` markieren mit kurzer Frage, weitermachen mit dem nächsten Punkt statt zu blockieren.
 - Diese Datei ist die einzige Quelle der Wahrheit für offene Aufgaben (übersteht Abstürze).
+- Jeden Befehl/Auftrag des Nutzers aus dem Chat eigenständig analysieren und als eigenen Punkt hier einpflegen (unabhängig davon, ob er direkt im selben Zug umgesetzt wird), damit der Nutzer jederzeit den Verlauf nachvollziehen und darauf aufbauen kann (seit 2026-09-07 so vereinbart).
 
 ## Offen
 
@@ -17,6 +18,8 @@ Regeln für Claude:
 - [x] 6. DB-Migration (0036): Spalten `wetter`/`temperatur` aus `tagesberichte` gedroppt (Daten aus der Vergangenheit damit unwiderruflich gelöscht, wie angekündigt).
 - [x] 7. VS-Code-Java-Classpath-Fehler bei MainActivity.java behoben (Ursache: Android-Gradle-Projekt wurde vom Java-Sprachserver nie importiert, kein echter Code-Fehler). `.vscode/settings.json`: `java.configuration.updateBuildConfiguration` von `interactive` auf `automatic` gestellt. **Einmal VS Code neu laden/Fenster neu starten**, damit der Java-Sprachserver das Android-Projekt neu einliest.
 - [x] 8. Volle Verifikation nach DB-Migration: `oxlint` sauber, `tsc --noEmit` sauber, `npm run build` sauber. Es gibt kein automatisiertes Testsuite (kein `npm test` im Projekt) — stattdessen echten Login-Flow per Playwright gegen die Produktions-DB durchgespielt: Login, Projekt öffnen, Aufgaben-Liste, Tagesberichte (kein Wetter-Feld mehr, weder Liste noch Formular), Dokumente — alles fehlerfrei, inkl. eines echten Schreibtests (Aufgabe angelegt + wieder gelöscht). Kein einziger "relation/column does not exist"-Fehler.
+- [x] 9. Ticket-Funktion: Kunde, Admin und Planer können pro Aufgabe ein Ticket (Mangel-/Problemmeldung) erstellen — Anwendungsfall Vor-Ort-Abnahme durch den Kunden. Sichtbar für Admin/Planer als "Offene Tickets" auf dem Dashboard sowie direkt in den Aufgabe-Details; nur Admin/Planer können ein Ticket als erledigt abschließen/wieder öffnen, Techniker sind bewusst außen vor. → Migration `0038_aufgabe_tickets.sql` (neue Tabelle `aufgabe_tickets` + RLS), Typ `AufgabeTicket` in `types/database.ts`, UI in `AufgabeDetails.tsx` und `Dashboard.tsx`. `tsc --noEmit` + `npm run build` sauber, Migration erfolgreich auf Produktions-DB gepusht (`supabase db push`). Hinweis: kein Live-Klicktest per Playwright durchgeführt (keine Login-Daten in dieser Session verfügbar) — nur Build/Migration verifiziert, echter Login-Test steht noch aus.
+- [x] 10. Materialstamm um Hersteller und Artikelnummer erweitert, damit Material eindeutig nachbestellt werden kann. → Migration `0039_material_stamm_hersteller_artikelnummer.sql` (Spalten `hersteller`, `artikelnummer`, beide optional), `MaterialStamm.tsx` Formular + Liste angepasst, Typ aktualisiert. Build sauber, Migration gepusht.
 
 ## Erledigt
 

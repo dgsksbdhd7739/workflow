@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.0',
+    datum: '2026-09-07',
+    aenderungen: [
+      'Neu: Tickets an Aufgaben — Kunde, Admin und Planer können einen Mangel/ein Problem direkt an der betroffenen Aufgabe melden (z. B. bei einer Vor-Ort-Abnahme). Admin und Planer sehen offene Tickets zusätzlich gesammelt im Dashboard und können sie als erledigt markieren.',
+      'Materialstamm: Hersteller und Artikelnummer können jetzt je Material hinterlegt werden.',
+    ],
+  },
+  {
     version: '1.4.4',
     datum: '2026-08-21',
     aenderungen: [

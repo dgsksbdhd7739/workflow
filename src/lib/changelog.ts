@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.1',
+    datum: '2026-09-11',
+    aenderungen: [
+      'Tickets: Techniker können ein offenes Ticket jetzt selbst abschließen — dafür müssen sie einen Kommentar und mindestens ein Foto als Nachweis der Behebung anhängen (mehrere Fotos möglich). Admin und Planer können ein Ticket weiterhin ohne diesen Nachweis abschließen oder wieder öffnen.',
+      'Fehler behoben: Die Planansicht (PDF-Anzeige) lud auf der Web-Version nicht, weil der Server eine benötigte Datei mit falschem Dateityp auslieferte.',
+    ],
+  },
+  {
     version: '1.5.0',
     datum: '2026-09-07',
     aenderungen: [

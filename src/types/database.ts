@@ -203,6 +203,15 @@ export interface AufgabeTicket {
   erstellt_am: string
   erledigt_von: string | null
   erledigt_am: string | null
+  bestaetigung_kommentar: string | null
+}
+
+export interface AufgabeTicketFoto {
+  id: string
+  ticket_id: string
+  foto_pfad: string
+  erstellt_von: string
+  erstellt_am: string
 }
 
 export interface StatusVorlage {

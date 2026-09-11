@@ -12,6 +12,7 @@ import type {
   AufgabeKommentar,
   AufgabeMaterial,
   AufgabeTicket,
+  AufgabeTicketFoto,
   MaterialStamm,
   StatusVorlageWert,
 } from '../types/database'
@@ -48,6 +49,7 @@ export function AufgabeDetails({
   const kannFortschrittDefinieren = role === 'admin' || role === 'planer'
   const kannTicketErstellen = role === 'admin' || role === 'planer' || role === 'kunde'
   const kannTicketAbschliessen = role === 'admin' || role === 'planer'
+  const kannTicketBestaetigen = role === 'techniker'
   const { nameOf } = useProfiles()
   const [aufgabe, setAufgabe] = useState<Aufgabe | null>(null)
   const [werteLokal, setWerteLokal] = useState<StatusVorlageWert[]>([])
@@ -56,6 +58,7 @@ export function AufgabeDetails({
   const vorlageId = werteProp ? (vorlageIdProp ?? null) : vorlageIdLokal
   const [kommentare, setKommentare] = useState<AufgabeKommentar[]>([])
   const [tickets, setTickets] = useState<AufgabeTicket[]>([])
+  const [ticketFotos, setTicketFotos] = useState<Record<string, AufgabeTicketFoto[]>>({})
   const [material, setMaterial] = useState<AufgabeMaterial[]>([])
   const [dokumente, setDokumente] = useState<Dokument[]>([])
   const [freieDokumente, setFreieDokumente] = useState<Dokument[]>([])
@@ -84,6 +87,10 @@ export function AufgabeDetails({
   const [kommentarSaving, setKommentarSaving] = useState(false)
   const [ticketText, setTicketText] = useState('')
   const [ticketSaving, setTicketSaving] = useState(false)
+  const [bestaetigungOffenFuer, setBestaetigungOffenFuer] = useState<string | null>(null)
+  const [bestaetigungText, setBestaetigungText] = useState('')
+  const [bestaetigungFotos, setBestaetigungFotos] = useState<File[]>([])
+  const [bestaetigungSaving, setBestaetigungSaving] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
@@ -100,6 +107,22 @@ export function AufgabeDetails({
     setTickets(ticketsData ?? [])
     setMaterial(materialData ?? [])
     setDokumente(dokumenteData ?? [])
+
+    const ticketIds = (ticketsData ?? []).map((t) => t.id)
+    if (ticketIds.length > 0) {
+      const { data: ticketFotosData } = await supabase
+        .from('aufgabe_ticket_fotos')
+        .select('*')
+        .in('ticket_id', ticketIds)
+        .order('erstellt_am')
+      const gruppiert: Record<string, AufgabeTicketFoto[]> = {}
+      for (const foto of ticketFotosData ?? []) {
+        ;(gruppiert[foto.ticket_id] ??= []).push(foto)
+      }
+      setTicketFotos(gruppiert)
+    } else {
+      setTicketFotos({})
+    }
 
     if (aufgabeData?.projekt_id) {
       const { data: freieDokumenteData } = await supabase
@@ -405,6 +428,50 @@ export function AufgabeDetails({
     }
   }
 
+  const handleTicketBestaetigen = async (ticket: AufgabeTicket) => {
+    if (!user || !bestaetigungText.trim() || bestaetigungFotos.length === 0) return
+    setBestaetigungSaving(true)
+    setFehler(null)
+
+    for (const datei of bestaetigungFotos) {
+      const komprimiert = await komprimiereBild(datei)
+      const { path, error: uploadError } = await uploadFile('mangel-fotos', `tickets/${aufgabeId}`, komprimiert)
+      if (uploadError) {
+        setFehler(`Foto-Upload fehlgeschlagen: ${uploadError}`)
+        setBestaetigungSaving(false)
+        return
+      }
+      const { error: fotoError } = await supabase
+        .from('aufgabe_ticket_fotos')
+        .insert({ ticket_id: ticket.id, foto_pfad: path, erstellt_von: user.id })
+      if (fotoError) {
+        setFehler(fotoError.message)
+        setBestaetigungSaving(false)
+        return
+      }
+    }
+
+    const { error } = await supabase
+      .from('aufgabe_tickets')
+      .update({
+        status: 'erledigt',
+        erledigt_von: user.id,
+        erledigt_am: new Date().toISOString(),
+        bestaetigung_kommentar: bestaetigungText.trim(),
+      })
+      .eq('id', ticket.id)
+
+    setBestaetigungSaving(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
+    setBestaetigungOffenFuer(null)
+    setBestaetigungText('')
+    setBestaetigungFotos([])
+    load()
+  }
+
   if (loading) return <p className="text-sm text-text-muted">Lädt…</p>
 
   return (
@@ -553,6 +620,36 @@ export function AufgabeDetails({
                     {t.status === 'erledigt' ? 'Erledigt' : 'Offen'}
                   </span>
                 </div>
+                {(t.bestaetigung_kommentar || (ticketFotos[t.id]?.length ?? 0) > 0) && (
+                  <div className="mt-2 rounded-md bg-surface-hover px-2 py-1.5">
+                    <p className="text-xs font-medium text-text-subtle">Bestätigung des Technikers</p>
+                    {t.bestaetigung_kommentar && (
+                      <p className="mt-0.5 text-sm text-text-muted">{t.bestaetigung_kommentar}</p>
+                    )}
+                    {(ticketFotos[t.id]?.length ?? 0) > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {ticketFotos[t.id].map((foto) => (
+                          <button
+                            key={foto.id}
+                            type="button"
+                            onClick={async () => {
+                              const { url } = await getSignedUrl('mangel-fotos', foto.foto_pfad)
+                              if (url) window.open(url, '_blank', 'noreferrer')
+                            }}
+                          >
+                            <SignedImage
+                              bucket="mangel-fotos"
+                              path={foto.foto_pfad}
+                              alt=""
+                              className="h-16 w-16 rounded-lg object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {kannTicketAbschliessen && (
                   <button
                     type="button"
@@ -561,6 +658,67 @@ export function AufgabeDetails({
                   >
                     {t.status === 'erledigt' ? 'Wieder öffnen' : 'Als erledigt markieren'}
                   </button>
+                )}
+
+                {kannTicketBestaetigen && t.status === 'offen' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (bestaetigungOffenFuer === t.id) {
+                          setBestaetigungOffenFuer(null)
+                        } else {
+                          setBestaetigungOffenFuer(t.id)
+                          setBestaetigungText('')
+                          setBestaetigungFotos([])
+                        }
+                      }}
+                      className="mt-1.5 text-xs font-medium text-brand"
+                    >
+                      {bestaetigungOffenFuer === t.id ? 'Abbrechen' : 'Ticket bestätigen & abschließen'}
+                    </button>
+
+                    {bestaetigungOffenFuer === t.id && (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          handleTicketBestaetigen(t)
+                        }}
+                        className="mt-2 space-y-2 rounded-md border border-border p-2"
+                      >
+                        <textarea
+                          value={bestaetigungText}
+                          onChange={(e) => setBestaetigungText(e.target.value)}
+                          rows={2}
+                          placeholder="Was wurde behoben?"
+                          className="field-input"
+                        />
+                        <label className="btn-secondary block w-full cursor-pointer text-center text-xs">
+                          <span className="truncate">
+                            {bestaetigungFotos.length > 0
+                              ? `📷 ${bestaetigungFotos.length} Foto${bestaetigungFotos.length === 1 ? '' : 's'} ausgewählt`
+                              : '📷 Fotos anhängen (mind. 1, mehrere möglich)'}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                              setBestaetigungFotos(Array.from(e.target.files ?? []))
+                            }
+                          />
+                        </label>
+                        <button
+                          type="submit"
+                          disabled={bestaetigungSaving || !bestaetigungText.trim() || bestaetigungFotos.length === 0}
+                          className="btn-primary w-full"
+                        >
+                          {bestaetigungSaving ? 'Sendet…' : 'Bestätigen & als erledigt markieren'}
+                        </button>
+                      </form>
+                    )}
+                  </>
                 )}
               </li>
             ))}

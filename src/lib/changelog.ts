@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.4',
+    datum: '2026-09-14',
+    aenderungen: [
+      'Bautagebuch-PDF: Markenfarbe von Blau auf das Logo-Violett umgestellt (Balken oben, Stand-Text, Fortschrittsbalken, Häkchen).',
+    ],
+  },
+  {
     version: '1.5.3',
     datum: '2026-09-14',
     aenderungen: [

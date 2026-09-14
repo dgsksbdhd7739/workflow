@@ -25,7 +25,7 @@ type RGB = [number, number, number]
 // blauer Marken-Akzent, Amber/Emerald fuer Status), damit PDF-Exporte wie
 // ein Teil derselben Marke wirken statt wie ein generischer Tabellendruck.
 const FARBE = {
-  marke: [37, 99, 235] as RGB, // #2563eb
+  marke: [79, 70, 229] as RGB, // #4f46e5 -- Marken-Indigo wie im Logo/UI (--color-brand), nicht das generische Blau
   text: [15, 23, 42] as RGB, // #0f172a
   gedaempft: [71, 85, 105] as RGB, // #475569
   dezent: [148, 163, 184] as RGB, // #94a3b8

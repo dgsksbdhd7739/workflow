@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.3',
+    datum: '2026-09-14',
+    aenderungen: [
+      'Bautagebuch-PDF: Fortschrittsanzeige sitzt jetzt direkt unter Stand/Prozentanzeige statt in einer eigenen Spalte — dadurch ist die Kommentarspalte deutlich breiter, Text und Fotos werden größer dargestellt.',
+    ],
+  },
+  {
     version: '1.5.2',
     datum: '2026-09-14',
     aenderungen: [

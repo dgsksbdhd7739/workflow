@@ -89,22 +89,31 @@ function zeichneChips(doc: jsPDF, items: string[], startX: number, startY: numbe
 }
 
 // Kommentar als Zitatblock mit linker Akzentlinie statt Fliesstext.
-function zeichneKommentar(doc: jsPDF, text: string, autor: string, x: number, y: number, maxBreite: number): number {
+function zeichneKommentar(
+  doc: jsPDF,
+  text: string,
+  autor: string,
+  x: number,
+  y: number,
+  maxBreite: number,
+  schriftgroesse = 8.3,
+): number {
+  const zeilenHoehe = schriftgroesse * 0.48
   doc.setFont('helvetica', 'italic')
-  doc.setFontSize(8.3)
+  doc.setFontSize(schriftgroesse)
   doc.setTextColor(...FARBE.gedaempft)
   const zeilen = doc.splitTextToSize(`„${text}"`, maxBreite - 4)
-  const blockHoehe = zeilen.length * 4 + 4.5
+  const blockHoehe = zeilen.length * zeilenHoehe + 4.5
   doc.setFillColor(...FARBE.rahmen)
   doc.rect(x, y - 3.4, 0.7, blockHoehe, 'F')
   doc.text(zeilen, x + 3.2, y)
-  y += zeilen.length * 4
+  y += zeilen.length * zeilenHoehe
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7.3)
+  doc.setFontSize(schriftgroesse - 1)
   doc.setTextColor(...FARBE.dezent)
   doc.text(`— ${autor}`, x + 3.2, y)
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.3)
+  doc.setFontSize(schriftgroesse)
   doc.setTextColor(...FARBE.text)
   return y + 4.5
 }
@@ -463,10 +472,8 @@ async function holeFortschrittfelder(m: Aufgabe, cache: FortschrittCache): Promi
 
 const AUFGABEN_SPALTE1_X = 19
 const AUFGABEN_SPALTE1_BREITE = 54
-const AUFGABEN_SPALTE2_X = 79
-const AUFGABEN_SPALTE2_BREITE = 48
-const AUFGABEN_SPALTE3_X = 133
-const AUFGABEN_SPALTE3_BREITE = 63
+const AUFGABEN_SPALTE3_X = 79
+const AUFGABEN_SPALTE3_BREITE = 117
 // Feedback: der Titel eines Aufgaben-Blocks sass fast auf der Trennlinie
 // zum vorherigen Block ("Text sitzt direkt auf dem Rahmen") -- zwischen
 // Trennlinie und Blockanfang fehlte Luft. 8pt (typografische Punkte, nicht
@@ -490,9 +497,10 @@ interface AufgabenBlockDaten {
   kommentare: AufgabenKommentarEintrag[]
 }
 
-// Zeichnet einen Aufgaben-Block in drei Spalten -- links Titel/Zeit/
-// Fortschritts-Prozent, mittig alle fuer das Projekt hinterlegten
-// Fortschrittfelder mit Haken beim aktuellen, rechts Kommentare mit Fotos.
+// Zeichnet einen Aufgaben-Block in zwei Spalten -- links Titel/Stand/Zeit/
+// Fortschritts-Prozent und darunter alle fuer das Projekt hinterlegten
+// Fortschrittfelder mit Haken beim aktuellen, rechts (breiter) Kommentare
+// mit Fotos.
 // Mit nurMessen=true wird nichts gezeichnet, nur die benoetigte Hoehe anhand
 // derselben Zeilenumbrueche/Fonts ermittelt, um vor dem Zeichnen einen
 // Seitenumbruch entscheiden zu koennen, ohne den Block auf zwei Seiten zu
@@ -576,6 +584,57 @@ function aufgabenBlock(doc: jsPDF, yStart: number, daten: AufgabenBlockDaten, nu
   }
   doc.setTextColor(...FARBE.text)
 
+  // Fortschrittfelder (fuer das Projekt hinterlegte Phasen, Haken beim
+  // aktuellen) -- direkt unter Stand/Prozentanzeige statt in einer eigenen
+  // Spalte, damit die Kommentarspalte rechts mehr Platz bekommt.
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  if (!nurMessen) {
+    doc.setTextColor(...FARBE.dezent)
+    doc.text('Fortschritt', AUFGABEN_SPALTE1_X, y1)
+  }
+  y1 += 4.8
+  doc.setFont('helvetica', 'normal')
+  if (daten.fortschrittfelder.length === 0) {
+    doc.setFontSize(8)
+    if (!nurMessen) {
+      doc.setTextColor(...FARBE.dezent)
+      doc.text('Keine Fortschrittfelder hinterlegt', AUFGABEN_SPALTE1_X, y1)
+    }
+    y1 += 4.5
+  } else {
+    for (const feld of daten.fortschrittfelder) {
+      doc.setFontSize(8.3)
+      doc.setFont('helvetica', feld.aktiv ? 'bold' : 'normal')
+      const labelZeilen = doc.splitTextToSize(feld.titel, AUFGABEN_SPALTE1_BREITE - 4.8)
+      if (!nurMessen) {
+        // Box auf die Kapitalhoehe der 8.3pt-Schrift zentriert (~2.05mm ueber
+        // der Grundlinie) statt auf eine fest gewaehlte Groesse -- sonst
+        // schwebt das Kaestchen sichtbar ueber dem Text statt mittig zu sitzen.
+        const boxGroesse = 2.5
+        const boxY = y1 - 2.2
+        if (feld.aktiv) {
+          doc.setFillColor(...hexZuRgb(feld.farbe))
+          doc.setDrawColor(...hexZuRgb(feld.farbe))
+          doc.roundedRect(AUFGABEN_SPALTE1_X, boxY, boxGroesse, boxGroesse, 0.5, 0.5, 'FD')
+          doc.setDrawColor(255, 255, 255)
+          doc.setLineWidth(0.4)
+          doc.line(AUFGABEN_SPALTE1_X + 0.5, boxY + 1.3, AUFGABEN_SPALTE1_X + 1.0, boxY + 1.9)
+          doc.line(AUFGABEN_SPALTE1_X + 1.0, boxY + 1.9, AUFGABEN_SPALTE1_X + 2.1, boxY + 0.5)
+          doc.setLineWidth(0.2)
+        } else {
+          doc.setDrawColor(...FARBE.rahmen)
+          doc.roundedRect(AUFGABEN_SPALTE1_X, boxY, boxGroesse, boxGroesse, 0.5, 0.5, 'S')
+        }
+        doc.setTextColor(...(feld.aktiv ? FARBE.text : FARBE.gedaempft))
+        doc.text(labelZeilen, AUFGABEN_SPALTE1_X + 4.4, y1)
+      }
+      y1 += Math.max(labelZeilen.length * 3.8, 4.6)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(...FARBE.text)
+    }
+  }
+
   if (daten.materialChips.length > 0) {
     doc.setFontSize(7.5)
     if (!nurMessen) {
@@ -602,62 +661,15 @@ function aufgabenBlock(doc: jsPDF, yStart: number, daten: AufgabenBlockDaten, nu
   }
   doc.setTextColor(...FARBE.text)
 
-  // Spalte 2: fuer das Projekt hinterlegte Fortschrittfelder, Haken beim aktuellen
-  let y2 = yStart
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(7.5)
-  if (!nurMessen) {
-    doc.setTextColor(...FARBE.dezent)
-    doc.text('Fortschritt', AUFGABEN_SPALTE2_X, y2)
-  }
-  y2 += 4.8
-  doc.setFont('helvetica', 'normal')
-  if (daten.fortschrittfelder.length === 0) {
-    doc.setFontSize(8)
-    if (!nurMessen) {
-      doc.setTextColor(...FARBE.dezent)
-      doc.text('Keine Fortschrittfelder hinterlegt', AUFGABEN_SPALTE2_X, y2)
-    }
-    y2 += 4.5
-  } else {
-    for (const feld of daten.fortschrittfelder) {
-      doc.setFontSize(8.3)
-      doc.setFont('helvetica', feld.aktiv ? 'bold' : 'normal')
-      const labelZeilen = doc.splitTextToSize(feld.titel, AUFGABEN_SPALTE2_BREITE - 4.8)
-      if (!nurMessen) {
-        // Box auf die Kapitalhoehe der 8.3pt-Schrift zentriert (~2.05mm ueber
-        // der Grundlinie) statt auf eine fest gewaehlte Groesse -- sonst
-        // schwebt das Kaestchen sichtbar ueber dem Text statt mittig zu sitzen.
-        const boxGroesse = 2.5
-        const boxY = y2 - 2.2
-        if (feld.aktiv) {
-          doc.setFillColor(...hexZuRgb(feld.farbe))
-          doc.setDrawColor(...hexZuRgb(feld.farbe))
-          doc.roundedRect(AUFGABEN_SPALTE2_X, boxY, boxGroesse, boxGroesse, 0.5, 0.5, 'FD')
-          doc.setDrawColor(255, 255, 255)
-          doc.setLineWidth(0.4)
-          doc.line(AUFGABEN_SPALTE2_X + 0.5, boxY + 1.3, AUFGABEN_SPALTE2_X + 1.0, boxY + 1.9)
-          doc.line(AUFGABEN_SPALTE2_X + 1.0, boxY + 1.9, AUFGABEN_SPALTE2_X + 2.1, boxY + 0.5)
-          doc.setLineWidth(0.2)
-        } else {
-          doc.setDrawColor(...FARBE.rahmen)
-          doc.roundedRect(AUFGABEN_SPALTE2_X, boxY, boxGroesse, boxGroesse, 0.5, 0.5, 'S')
-        }
-        doc.setTextColor(...(feld.aktiv ? FARBE.text : FARBE.gedaempft))
-        doc.text(labelZeilen, AUFGABEN_SPALTE2_X + 4.4, y2)
-      }
-      y2 += Math.max(labelZeilen.length * 3.8, 4.6)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(...FARBE.text)
-    }
-  }
-
-  // Spalte 3: Kommentare mit Fotos
+  // Spalte 2 (rechts): Kommentare mit Fotos -- deutlich breiter, seit
+  // Fortschritt oben in Spalte 1 mit eingezogen ist (Feedback: das Feld war
+  // vorher zu schmal, Fotos und Schrift durften ruhig groesser sein).
   let y3 = yStart
-  const fotoGroesse = 26
+  const fotoGroesse = 34
+  const kommentarSchriftgroesse = 9.2
   if (daten.kommentare.length === 0) {
     doc.setFont('helvetica', 'italic')
-    doc.setFontSize(8)
+    doc.setFontSize(kommentarSchriftgroesse - 1.3)
     if (!nurMessen) {
       doc.setTextColor(...FARBE.dezent)
       doc.text('Keine Kommentare', AUFGABEN_SPALTE3_X, y3)
@@ -677,11 +689,12 @@ function aufgabenBlock(doc: jsPDF, yStart: number, daten: AufgabenBlockDaten, nu
     for (const k of daten.kommentare) {
       if (k.text) {
         fotoZeileAbschliessen()
+        doc.setFontSize(kommentarSchriftgroesse)
         const zeilen = doc.splitTextToSize(`„${k.text}"`, AUFGABEN_SPALTE3_BREITE - 4)
         if (!nurMessen) {
-          y3 = zeichneKommentar(doc, k.text, k.autor, AUFGABEN_SPALTE3_X, y3, AUFGABEN_SPALTE3_BREITE)
+          y3 = zeichneKommentar(doc, k.text, k.autor, AUFGABEN_SPALTE3_X, y3, AUFGABEN_SPALTE3_BREITE, kommentarSchriftgroesse)
         } else {
-          y3 += zeilen.length * 4 + 4.5
+          y3 += zeilen.length * kommentarSchriftgroesse * 0.48 + 4.5
         }
       }
       if (k.bild) {
@@ -704,7 +717,7 @@ function aufgabenBlock(doc: jsPDF, yStart: number, daten: AufgabenBlockDaten, nu
     fotoZeileAbschliessen()
   }
 
-  return Math.max(y1, y2, y3)
+  return Math.max(y1, y3)
 }
 
 // Rendert einen einzelnen Tagesbericht-Block (Datum, Tueren-Stand,

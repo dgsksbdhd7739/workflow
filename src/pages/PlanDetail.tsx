@@ -258,7 +258,11 @@ export function PlanDetail() {
     }
   }, [])
 
-  // Mausrad-Zoom, zentriert auf den Cursor: braucht einen nativen,
+  // Trackpad/Mausrad: zweifingriges Scrollen verschiebt den Plan (wie in
+  // Figma/Google Maps), Strg+Scrollen oder eine Pinch-Geste zoomt zentriert
+  // auf den Cursor. Browser markieren eine Pinch-Geste auf dem Trackpad als
+  // Wheel-Event mit ctrlKey=true (Mac wie Windows Precision-Touchpad), das
+  // ist die einzige verlaessliche Unterscheidung. Braucht einen nativen,
   // nicht-passiven Listener, damit preventDefault() das Seiten-Scrollen
   // zuverlaessig unterdrueckt (React haengt onWheel standardmaessig passiv ein).
   useEffect(() => {
@@ -266,8 +270,20 @@ export function PlanDetail() {
     if (!viewport) return
     const handler = (e: WheelEvent) => {
       e.preventDefault()
-      const factor = Math.exp(-e.deltaY * 0.0015)
-      applyZoom(zoomRef.current * factor, e.clientX, e.clientY)
+      if (e.ctrlKey) {
+        const factor = Math.exp(-e.deltaY * 0.0015)
+        applyZoom(zoomRef.current * factor, e.clientX, e.clientY)
+        return
+      }
+      const rect = viewport.getBoundingClientRect()
+      const nextPan = clampPan(
+        { x: panRef.current.x - e.deltaX, y: panRef.current.y - e.deltaY },
+        zoomRef.current,
+        rect.width,
+        rect.height,
+      )
+      panRef.current = nextPan
+      setPan(nextPan)
     }
     viewport.addEventListener('wheel', handler, { passive: false })
     return () => viewport.removeEventListener('wheel', handler)

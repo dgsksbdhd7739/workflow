@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.6',
+    datum: '2026-09-14',
+    aenderungen: [
+      'Pläne: Verschieben per Trackpad/Mausrad behoben — zweifingriges Scrollen bewegt jetzt den Plan, Strg+Scrollen (oder eine Pinch-Geste) zoomt. Vorher wurde jede Scrollbewegung als Zoom interpretiert, Verschieben war nur per Klicken-und-Ziehen möglich.',
+    ],
+  },
+  {
     version: '1.5.5',
     datum: '2026-09-14',
     aenderungen: [

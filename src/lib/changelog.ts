@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.8',
+    datum: '2026-09-14',
+    aenderungen: [
+      'Pläne: Die +/− Zoom-Knöpfe zoomen jetzt auf die Stelle, über der die Maus zuletzt stand, statt immer auf die Fenstermitte — jede beliebige Stelle im Plan lässt sich so gezielt anvisieren.',
+    ],
+  },
+  {
     version: '1.5.7',
     datum: '2026-09-14',
     aenderungen: [

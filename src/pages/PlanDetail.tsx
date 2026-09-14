@@ -103,6 +103,10 @@ export function PlanDetail() {
   const [isPanning, setIsPanning] = useState(false)
   const panDragRef = useRef<{ startX: number; startY: number; startPan: { x: number; y: number }; dragging: boolean } | null>(null)
   const suppressClickRef = useRef(false)
+  // Letzte bekannte Cursor-Position ueber dem Plan -- die +/--Knoepfe zoomen
+  // darauf zentriert statt immer auf die Fenstermitte, damit jede beliebige
+  // Stelle anvisiert werden kann statt an einen festen Punkt gebunden zu sein.
+  const letztePosRef = useRef<{ x: number; y: number } | null>(null)
   const pinchRef = useRef<{ dist: number; zoom: number; pan: { x: number; y: number }; midX: number; midY: number } | null>(null)
   const [zeigeListe, setZeigeListe] = useState(false)
 
@@ -187,10 +191,21 @@ export function PlanDetail() {
     updateZoomPan(newZoom, nextPan)
   }
 
+  // Zoomt auf die zuletzt bekannte Cursor-Position (frei waehlbar durch
+  // Hinbewegen der Maus vor dem Klick auf +/-), nicht auf einen fest
+  // verankerten Punkt -- nur wenn der Cursor gerade ausserhalb des
+  // sichtbaren Plans steht, faellt es auf die Fenstermitte zurueck.
   const applyZoomAtCenter = (newZoom: number) => {
     const rect = viewportRef.current?.getBoundingClientRect()
     if (!rect) return
-    applyZoom(newZoom, rect.left + rect.width / 2, rect.top + rect.height / 2)
+    const pos = letztePosRef.current
+    const imBereich =
+      pos && pos.x >= rect.left && pos.x <= rect.right && pos.y >= rect.top && pos.y <= rect.bottom
+    if (imBereich && pos) {
+      applyZoom(newZoom, pos.x, pos.y)
+    } else {
+      applyZoom(newZoom, rect.left + rect.width / 2, rect.top + rect.height / 2)
+    }
   }
 
   const load = async () => {
@@ -959,6 +974,7 @@ export function PlanDetail() {
               onClick={handlePlanClick}
               onMouseDown={handleContentMouseDown}
               onMouseMove={(e) => {
+                letztePosRef.current = { x: e.clientX, y: e.clientY }
                 if (rechteckStart) handleRectMouseMove(e)
                 else handlePunktHover(e)
               }}

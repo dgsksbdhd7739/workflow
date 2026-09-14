@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type MouseEvent, type TouchEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, List, Search, X } from 'lucide-react'
+import { ArrowLeft, List, MapPin, MousePointer2, Search, X } from 'lucide-react'
 import { supabase, getSignedUrl } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { AufgabeDetails } from '../components/AufgabeDetails'
@@ -90,7 +90,11 @@ export function PlanDetail() {
   const [pdfError, setPdfError] = useState(false)
   const [datenUrl, setDatenUrl] = useState<string | null>(null)
   const [zeigePunkte, setZeigePunkte] = useState(true)
-  const [zeichenModus, setZeichenModus] = useState<'punkt' | 'rechteck'>('punkt')
+  // "navigation" ist der Standard: Klicks bewegen/zoomen nur bzw. oeffnen
+  // vorhandene Markierungen, ohne versehentlich eine neue anzulegen. Erst
+  // die bewusste Auswahl des Punkt- oder Rechteck-Werkzeugs in der
+  // Werkzeugleiste aktiviert das Setzen neuer Markierungen.
+  const [zeichenModus, setZeichenModus] = useState<'navigation' | 'punkt' | 'rechteck'>('navigation')
   const [rechteckStart, setRechteckStart] = useState<{ x: number; y: number } | null>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(1)
@@ -131,6 +135,17 @@ export function PlanDetail() {
     panRef.current = nextPan
     setZoom(nextZoom)
     setPan(nextPan)
+  }
+
+  // Wheel-/Pinch-Zoom bleibt ohne Transition (1:1-Tracking der Geste), sonst
+  // haengt die Ansicht hinter schnellen Fingerbewegungen hinterher. Die +/--
+  // Knoepfe und "Zuruecksetzen" springen sonst hart -- dafuer kurz eine
+  // CSS-Transition zuschalten, damit der Sprung weich statt abgehackt wirkt.
+  const [sanfterUebergang, setSanfterUebergang] = useState(false)
+  const sanfterZoomButtonKlick = (fn: () => void) => {
+    setSanfterUebergang(true)
+    fn()
+    window.setTimeout(() => setSanfterUebergang(false), 220)
   }
 
   const resetZoom = () => updateZoomPan(minZoomRef.current, { x: 0, y: 0 })
@@ -271,7 +286,7 @@ export function PlanDetail() {
     const handler = (e: WheelEvent) => {
       e.preventDefault()
       if (e.ctrlKey) {
-        const factor = Math.exp(-e.deltaY * 0.0015)
+        const factor = Math.exp(-e.deltaY * 0.0032)
         applyZoom(zoomRef.current * factor, e.clientX, e.clientY)
         return
       }
@@ -827,7 +842,45 @@ export function PlanDetail() {
                 <button
                   type="button"
                   onClick={() => {
-                    setZeichenModus((m) => (m === 'rechteck' ? 'punkt' : 'rechteck'))
+                    setZeichenModus('navigation')
+                    setPendingPos(null)
+                    setRechteckStart(null)
+                  }}
+                  aria-label="Navigations-Werkzeug (verschieben, zoomen, Markierungen öffnen)"
+                  title="Navigieren: verschieben, zoomen, vorhandene Markierungen anklicken"
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg border text-sm ${
+                    zeichenModus === 'navigation'
+                      ? 'border-brand bg-brand-soft text-brand-text'
+                      : 'border-border-strong text-text'
+                  }`}
+                >
+                  <MousePointer2 className="h-3.5 w-3.5" strokeWidth={2.25} />
+                </button>
+              )}
+              {canMark && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZeichenModus('punkt')
+                    setPendingPos(null)
+                    setRechteckStart(null)
+                  }}
+                  aria-label="Punkt-Werkzeug"
+                  title="Neue Punkt-Markierung setzen"
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg border text-sm ${
+                    zeichenModus === 'punkt'
+                      ? 'border-brand bg-brand-soft text-brand-text'
+                      : 'border-border-strong text-text'
+                  }`}
+                >
+                  <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} />
+                </button>
+              )}
+              {canMark && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZeichenModus((m) => (m === 'rechteck' ? 'navigation' : 'rechteck'))
                     setPendingPos(null)
                     setRechteckStart(null)
                   }}
@@ -864,7 +917,7 @@ export function PlanDetail() {
               <span className="mx-1 h-5 w-px bg-border" />
               <button
                 type="button"
-                onClick={() => applyZoomAtCenter(zoomRef.current / 1.4)}
+                onClick={() => sanfterZoomButtonKlick(() => applyZoomAtCenter(zoomRef.current / 1.5))}
                 disabled={zoom <= minZoom + 0.001}
                 className="h-7 w-7 rounded-lg border border-border-strong text-sm font-medium text-text disabled:opacity-30"
               >
@@ -873,7 +926,7 @@ export function PlanDetail() {
               <span className="w-14 text-center text-xs text-text-muted">{Math.round(zoom * 100)}%</span>
               <button
                 type="button"
-                onClick={() => applyZoomAtCenter(zoomRef.current * 1.4)}
+                onClick={() => sanfterZoomButtonKlick(() => applyZoomAtCenter(zoomRef.current * 1.5))}
                 disabled={zoom >= MAX_ZOOM - 0.001}
                 className="h-7 w-7 rounded-lg border border-border-strong text-sm font-medium text-text disabled:opacity-30"
               >
@@ -882,7 +935,7 @@ export function PlanDetail() {
               {Math.abs(zoom - minZoom) > 0.001 && (
                 <button
                   type="button"
-                  onClick={resetZoom}
+                  onClick={() => sanfterZoomButtonKlick(resetZoom)}
                   className="ml-1 text-xs font-medium text-brand"
                 >
                   Zurücksetzen
@@ -895,9 +948,11 @@ export function PlanDetail() {
           ? 'PDF wird geladen…'
           : zeichenModus === 'rechteck'
             ? 'Auf dem Plan ziehen, um ein Rechteck (z. B. um eine Tür) zu markieren.'
-            : pendingPos && pendingPos.x2 === undefined && !pendingFixiert
-              ? 'Nochmal auf den Plan tippen, um den Kasten an dieser Stelle zu platzieren.'
-              : 'Auf den Plan tippen, um eine Aufgabe zu markieren. Vorhandene Markierung antippen zum Bearbeiten.'}
+            : zeichenModus === 'punkt'
+              ? pendingPos && pendingPos.x2 === undefined && !pendingFixiert
+                ? 'Nochmal auf den Plan tippen, um den Kasten an dieser Stelle zu platzieren.'
+                : 'Auf den Plan tippen, um eine Aufgabe zu markieren.'
+              : 'Verschieben und zoomen wie gewohnt. Vorhandene Markierung antippen zum Bearbeiten. Für eine neue Markierung oben das Punkt- oder Rechteck-Werkzeug wählen.'}
       </p>
       <div ref={viewportRef} className="relative flex-1 overflow-hidden">
             <div
@@ -915,7 +970,14 @@ export function PlanDetail() {
               style={{
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                 transformOrigin: '0 0',
-                cursor: isPanning ? 'grabbing' : zoom > minZoom + 0.001 ? 'grab' : canMark ? 'crosshair' : 'default',
+                transition: sanfterUebergang ? 'transform 200ms ease-out' : 'none',
+                cursor: isPanning
+                  ? 'grabbing'
+                  : canMark && (zeichenModus === 'punkt' || zeichenModus === 'rechteck')
+                    ? 'crosshair'
+                    : zoom > minZoom + 0.001
+                      ? 'grab'
+                      : 'default',
               }}
             >
               {isPdf ? (

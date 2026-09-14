@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.7',
+    datum: '2026-09-14',
+    aenderungen: [
+      'Pläne: Neuer Navigations-Modus (Standard) — Klicks bewegen/zoomen nur bzw. öffnen vorhandene Markierungen, ohne versehentlich eine neue Markierung anzulegen. Punkt- und Rechteck-Werkzeug müssen jetzt bewusst in der Werkzeugleiste ausgewählt werden, um neue Markierungen zu setzen.',
+      'Pläne: Zoomen per Mausrad/Trackpad und über die +/− Knöpfe ist jetzt schneller und läuft weich statt abgehackt.',
+    ],
+  },
+  {
     version: '1.5.6',
     datum: '2026-09-14',
     aenderungen: [

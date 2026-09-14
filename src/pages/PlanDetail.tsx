@@ -53,9 +53,21 @@ function relPos(clientX: number, clientY: number, rect: DOMRect) {
 
 const MAX_ZOOM = 10
 
-function clampPan(pan: { x: number; y: number }, zoom: number, viewportW: number, viewportH: number) {
+// viewportW/viewportH sind die Groesse des sichtbaren Ausschnitts (fuer die
+// Scroll-Grenzen), inhaltHoehe ist die TATSAECHLICHE Hoehe des Plans bei
+// Zoom=1 (Breite folgt immer der Containerbreite per CSS, die Hoehe aber nur,
+// wenn das Seitenverhaeltnis von Plan und Fenster zufaellig uebereinstimmt --
+// sonst wurden Scroll-Grenzen unten/rechts falsch berechnet und ein Teil des
+// Plans war beim Reinzoomen nicht mehr erreichbar).
+function clampPan(
+  pan: { x: number; y: number },
+  zoom: number,
+  viewportW: number,
+  viewportH: number,
+  inhaltHoehe: number = viewportH,
+) {
   const scaledW = viewportW * zoom
-  const scaledH = viewportH * zoom
+  const scaledH = inhaltHoehe * zoom
   const minX = Math.min(0, viewportW - scaledW)
   const minY = Math.min(0, viewportH - scaledH)
   return {
@@ -107,6 +119,11 @@ export function PlanDetail() {
   // darauf zentriert statt immer auf die Fenstermitte, damit jede beliebige
   // Stelle anvisiert werden kann statt an einen festen Punkt gebunden zu sein.
   const letztePosRef = useRef<{ x: number; y: number } | null>(null)
+  // Breite/Hoehe-Verhaeltnis des Plans (PDF-Canvas oder Bild) bei Zoom=1 --
+  // gebraucht, um die tatsaechliche Inhaltshoehe fuer clampPan zu berechnen
+  // (siehe dortiger Kommentar).
+  const naturalAspectRef = useRef(1)
+  const inhaltHoeheFuer = (viewportBreite: number) => viewportBreite / naturalAspectRef.current
   const pinchRef = useRef<{ dist: number; zoom: number; pan: { x: number; y: number }; midX: number; midY: number } | null>(null)
   const [zeigeListe, setZeigeListe] = useState(false)
 
@@ -170,8 +187,8 @@ export function PlanDetail() {
     if (!viewport || !canvas || !canvas.width || !canvas.height) return 1
     const rect = viewport.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) return 1
-    const naturalAspect = canvas.width / canvas.height
-    const hoeheBeiVollerBreite = rect.width / naturalAspect
+    naturalAspectRef.current = canvas.width / canvas.height
+    const hoeheBeiVollerBreite = rect.width / naturalAspectRef.current
     if (hoeheBeiVollerBreite <= rect.height) return 1
     return rect.height / hoeheBeiVollerBreite
   }
@@ -187,7 +204,13 @@ export function PlanDetail() {
     const prevPan = panRef.current
     const contentX = (fx - prevPan.x) / prevZoom
     const contentY = (fy - prevPan.y) / prevZoom
-    const nextPan = clampPan({ x: fx - contentX * newZoom, y: fy - contentY * newZoom }, newZoom, rect.width, rect.height)
+    const nextPan = clampPan(
+      { x: fx - contentX * newZoom, y: fy - contentY * newZoom },
+      newZoom,
+      rect.width,
+      rect.height,
+      inhaltHoeheFuer(rect.width),
+    )
     updateZoomPan(newZoom, nextPan)
   }
 
@@ -269,7 +292,13 @@ export function PlanDetail() {
         const viewport = viewportRef.current
         if (!viewport) return
         const rect = viewport.getBoundingClientRect()
-        const nextPan = clampPan({ x: ps.startPan.x + dx, y: ps.startPan.y + dy }, zoomRef.current, rect.width, rect.height)
+        const nextPan = clampPan(
+          { x: ps.startPan.x + dx, y: ps.startPan.y + dy },
+          zoomRef.current,
+          rect.width,
+          rect.height,
+          inhaltHoeheFuer(rect.width),
+        )
         panRef.current = nextPan
         setPan(nextPan)
       }
@@ -311,6 +340,7 @@ export function PlanDetail() {
         zoomRef.current,
         rect.width,
         rect.height,
+        inhaltHoeheFuer(rect.width),
       )
       panRef.current = nextPan
       setPan(nextPan)
@@ -626,7 +656,13 @@ export function PlanDetail() {
       const contentY = (fy0 - start.pan.y) / start.zoom
       const fx1 = midX - rect.left
       const fy1 = midY - rect.top
-      const nextPan = clampPan({ x: fx1 - contentX * newZoom, y: fy1 - contentY * newZoom }, newZoom, rect.width, rect.height)
+      const nextPan = clampPan(
+        { x: fx1 - contentX * newZoom, y: fy1 - contentY * newZoom },
+        newZoom,
+        rect.width,
+        rect.height,
+        inhaltHoeheFuer(rect.width),
+      )
       updateZoomPan(newZoom, nextPan)
       return
     }
@@ -647,7 +683,13 @@ export function PlanDetail() {
         const viewport = viewportRef.current
         if (!viewport) return
         const rect = viewport.getBoundingClientRect()
-        const nextPan = clampPan({ x: ps.startPan.x + dx, y: ps.startPan.y + dy }, zoomRef.current, rect.width, rect.height)
+        const nextPan = clampPan(
+          { x: ps.startPan.x + dx, y: ps.startPan.y + dy },
+          zoomRef.current,
+          rect.width,
+          rect.height,
+          inhaltHoeheFuer(rect.width),
+        )
         panRef.current = nextPan
         setPan(nextPan)
       }
@@ -999,7 +1041,18 @@ export function PlanDetail() {
               {isPdf ? (
                 <canvas ref={canvasRef} className="w-full select-none" />
               ) : (
-                <img src={datenUrl} alt={plan.name} className="w-full select-none" draggable={false} />
+                <img
+                  src={datenUrl}
+                  alt={plan.name}
+                  className="w-full select-none"
+                  draggable={false}
+                  onLoad={(e) => {
+                    const img = e.currentTarget
+                    if (img.naturalWidth && img.naturalHeight) {
+                      naturalAspectRef.current = img.naturalWidth / img.naturalHeight
+                    }
+                  }}
+                />
               )}
               {isPdf && !pdfReady && (
                 <div className="absolute inset-0 flex items-center justify-center bg-surface-hover text-sm text-text-muted">

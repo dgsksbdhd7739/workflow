@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.9',
+    datum: '2026-09-14',
+    aenderungen: [
+      'Pläne: Fehler behoben, durch den der rechte/untere Planrand beim Reinzoomen nicht mehr erreichbar war — die Verschieben-Grenzen wurden falsch berechnet, sobald das Seitenverhältnis von Plan und Fenster nicht exakt übereinstimmte.',
+    ],
+  },
+  {
     version: '1.5.8',
     datum: '2026-09-14',
     aenderungen: [

@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.10',
+    datum: '2026-09-14',
+    aenderungen: [
+      'Pläne: Öffnet wieder im gleichen Tab statt in einem neuen Browser-Tab.',
+    ],
+  },
+  {
     version: '1.5.9',
     datum: '2026-09-14',
     aenderungen: [

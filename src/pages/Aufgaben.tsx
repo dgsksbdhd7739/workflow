@@ -155,8 +155,6 @@ function AufgabeKarte({
       {m.plan_id && (
         <Link
           to={`/projekte/${projektId}/plaene/${m.plan_id}`}
-          target="_blank"
-          rel="noreferrer"
           className="mt-2 inline-flex items-center gap-1 text-xs text-brand"
         >
           <MapIcon className="h-3 w-3" strokeWidth={2.25} />

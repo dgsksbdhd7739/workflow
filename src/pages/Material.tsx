@@ -135,7 +135,7 @@ export function Material() {
                     {z.plan_id && projektId && (
                       <>
                         {' · '}
-                        <Link to={`/projekte/${projektId}/plaene/${z.plan_id}`} target="_blank" rel="noreferrer" className="text-brand">
+                        <Link to={`/projekte/${projektId}/plaene/${z.plan_id}`} className="text-brand">
                           Plan ansehen
                         </Link>
                       </>

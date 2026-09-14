@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.5',
+    datum: '2026-09-14',
+    aenderungen: [
+      'Pläne: Ein Plan öffnet sich jetzt in einem neuen Browser-Tab und passt sich automatisch an die Fenster-/Monitorgröße an, sodass die komplette Seite ohne Scrollen sichtbar ist.',
+    ],
+  },
+  {
     version: '1.5.4',
     datum: '2026-09-14',
     aenderungen: [

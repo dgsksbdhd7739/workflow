@@ -180,6 +180,8 @@ export function Plaene() {
                     <Link
                       key={m.id}
                       to={`/projekte/${projektId}/plaene/${m.plan_id}?markierung=${m.id}`}
+                      target="_blank"
+                      rel="noreferrer"
                       className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-surface-hover"
                     >
                       <span
@@ -210,6 +212,8 @@ export function Plaene() {
             <li key={p.id} className="relative">
               <Link
                 to={`/projekte/${projektId}/plaene/${p.id}`}
+                target="_blank"
+                rel="noreferrer"
                 className="card block overflow-hidden transition-colors hover:border-brand/40"
               >
                 <div className="aspect-square bg-surface-hover">

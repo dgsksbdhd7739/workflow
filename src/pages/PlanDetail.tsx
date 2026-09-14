@@ -51,7 +51,6 @@ function relPos(clientX: number, clientY: number, rect: DOMRect) {
   return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }
 }
 
-const MIN_ZOOM = 1
 const MAX_ZOOM = 10
 
 function clampPan(pan: { x: number; y: number }, zoom: number, viewportW: number, viewportH: number) {
@@ -115,6 +114,12 @@ export function PlanDetail() {
   const [werte, setWerte] = useState<StatusVorlageWert[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
+  // Kleinstmoegliche Zoomstufe = "an den Bildschirm angepasst" (die ganze
+  // Seite passend zum Seitenverhaeltnis des Browserfensters/Monitors sichtbar)
+  // statt eines fixen Werts -- wird nach dem Rendern anhand der tatsaechlichen
+  // Seiten-/Fenstergroesse berechnet, siehe berechneFitZoom.
+  const [minZoom, setMinZoomState] = useState(1)
+  const minZoomRef = useRef(1)
 
   const [erkennungLaeuft, setErkennungLaeuft] = useState(false)
   const [erkennungFortschritt, setErkennungFortschritt] = useState<{ aktuell: number; gesamt: number } | null>(null)
@@ -128,12 +133,34 @@ export function PlanDetail() {
     setPan(nextPan)
   }
 
-  const resetZoom = () => updateZoomPan(1, { x: 0, y: 0 })
+  const resetZoom = () => updateZoomPan(minZoomRef.current, { x: 0, y: 0 })
+
+  const setzeMinZoom = (v: number) => {
+    minZoomRef.current = v
+    setMinZoomState(v)
+  }
+
+  // Berechnet die Zoomstufe, bei der die komplette Planseite ohne Scrollen in
+  // den verfuegbaren Bereich passt -- orientiert sich am tatsaechlichen
+  // Seitenverhaeltnis von Browserfenster/Monitor statt immer nur die Breite
+  // zu fuellen (das konnte bei hochformatigen Plaenen auf breiten Monitoren
+  // unten abgeschnitten wirken, ohne dass das sofort auffiel).
+  const berechneFitZoom = () => {
+    const viewport = viewportRef.current
+    const canvas = canvasRef.current
+    if (!viewport || !canvas || !canvas.width || !canvas.height) return 1
+    const rect = viewport.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) return 1
+    const naturalAspect = canvas.width / canvas.height
+    const hoeheBeiVollerBreite = rect.width / naturalAspect
+    if (hoeheBeiVollerBreite <= rect.height) return 1
+    return rect.height / hoeheBeiVollerBreite
+  }
 
   const applyZoom = (newZoomRaw: number, focalClientX: number, focalClientY: number) => {
     const viewport = viewportRef.current
     if (!viewport) return
-    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoomRaw))
+    const newZoom = Math.min(MAX_ZOOM, Math.max(minZoomRef.current, newZoomRaw))
     const rect = viewport.getBoundingClientRect()
     const fx = focalClientX - rect.left
     const fy = focalClientY - rect.top
@@ -178,6 +205,22 @@ export function PlanDetail() {
     setVorschauMarkierungen(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId])
+
+  // Beim Groessenaendern des Fensters (z. B. Umzug auf einen anderen
+  // Monitor) die Einpassung neu berechnen -- nur automatisch anwenden, wenn
+  // noch nicht manuell herein-/herausgezoomt wurde, um eine laufende
+  // Interaktion nicht zu unterbrechen.
+  useEffect(() => {
+    const handleResize = () => {
+      const fit = berechneFitZoom()
+      const warAufFit = Math.abs(zoomRef.current - minZoomRef.current) < 0.001
+      setzeMinZoom(fit)
+      if (warAufFit) updateZoomPan(fit, { x: 0, y: 0 })
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Maus-Pan robust ueber Fenster-Listener statt nur auf dem Plan-Element:
   // beim Ziehen verlaesst der Cursor bei starkem Zoom schnell den sichtbaren
@@ -290,7 +333,12 @@ export function PlanDetail() {
         const ctx = canvas.getContext('2d')
         if (!ctx) return
         await page.render({ canvas, canvasContext: ctx, viewport }).promise
-        if (!cancelled) setPdfReady(true)
+        if (!cancelled) {
+          const fit = berechneFitZoom()
+          setzeMinZoom(fit)
+          updateZoomPan(fit, { x: 0, y: 0 })
+          setPdfReady(true)
+        }
       })
       .catch(() => {
         if (!cancelled) setPdfError(true)
@@ -525,7 +573,7 @@ export function PlanDetail() {
       if (!viewport) return
       const rect = viewport.getBoundingClientRect()
       const start = pinchRef.current
-      const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, start.zoom * (dist / start.dist)))
+      const newZoom = Math.min(MAX_ZOOM, Math.max(minZoomRef.current, start.zoom * (dist / start.dist)))
       const fx0 = start.midX - rect.left
       const fy0 = start.midY - rect.top
       const contentX = (fx0 - start.pan.x) / start.zoom
@@ -801,7 +849,7 @@ export function PlanDetail() {
               <button
                 type="button"
                 onClick={() => applyZoomAtCenter(zoomRef.current / 1.4)}
-                disabled={zoom <= MIN_ZOOM + 0.001}
+                disabled={zoom <= minZoom + 0.001}
                 className="h-7 w-7 rounded-lg border border-border-strong text-sm font-medium text-text disabled:opacity-30"
               >
                 −
@@ -815,7 +863,7 @@ export function PlanDetail() {
               >
                 +
               </button>
-              {zoom !== 1 && (
+              {Math.abs(zoom - minZoom) > 0.001 && (
                 <button
                   type="button"
                   onClick={resetZoom}
@@ -851,7 +899,7 @@ export function PlanDetail() {
               style={{
                 transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                 transformOrigin: '0 0',
-                cursor: isPanning ? 'grabbing' : zoom > MIN_ZOOM + 0.001 ? 'grab' : canMark ? 'crosshair' : 'default',
+                cursor: isPanning ? 'grabbing' : zoom > minZoom + 0.001 ? 'grab' : canMark ? 'crosshair' : 'default',
               }}
             >
               {isPdf ? (

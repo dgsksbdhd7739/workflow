@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.5.2',
+    datum: '2026-09-14',
+    aenderungen: [
+      'Bautagebuch-PDF: die separate "Tür/Aufgabe – Stand"-Tabelle je Tag entfällt, der Stand steht jetzt direkt bei der jeweiligen Aufgabe im Bericht. Dadurch erscheinen jetzt auch Türen ohne Zeiterfassung/Kommentar an dem Tag im PDF.',
+    ],
+  },
+  {
     version: '1.5.1',
     datum: '2026-09-11',
     aenderungen: [

@@ -481,6 +481,7 @@ interface AufgabenKommentarEintrag {
 
 interface AufgabenBlockDaten {
   titel: string
+  stand: string | null
   technikerNamen: string | null
   zeitText: string | null
   abnahmeNummer: string | null
@@ -509,6 +510,18 @@ function aufgabenBlock(doc: jsPDF, yStart: number, daten: AufgabenBlockDaten, nu
   }
   y1 += titelZeilen.length * 4.4 + 1.8
   doc.setFont('helvetica', 'normal')
+
+  if (daten.stand) {
+    doc.setFontSize(7.5)
+    doc.setFont('helvetica', 'bold')
+    if (!nurMessen) {
+      doc.setTextColor(...FARBE.marke)
+      doc.text(`Stand: ${daten.stand}`, AUFGABEN_SPALTE1_X, y1)
+    }
+    y1 += 3.8
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...FARBE.text)
+  }
 
   if (daten.technikerNamen) {
     doc.setFontSize(7.5)
@@ -738,21 +751,10 @@ async function zeichneTagesberichtTag(
       y = zeichneChips(doc, metaChips, 19, y, 196)
     }
 
+    // Frueher stand hier eine separate "Tuer / Aufgabe | Stand"-Tabelle --
+    // der Stand steht jetzt direkt im jeweiligen Aufgaben-Block weiter unten
+    // (neben dem Titel), damit nicht zweimal dieselbe Information erscheint.
     const tuerenDesBerichts = tueren.filter((t) => t.tagesbericht_id === b.id)
-    if (tuerenDesBerichts.length > 0) {
-      autoTable(doc, {
-        startY: y,
-        margin: { left: 19, right: 14 },
-        head: [['Tür / Aufgabe', 'Stand']],
-        body: tuerenDesBerichts.map((t) => [t.titel, t.stand]),
-        styles: { fontSize: 8, textColor: FARBE.text, lineColor: FARBE.rahmen },
-        headStyles: { fillColor: FARBE.marke, textColor: [255, 255, 255], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: FARBE.flaeche },
-        tableWidth: 177,
-      })
-      // @ts-expect-error jspdf-autotable haengt lastAutoTable zur Laufzeit an, ohne eigenen Typ
-      y = doc.lastAutoTable.finalY + 4
-    }
 
     // Vor der Aenderung an handleAutoErstellen enthalten bereits gespeicherte
     // Berichte noch den vollstaendigen "Noch offen"-Dump im Freitext -- der
@@ -780,53 +782,61 @@ async function zeichneTagesberichtTag(
     // diese zusaetzliche Quelle blieb eine Aufgabe, an der nur kommentiert
     // (aber keine Zeit erfasst) wurde, an diesem Tag komplett unsichtbar.
     const kommentareHeute = kommentare.filter((k) => k.erstellt_am.slice(0, 10) === b.datum)
-    if (tagesZeiten.length > 0 || kommentareHeute.length > 0) {
-      const gruppen = new Map<string, Zeiterfassung[]>()
-      for (const z of tagesZeiten) {
-        const key = z.aufgabe_id ?? '__allgemein__'
-        const liste = gruppen.get(key) ?? []
-        liste.push(z)
-        gruppen.set(key, liste)
-      }
-      for (const k of kommentareHeute) {
-        if (!gruppen.has(k.aufgabe_id)) gruppen.set(k.aufgabe_id, [])
+    const allgemeinZeiten = tagesZeiten.filter((z) => !z.aufgabe_id)
+
+    // Sicherheitsnetz: Zeiten/Kommentare zu einer Aufgabe, die (noch) nicht
+    // Teil der Tueren-Momentaufnahme dieses Berichts ist (z. B. nachtraeglich
+    // angelegte Aufgabe) -- damit nichts verloren geht.
+    const tuerenAufgabeIds = new Set(
+      tuerenDesBerichts.map((t) => t.aufgabe_id).filter((id): id is string => id != null),
+    )
+    const zusatzAufgabeIds = new Set<string>()
+    for (const z of tagesZeiten) if (z.aufgabe_id && !tuerenAufgabeIds.has(z.aufgabe_id)) zusatzAufgabeIds.add(z.aufgabe_id)
+    for (const k of kommentareHeute) if (!tuerenAufgabeIds.has(k.aufgabe_id)) zusatzAufgabeIds.add(k.aufgabe_id)
+
+    if (tuerenDesBerichts.length > 0 || allgemeinZeiten.length > 0 || zusatzAufgabeIds.size > 0) {
+      for (const z of allgemeinZeiten) {
+        if (y > seitenEnde - 12) {
+          doc.addPage()
+          y = 20
+        }
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(...FARBE.text)
+        doc.text('Allgemein', 19, y)
+        doc.setTextColor(...FARBE.dezent)
+        doc.text(
+          `${nameOf(z.user_id)} · ${z.end_zeit ? formatDauer(eintragMinuten(z)) : 'läuft noch'}`,
+          196,
+          y,
+          { align: 'right' },
+        )
+        y += 5
       }
 
-      for (const [key, eintraege] of gruppen) {
+      // Zeichnet einen Aufgaben-Block; aufgabeId ist null, wenn die
+      // urspruengliche Aufgabe inzwischen geloescht wurde -- dann bleiben nur
+      // der eingefrorene Titel/Stand aus der Tueren-Momentaufnahme uebrig.
+      const renderAufgabenBlock = async (aufgabeId: string | null, titelFallback: string, stand: string | null) => {
         if (y > seitenEnde - 12) {
           doc.addPage()
           y = 20
         }
 
-        if (key === '__allgemein__') {
-          for (const z of eintraege) {
-            doc.setFontSize(9)
-            doc.setFont('helvetica', 'normal')
-            doc.setTextColor(...FARBE.text)
-            doc.text('Allgemein', 19, y)
-            doc.setTextColor(...FARBE.dezent)
-            doc.text(
-              `${nameOf(z.user_id)} · ${z.end_zeit ? formatDauer(eintragMinuten(z)) : 'läuft noch'}`,
-              196,
-              y,
-              { align: 'right' },
-            )
-            y += 5
-          }
-          continue
-        }
-
-        const m = aufgaben.find((x) => x.id === key)
+        const eintraege = aufgabeId ? tagesZeiten.filter((z) => z.aufgabe_id === aufgabeId) : []
+        const m = aufgabeId ? aufgaben.find((x) => x.id === aufgabeId) : undefined
         const technikerNamen = [...new Set(eintraege.map((e) => nameOf(e.user_id)))].join(', ') || null
         const gesamtDauer = eintraege.reduce((sum, e) => sum + eintragMinuten(e), 0)
-        const materialListe = material.filter((x) => x.aufgabe_id === key)
+        const materialListe = aufgabeId ? material.filter((x) => x.aufgabe_id === aufgabeId) : []
         const materialChips = materialListe.map(
           (mm) => `${mm.bezeichnung} (${mm.menge}${mm.einheit ? ` ${mm.einheit}` : ''})`,
         )
         const fortschrittfelder = m ? await holeFortschrittfelder(m, fortschrittCache) : []
 
         const kommentareDaten: AufgabenKommentarEintrag[] = []
-        const kommentareListe = kommentareHeute.filter((x) => x.aufgabe_id === key && (x.text || x.foto_pfad))
+        const kommentareListe = aufgabeId
+          ? kommentareHeute.filter((x) => x.aufgabe_id === aufgabeId && (x.text || x.foto_pfad))
+          : []
         for (const k of kommentareListe) {
           const bild = k.foto_pfad ? await bildFuerPdf(k.foto_pfad, 'mangel-fotos') : null
           kommentareDaten.push({ text: k.text, autor: nameOf(k.erstellt_von), bild })
@@ -837,7 +847,8 @@ async function zeichneTagesberichtTag(
         }
 
         const daten: AufgabenBlockDaten = {
-          titel: m?.titel ?? 'Aufgabe',
+          titel: m?.titel ?? titelFallback,
+          stand,
           technikerNamen,
           zeitText: eintraege.length > 0 ? formatDauer(gesamtDauer) : null,
           abnahmeNummer: m?.abnahme_nummer ?? null,
@@ -857,6 +868,14 @@ async function zeichneTagesberichtTag(
           doc.line(19, y - 2.5, 196, y - 2.5)
         }
         y += AUFGABENBLOCK_ABSTAND_NACH_TRENNLINIE
+      }
+
+      for (const tuer of tuerenDesBerichts) {
+        await renderAufgabenBlock(tuer.aufgabe_id, tuer.titel, tuer.stand)
+      }
+      for (const aufgabeId of zusatzAufgabeIds) {
+        const m = aufgaben.find((x) => x.id === aufgabeId)
+        await renderAufgabenBlock(aufgabeId, m?.titel ?? 'Aufgabe', null)
       }
       y += 1
     }

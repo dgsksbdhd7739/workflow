@@ -204,6 +204,9 @@ export interface AufgabeTicket {
   erledigt_von: string | null
   erledigt_am: string | null
   bestaetigung_kommentar: string | null
+  erledigen_bis: string | null
+  nachfrist: string | null
+  ist_gesperrt: boolean
 }
 
 export interface AufgabeTicketFoto {

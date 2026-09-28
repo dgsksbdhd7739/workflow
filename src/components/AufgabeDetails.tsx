@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { SignedImage } from './SignedImage'
 import { komprimiereBild } from '../lib/bildKompression'
+import { formatDatum } from '../lib/datum'
 import type {
   Dokument,
   Aufgabe,
@@ -86,6 +87,8 @@ export function AufgabeDetails({
   const [kommentarFoto, setKommentarFoto] = useState<File | null>(null)
   const [kommentarSaving, setKommentarSaving] = useState(false)
   const [ticketText, setTicketText] = useState('')
+  const [ticketErledigenBis, setTicketErledigenBis] = useState('')
+  const [ticketNachfrist, setTicketNachfrist] = useState('')
   const [ticketSaving, setTicketSaving] = useState(false)
   const [bestaetigungOffenFuer, setBestaetigungOffenFuer] = useState<string | null>(null)
   const [bestaetigungText, setBestaetigungText] = useState('')
@@ -403,6 +406,8 @@ export function AufgabeDetails({
       aufgabe_id: aufgabeId,
       text: ticketText.trim(),
       erstellt_von: user.id,
+      erledigen_bis: ticketErledigenBis || null,
+      nachfrist: ticketNachfrist || null,
     })
     setTicketSaving(false)
     if (error) {
@@ -410,7 +415,20 @@ export function AufgabeDetails({
       return
     }
     setTicketText('')
+    setTicketErledigenBis('')
+    setTicketNachfrist('')
     load()
+  }
+
+  const toggleTicketSperre = async (ticket: AufgabeTicket) => {
+    setFehler(null)
+    const ist_gesperrt = !ticket.ist_gesperrt
+    setTickets((prev) => prev.map((t) => (t.id === ticket.id ? { ...t, ist_gesperrt } : t)))
+    const { error } = await supabase.from('aufgabe_tickets').update({ ist_gesperrt }).eq('id', ticket.id)
+    if (error) {
+      setFehler(error.message)
+      load()
+    }
   }
 
   const toggleTicketStatus = async (ticket: AufgabeTicket) => {
@@ -609,16 +627,30 @@ export function AufgabeDetails({
                       <span className="text-xs text-text-subtle">{relativZeit(t.erstellt_am)}</span>
                     </div>
                     <p className="mt-0.5 text-sm text-text-muted">{t.text}</p>
+                    {(t.erledigen_bis || t.nachfrist) && (
+                      <p className="mt-0.5 text-xs text-text-subtle">
+                        {t.erledigen_bis && <>Erledigen bis {formatDatum(t.erledigen_bis)}</>}
+                        {t.erledigen_bis && t.nachfrist && ' · '}
+                        {t.nachfrist && <>Nachfrist bis {formatDatum(t.nachfrist)}</>}
+                      </p>
+                    )}
                   </div>
-                  <span
-                    className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                      t.status === 'erledigt'
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
-                        : 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300'
-                    }`}
-                  >
-                    {t.status === 'erledigt' ? 'Erledigt' : 'Offen'}
-                  </span>
+                  <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        t.status === 'erledigt'
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                          : 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300'
+                      }`}
+                    >
+                      {t.status === 'erledigt' ? 'Erledigt' : 'Offen'}
+                    </span>
+                    {t.ist_gesperrt && (
+                      <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-subtle">
+                        🔒 Gesperrt
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {(t.bestaetigung_kommentar || (ticketFotos[t.id]?.length ?? 0) > 0) && (
                   <div className="mt-2 rounded-md bg-surface-hover px-2 py-1.5">
@@ -651,16 +683,27 @@ export function AufgabeDetails({
                 )}
 
                 {kannTicketAbschliessen && (
-                  <button
-                    type="button"
-                    onClick={() => toggleTicketStatus(t)}
-                    className="mt-1.5 text-xs font-medium text-brand"
-                  >
-                    {t.status === 'erledigt' ? 'Wieder öffnen' : 'Als erledigt markieren'}
-                  </button>
+                  <div className="mt-1.5 flex items-center gap-3">
+                    {!t.ist_gesperrt && (
+                      <button
+                        type="button"
+                        onClick={() => toggleTicketStatus(t)}
+                        className="text-xs font-medium text-brand"
+                      >
+                        {t.status === 'erledigt' ? 'Wieder öffnen' : 'Als erledigt markieren'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleTicketSperre(t)}
+                      className="text-xs font-medium text-text-subtle"
+                    >
+                      {t.ist_gesperrt ? 'Entsperren' : 'Sperren'}
+                    </button>
+                  </div>
                 )}
 
-                {kannTicketBestaetigen && t.status === 'offen' && (
+                {kannTicketBestaetigen && t.status === 'offen' && !t.ist_gesperrt && (
                   <>
                     <button
                       type="button"
@@ -726,17 +769,40 @@ export function AufgabeDetails({
         )}
 
         {kannTicketErstellen && (
-          <form onSubmit={handleTicketSenden} className="flex items-end gap-2">
-            <textarea
-              value={ticketText}
-              onChange={(e) => setTicketText(e.target.value)}
-              rows={2}
-              placeholder="Mangel/Problem beschreiben…"
-              className="field-input"
-            />
-            <button type="submit" disabled={ticketSaving || !ticketText.trim()} className="btn-primary flex-shrink-0">
-              {ticketSaving ? 'Sendet…' : 'Ticket erstellen'}
-            </button>
+          <form onSubmit={handleTicketSenden} className="space-y-2">
+            <div className="flex items-end gap-2">
+              <textarea
+                value={ticketText}
+                onChange={(e) => setTicketText(e.target.value)}
+                rows={2}
+                placeholder="Mangel/Problem beschreiben…"
+                className="field-input"
+              />
+              <button type="submit" disabled={ticketSaving || !ticketText.trim()} className="btn-primary flex-shrink-0">
+                {ticketSaving ? 'Sendet…' : 'Ticket erstellen'}
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-text-subtle">
+              <label className="flex items-center gap-1.5">
+                Erledigen bis
+                <input
+                  type="date"
+                  value={ticketErledigenBis}
+                  onChange={(e) => setTicketErledigenBis(e.target.value)}
+                  className="field-input py-1"
+                />
+              </label>
+              <label className="flex items-center gap-1.5">
+                Nachfrist
+                <input
+                  type="date"
+                  value={ticketNachfrist}
+                  min={ticketErledigenBis || undefined}
+                  onChange={(e) => setTicketNachfrist(e.target.value)}
+                  className="field-input py-1"
+                />
+              </label>
+            </div>
           </form>
         )}
       </div>

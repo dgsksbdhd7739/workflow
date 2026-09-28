@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.6.0',
+    datum: '2026-09-28',
+    aenderungen: [
+      'Tickets: neue Felder "Erledigen bis" und "Nachfrist" beim Erstellen, sowie eine Sperren/Entsperren-Funktion für Admin/Planer, die ein Ticket gegen weitere Änderungen fixiert.',
+    ],
+  },
+  {
     version: '1.5.10',
     datum: '2026-09-14',
     aenderungen: [

@@ -235,6 +235,7 @@ export interface StatusVorlage {
 }
 
 export type DokumentKategorie = 'projekt' | 'aufgabe'
+export type DokumentFreigabestatus = 'keine_anforderung' | 'angefordert' | 'freigegeben' | 'abgelehnt'
 
 export interface Dokument {
   id: string
@@ -245,6 +246,19 @@ export interface Dokument {
   datei_pfad: string
   erstellt_von: string
   erstellt_am: string
+  freigabestatus: DokumentFreigabestatus
+  vorgaenger_id: string | null
+}
+
+export interface DokumentFreigabe {
+  id: string
+  dokument_id: string
+  status: 'angefordert' | 'freigegeben' | 'abgelehnt'
+  kommentar: string | null
+  angefordert_von: string
+  angefordert_am: string
+  entschieden_von: string | null
+  entschieden_am: string | null
 }
 
 export interface StatusVorlageWert {

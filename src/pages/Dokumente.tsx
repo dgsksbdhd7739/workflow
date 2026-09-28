@@ -7,17 +7,33 @@ import { useProfiles } from '../hooks/useProfiles'
 import { formatDatum } from '../lib/datum'
 import type { Dokument, DokumentKategorie, Aufgabe } from '../types/database'
 
+const freigabeLabel: Record<Dokument['freigabestatus'], string> = {
+  keine_anforderung: 'Keine Freigabe angefordert',
+  angefordert: 'Freigabe angefordert',
+  freigegeben: 'Freigegeben',
+  abgelehnt: 'Abgelehnt',
+}
+
+const freigabeFarbe: Record<Dokument['freigabestatus'], string> = {
+  keine_anforderung: 'bg-surface-hover text-text-subtle',
+  angefordert: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
+  freigegeben: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
+  abgelehnt: 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300',
+}
+
 function UploadForm({
   kategorie,
   projektId,
+  vorgaenger,
   onDone,
 }: {
   kategorie: DokumentKategorie
   projektId: string
+  vorgaenger?: Dokument
   onDone: () => void
 }) {
   const { user } = useAuth()
-  const [name, setName] = useState('')
+  const [name, setName] = useState(vorgaenger?.name ?? '')
   const [datei, setDatei] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -37,10 +53,12 @@ function UploadForm({
 
     const { error } = await supabase.from('dokumente').insert({
       projekt_id: projektId,
+      aufgabe_id: vorgaenger?.aufgabe_id ?? null,
       kategorie,
       name: name.trim() || datei.name,
       datei_pfad: path,
       erstellt_von: user.id,
+      vorgaenger_id: vorgaenger?.id ?? null,
     })
 
     setUploading(false)
@@ -74,7 +92,7 @@ function UploadForm({
         />
       </div>
       <button type="submit" disabled={uploading || !datei} className="btn-primary">
-        {uploading ? 'Lädt hoch…' : 'Dokument speichern'}
+        {uploading ? 'Lädt hoch…' : vorgaenger ? 'Neue Version speichern' : 'Dokument speichern'}
       </button>
     </form>
   )
@@ -82,14 +100,17 @@ function UploadForm({
 
 export function Dokumente() {
   const { id: projektId } = useParams<{ id: string }>()
-  const { role, gesperrteModule } = useAuth()
+  const { user, role, gesperrteModule } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const kannLoeschen = role === 'admin' || role === 'planer'
+  const kannEntscheiden = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
   const [dokumente, setDokumente] = useState<Dokument[]>([])
   const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
   const [loading, setLoading] = useState(true)
   const [formOffen, setFormOffen] = useState<DokumentKategorie | null>(null)
+  const [neueVersionFuer, setNeueVersionFuer] = useState<Dokument | null>(null)
+  const [versionenOffenFuer, setVersionenOffenFuer] = useState<string | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
@@ -127,48 +148,172 @@ export function Dokumente() {
     load()
   }
 
-  const projektdokumente = dokumente.filter((d) => d.kategorie === 'projekt')
-  const aufgabendokumente = dokumente.filter((d) => d.kategorie === 'aufgabe')
+  const anfordernFreigabe = async (d: Dokument) => {
+    if (!user) return
+    setFehler(null)
+    const { error: freigabeError } = await supabase
+      .from('dokument_freigaben')
+      .insert({ dokument_id: d.id, status: 'angefordert', angefordert_von: user.id })
+    if (freigabeError) {
+      setFehler(freigabeError.message)
+      return
+    }
+    const { error } = await supabase.from('dokumente').update({ freigabestatus: 'angefordert' }).eq('id', d.id)
+    if (error) setFehler(error.message)
+    load()
+  }
+
+  const entscheideFreigabe = async (d: Dokument, status: 'freigegeben' | 'abgelehnt') => {
+    if (!user) return
+    setFehler(null)
+    const { data: offeneAnforderung } = await supabase
+      .from('dokument_freigaben')
+      .select('id')
+      .eq('dokument_id', d.id)
+      .eq('status', 'angefordert')
+      .order('angefordert_am', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (offeneAnforderung) {
+      await supabase
+        .from('dokument_freigaben')
+        .update({ status, entschieden_von: user.id, entschieden_am: new Date().toISOString() })
+        .eq('id', offeneAnforderung.id)
+    }
+    const { error } = await supabase.from('dokumente').update({ freigabestatus: status }).eq('id', d.id)
+    if (error) setFehler(error.message)
+    load()
+  }
+
+  // Nur die jeweils neueste Version einer Kette in der Hauptliste zeigen --
+  // aeltere Versionen bleiben erhalten, sind aber nur ueber "Versionen
+  // anzeigen" bei der neuesten Version sichtbar.
+  const vorgaengerIds = new Set(dokumente.map((d) => d.vorgaenger_id).filter((id): id is string => id != null))
+  const aktuelleDokumente = dokumente.filter((d) => !vorgaengerIds.has(d.id))
+  const vorherigeVersionen = (d: Dokument): Dokument[] => {
+    const kette: Dokument[] = []
+    let aktuellesVorgaengerId = d.vorgaenger_id
+    while (aktuellesVorgaengerId) {
+      const vorgaenger = dokumente.find((x) => x.id === aktuellesVorgaengerId)
+      if (!vorgaenger) break
+      kette.push(vorgaenger)
+      aktuellesVorgaengerId = vorgaenger.vorgaenger_id
+    }
+    return kette
+  }
+
+  const projektdokumente = aktuelleDokumente.filter((d) => d.kategorie === 'projekt')
+  const aufgabendokumente = aktuelleDokumente.filter((d) => d.kategorie === 'aufgabe')
 
   const DokumentZeile = ({ d }: { d: Dokument }) => {
     const aufgabe = d.aufgabe_id ? aufgaben.find((m) => m.id === d.aufgabe_id) : undefined
+    const aeltereVersionen = vorherigeVersionen(d)
     return (
-      <li className="card flex items-center gap-3 p-3">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-surface-hover text-text-muted">
-          <FileText className="h-4 w-4" strokeWidth={2.25} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-text">{d.name}</div>
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-text-subtle">
-            <span className="truncate">
-              {nameOf(d.erstellt_von)} · {formatDatum(d.erstellt_am)}
-            </span>
-            {d.kategorie === 'aufgabe' && (
-              <span
-                className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium ${
-                  aufgabe ? 'bg-brand-soft text-brand-text' : 'bg-surface-hover text-text-subtle'
-                }`}
-              >
-                {aufgabe ? aufgabe.titel : 'Nicht zugeordnet'}
-              </span>
-            )}
+      <li className="card p-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-surface-hover text-text-muted">
+            <FileText className="h-4 w-4" strokeWidth={2.25} />
           </div>
-        </div>
-        <button
-          onClick={() => handleOeffnen(d)}
-          aria-label="Öffnen"
-          className="flex-shrink-0 rounded-lg p-1.5 text-text-muted hover:bg-surface-hover hover:text-brand"
-        >
-          <Download className="h-4 w-4" strokeWidth={2.25} />
-        </button>
-        {kannLoeschen && (
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium text-text">{d.name}</div>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-text-subtle">
+              <span className="truncate">
+                {nameOf(d.erstellt_von)} · {formatDatum(d.erstellt_am)}
+              </span>
+              {d.kategorie === 'aufgabe' && (
+                <span
+                  className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium ${
+                    aufgabe ? 'bg-brand-soft text-brand-text' : 'bg-surface-hover text-text-subtle'
+                  }`}
+                >
+                  {aufgabe ? aufgabe.titel : 'Nicht zugeordnet'}
+                </span>
+              )}
+              <span className={`flex-shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium ${freigabeFarbe[d.freigabestatus]}`}>
+                {freigabeLabel[d.freigabestatus]}
+              </span>
+            </div>
+          </div>
           <button
-            onClick={() => handleDelete(d)}
-            aria-label="Löschen"
-            className="flex-shrink-0 rounded-lg p-1.5 text-text-muted hover:bg-surface-hover hover:text-red-600 dark:hover:text-red-400"
+            onClick={() => handleOeffnen(d)}
+            aria-label="Öffnen"
+            className="flex-shrink-0 rounded-lg p-1.5 text-text-muted hover:bg-surface-hover hover:text-brand"
           >
-            <Trash2 className="h-4 w-4" strokeWidth={2.25} />
+            <Download className="h-4 w-4" strokeWidth={2.25} />
           </button>
+          {kannLoeschen && (
+            <button
+              onClick={() => handleDelete(d)}
+              aria-label="Löschen"
+              className="flex-shrink-0 rounded-lg p-1.5 text-text-muted hover:bg-surface-hover hover:text-red-600 dark:hover:text-red-400"
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={2.25} />
+            </button>
+          )}
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center gap-3 pl-12 text-xs">
+          {kannBearbeiten && (d.freigabestatus === 'keine_anforderung' || d.freigabestatus === 'abgelehnt') && (
+            <button onClick={() => anfordernFreigabe(d)} className="font-medium text-brand">
+              Freigabe anfordern
+            </button>
+          )}
+          {kannEntscheiden && d.freigabestatus === 'angefordert' && (
+            <>
+              <button onClick={() => entscheideFreigabe(d, 'freigegeben')} className="font-medium text-emerald-600 dark:text-emerald-400">
+                Freigeben
+              </button>
+              <button onClick={() => entscheideFreigabe(d, 'abgelehnt')} className="font-medium text-red-600 dark:text-red-400">
+                Ablehnen
+              </button>
+            </>
+          )}
+          {kannBearbeiten && (
+            <button
+              onClick={() => setNeueVersionFuer((prev) => (prev?.id === d.id ? null : d))}
+              className="font-medium text-text-subtle hover:text-text"
+            >
+              {neueVersionFuer?.id === d.id ? 'Abbrechen' : 'Neue Version hochladen'}
+            </button>
+          )}
+          {aeltereVersionen.length > 0 && (
+            <button
+              onClick={() => setVersionenOffenFuer((prev) => (prev === d.id ? null : d.id))}
+              className="font-medium text-text-subtle hover:text-text"
+            >
+              {versionenOffenFuer === d.id ? 'Versionen ausblenden' : `${aeltereVersionen.length} ältere Version${aeltereVersionen.length === 1 ? '' : 'en'}`}
+            </button>
+          )}
+        </div>
+
+        {neueVersionFuer?.id === d.id && projektId && (
+          <div className="mt-2 pl-12">
+            <UploadForm
+              kategorie={d.kategorie}
+              projektId={projektId}
+              vorgaenger={d}
+              onDone={() => {
+                setNeueVersionFuer(null)
+                load()
+              }}
+            />
+          </div>
+        )}
+
+        {versionenOffenFuer === d.id && aeltereVersionen.length > 0 && (
+          <ul className="mt-2 space-y-1 border-t border-border pl-12 pt-2">
+            {aeltereVersionen.map((v) => (
+              <li key={v.id} className="flex items-center gap-2 text-xs text-text-subtle">
+                <button onClick={() => handleOeffnen(v)} className="truncate hover:text-brand hover:underline">
+                  {v.name}
+                </button>
+                <span>· {formatDatum(v.erstellt_am)}</span>
+                <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-medium ${freigabeFarbe[v.freigabestatus]}`}>
+                  {freigabeLabel[v.freigabestatus]}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </li>
     )

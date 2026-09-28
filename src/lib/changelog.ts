@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.6.4',
+    datum: '2026-09-28',
+    aenderungen: [
+      'Dokumente: Freigabe-Workflow (anfordern, freigeben/ablehnen durch Admin/Planer) sowie "Neue Version hochladen" — ältere Versionen bleiben erhalten und sind über die jeweils neueste Version einsehbar.',
+    ],
+  },
+  {
     version: '1.6.3',
     datum: '2026-09-28',
     aenderungen: [

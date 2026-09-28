@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.6.6',
+    datum: '2026-09-28',
+    aenderungen: [
+      'Neu: Tagesbericht-Vorlagen — in den Einstellungen kann optional eine eigene PDF-Vorlage mit ausfüllbaren Formularfeldern hochgeladen werden. Ist eine Vorlage als Standard gesetzt, wird sie beim Öffnen eines Tagesberichts automatisch befüllt statt des bisherigen Standard-Layouts.',
+    ],
+  },
+  {
     version: '1.6.5',
     datum: '2026-09-28',
     aenderungen: [

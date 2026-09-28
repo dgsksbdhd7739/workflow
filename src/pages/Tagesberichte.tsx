@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import type { jsPDF } from 'jspdf'
 import { useParams } from 'react-router-dom'
 import { CalendarDays, Search, Trash2, X } from 'lucide-react'
 import { supabase, getSignedUrl } from '../lib/supabase'
@@ -7,7 +6,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { SignedImage } from '../components/SignedImage'
 import { PdfViewerModal } from '../components/PdfViewerModal'
-import { erzeugeEinzelnenTagesberichtPdf, exportTagesberichtePdf, pdfSpeichernOderTeilen } from '../lib/pdf'
+import { bytesSpeichernOderTeilen, erzeugeEinzelnenTagesberichtPdf, exportTagesberichtePdf, pdfSpeichernOderTeilen } from '../lib/pdf'
+import { fuelleTagesberichtVorlage } from '../lib/pdfVorlage'
 import { formatDatum } from '../lib/datum'
 import { standVonAufgabe } from '../lib/aufgabeStand'
 import { tagesberichtName, tagesberichtNummern } from '../lib/tagesberichtName'
@@ -19,6 +19,7 @@ import type {
   StatusVorlageWert,
   Tagesbericht,
   TagesberichtTuer,
+  TagesberichtVorlage,
   Zeiterfassung,
 } from '../types/database'
 
@@ -57,7 +58,7 @@ function taetigkeitenAnzeige(text: string): string {
 
 export function Tagesberichte() {
   const { id: projektId } = useParams<{ id: string }>()
-  const { user, role, gesperrteModule } = useAuth()
+  const { user, role, unternehmenId, gesperrteModule } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const kannLoeschen = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
@@ -69,13 +70,14 @@ export function Tagesberichte() {
   const [kommentare, setKommentare] = useState<AufgabeKommentar[]>([])
   const [tueren, setTueren] = useState<TagesberichtTuer[]>([])
   const [werteMap, setWerteMap] = useState<Record<string, StatusVorlageWert>>({})
+  const [vorlagen, setVorlagen] = useState<TagesberichtVorlage[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [autoSaving, setAutoSaving] = useState(false)
   const [pdfExportiert, setPdfExportiert] = useState(false)
   const [oeffnendId, setOeffnendId] = useState<string | null>(null)
-  const [pdfViewer, setPdfViewer] = useState<{ data: ArrayBuffer; doc: jsPDF; dateiname: string } | null>(null)
+  const [pdfViewer, setPdfViewer] = useState<{ data: ArrayBuffer; dateiname: string; onTeilen: () => void } | null>(null)
   const [loeschendId, setLoeschendId] = useState<string | null>(null)
   const [exportAuswahlOffen, setExportAuswahlOffen] = useState(false)
   const [exportAusgewaehlt, setExportAusgewaehlt] = useState<Set<string>>(new Set())
@@ -152,6 +154,16 @@ export function Tagesberichte() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projektId])
 
+  useEffect(() => {
+    if (!unternehmenId) return
+    supabase
+      .from('tagesbericht_vorlagen')
+      .select('*')
+      .eq('unternehmen_id', unternehmenId)
+      .order('erstellt_am')
+      .then(({ data }) => setVorlagen(data ?? []))
+  }, [unternehmenId])
+
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
     if (!user || !projektId) return
@@ -166,6 +178,7 @@ export function Tagesberichte() {
         taetigkeiten: taetigkeiten || null,
         besonderheiten: besonderheiten || null,
         erstellt_von: user.id,
+        vorlage_id: vorlagen.find((v) => v.ist_standard)?.id ?? null,
       })
       .select()
       .single()
@@ -224,6 +237,7 @@ export function Tagesberichte() {
         personal_anzahl: technikerAnzahl || null,
         taetigkeiten: text,
         erstellt_von: user.id,
+        vorlage_id: vorlagen.find((v) => v.ist_standard)?.id ?? null,
       })
       .select()
       .single()
@@ -271,6 +285,20 @@ export function Tagesberichte() {
     setFehler(null)
     try {
       const dateiname = tagesberichtName(projekt, b, nummern[b.id])
+      const vorlage = b.vorlage_id ? vorlagen.find((v) => v.id === b.vorlage_id) : undefined
+      if (vorlage?.pdf_datei_pfad) {
+        const berichtTueren = tueren.filter((t) => t.tagesbericht_id === b.id)
+        const gefuellt = await fuelleTagesberichtVorlage(vorlage.pdf_datei_pfad, projekt, b, berichtTueren, nameOf(b.erstellt_von))
+        if (gefuellt) {
+          setPdfViewer({
+            data: gefuellt.buffer.slice(gefuellt.byteOffset, gefuellt.byteOffset + gefuellt.byteLength) as ArrayBuffer,
+            dateiname: `${dateiname}.pdf`,
+            onTeilen: () => bytesSpeichernOderTeilen(gefuellt, `${dateiname}.pdf`),
+          })
+          setOeffnendId(null)
+          return
+        }
+      }
       const doc = await erzeugeEinzelnenTagesberichtPdf(
         projekt,
         b,
@@ -282,7 +310,11 @@ export function Tagesberichte() {
         nameOf,
         dateiname,
       )
-      setPdfViewer({ data: doc.output('arraybuffer'), doc, dateiname: `${dateiname}.pdf` })
+      setPdfViewer({
+        data: doc.output('arraybuffer'),
+        dateiname: `${dateiname}.pdf`,
+        onTeilen: () => pdfSpeichernOderTeilen(doc, `${dateiname}.pdf`),
+      })
     } catch (err) {
       setFehler(err instanceof Error ? err.message : 'PDF konnte nicht geöffnet werden.')
     }
@@ -608,7 +640,7 @@ export function Tagesberichte() {
         data={pdfViewer.data}
         titel={pdfViewer.dateiname}
         onClose={() => setPdfViewer(null)}
-        onTeilen={() => pdfSpeichernOderTeilen(pdfViewer.doc, pdfViewer.dateiname)}
+        onTeilen={pdfViewer.onTeilen}
       />
     )}
     </>

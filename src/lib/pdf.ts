@@ -171,6 +171,32 @@ export async function pdfSpeichernOderTeilen(doc: jsPDF, dateiname: string) {
   }
 }
 
+// Gleiches Speichern/Teilen wie pdfSpeichernOderTeilen, aber fuer rohe
+// PDF-Bytes statt eines jsPDF-Dokuments -- gebraucht fuer per pdf-lib
+// gefuellte, hochgeladene PDF-Vorlagen (siehe pdfVorlage.ts).
+export async function bytesSpeichernOderTeilen(bytes: Uint8Array, dateiname: string) {
+  if (!Capacitor.isNativePlatform()) {
+    const blob = new Blob([new Uint8Array(bytes)], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = dateiname
+    a.click()
+    URL.revokeObjectURL(url)
+    return
+  }
+  const base64 = arrayBufferZuBase64(bytes.buffer as ArrayBuffer)
+  try {
+    const { uri } = await Filesystem.writeFile({ path: dateiname, data: base64, directory: Directory.Cache })
+    await Share.share({ url: uri, title: dateiname })
+  } catch (err) {
+    if (err instanceof Error && /not implemented/i.test(err.message)) {
+      throw new Error('Diese Funktion braucht eine neuere App-Version. Bitte die App über die Webseite neu installieren.')
+    }
+    throw err
+  }
+}
+
 function minutenVonZeit(zeit: string) {
   const [h, m] = zeit.split(':').map(Number)
   return h * 60 + m

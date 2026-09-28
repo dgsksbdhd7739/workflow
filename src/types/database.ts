@@ -118,6 +118,17 @@ export interface Tagesbericht {
   besonderheiten: string | null
   erstellt_von: string
   erstellt_am: string
+  vorlage_id: string | null
+}
+
+export interface TagesberichtVorlage {
+  id: string
+  unternehmen_id: string
+  name: string
+  ist_standard: boolean
+  pdf_datei_pfad: string | null
+  erstellt_von: string
+  erstellt_am: string
 }
 
 export interface Zeiterfassung {

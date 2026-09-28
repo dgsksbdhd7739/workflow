@@ -10,7 +10,7 @@ export const supabase = createClient(
   supabaseAnonKey ?? 'placeholder-anon-key',
 )
 
-type StorageBucket = 'mangel-fotos' | 'plaene' | 'projekt-logos' | 'dokumente' | 'unternehmen-logos'
+type StorageBucket = 'mangel-fotos' | 'plaene' | 'projekt-logos' | 'dokumente' | 'unternehmen-logos' | 'tagesbericht-vorlagen'
 
 // Supabase-Storage lehnt Keys mit Umlauten/Sonderzeichen im urspruenglichen
 // Dateinamen (haeufig bei Android-Dateipickern) mit "InvalidKey" ab. Der

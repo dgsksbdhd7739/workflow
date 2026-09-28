@@ -18,6 +18,7 @@ import { Zeiterfassung } from './pages/Zeiterfassung'
 import { Termine } from './pages/Termine'
 import { StatusVorlagen } from './pages/StatusVorlagen'
 import { TicketFormulare } from './pages/TicketFormulare'
+import { TagesberichtVorlagen } from './pages/TagesberichtVorlagen'
 import { Nutzerverwaltung } from './pages/Nutzerverwaltung'
 import { PasswortAendern } from './pages/PasswortAendern'
 import { Einstellungen } from './pages/Einstellungen'
@@ -60,6 +61,7 @@ function App() {
               <Route path="/hilfe" element={<Hilfe />} />
               <Route path="/statusvorlagen" element={<StatusVorlagen />} />
               <Route path="/ticket-formulare" element={<TicketFormulare />} />
+              <Route path="/tagesbericht-vorlagen" element={<TagesberichtVorlagen />} />
               <Route path="/nutzer" element={<Nutzerverwaltung />} />
               <Route path="/team-chat" element={<Gruppenchat />} />
               <Route path="/projekt-chat" element={<ProjektChat />} />

@@ -10,11 +10,20 @@ const rollenLabel: Record<Rolle, string> = {
   kunde: 'Kunde (Zuschauer)',
 }
 
+const sperrbareModule = [
+  { id: 'material', label: 'Material' },
+  { id: 'dokumente', label: 'Dokumente' },
+  { id: 'tagesberichte', label: 'Tagesberichte' },
+  { id: 'termine', label: 'Termine' },
+]
+
 export function Nutzerverwaltung() {
   const { role, user } = useAuth()
   const [profile, setProfile] = useState<Profile[]>([])
   const [projekte, setProjekte] = useState<Projekt[]>([])
   const [zuweisungen, setZuweisungen] = useState<Record<string, Set<string>>>({})
+  const [modulSperren, setModulSperren] = useState<Record<string, Set<string>>>({})
+  const [offenerNutzerModule, setOffenerNutzerModule] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [fehler, setFehler] = useState<string | null>(null)
   const [offenerNutzer, setOffenerNutzer] = useState<string | null>(null)
@@ -32,11 +41,13 @@ export function Nutzerverwaltung() {
 
   const load = async () => {
     setLoading(true)
-    const [{ data: profileData }, { data: projekteData }, { data: zuweisungenData }] = await Promise.all([
-      supabase.from('profiles').select('*').order('full_name'),
-      supabase.from('projekte').select('*').order('name'),
-      supabase.from('projekt_kunden').select('user_id, projekt_id'),
-    ])
+    const [{ data: profileData }, { data: projekteData }, { data: zuweisungenData }, { data: sperrenData }] =
+      await Promise.all([
+        supabase.from('profiles').select('*').order('full_name'),
+        supabase.from('projekte').select('*').order('name'),
+        supabase.from('projekt_kunden').select('user_id, projekt_id'),
+        supabase.from('nutzer_modul_sperren').select('user_id, modul'),
+      ])
     setProfile(profileData ?? [])
     setProjekte(projekteData ?? [])
     const map: Record<string, Set<string>> = {}
@@ -45,6 +56,12 @@ export function Nutzerverwaltung() {
       map[z.user_id].add(z.projekt_id)
     }
     setZuweisungen(map)
+    const sperrenMap: Record<string, Set<string>> = {}
+    for (const s of sperrenData ?? []) {
+      if (!sperrenMap[s.user_id]) sperrenMap[s.user_id] = new Set()
+      sperrenMap[s.user_id].add(s.modul)
+    }
+    setModulSperren(sperrenMap)
     setLoading(false)
   }
 
@@ -145,6 +162,24 @@ export function Nutzerverwaltung() {
     const { error } = hatZugriff
       ? await supabase.from('projekt_kunden').delete().eq('user_id', userId).eq('projekt_id', projektId)
       : await supabase.from('projekt_kunden').insert({ user_id: userId, projekt_id: projektId })
+    if (error) {
+      setFehler(error.message)
+      load()
+    }
+  }
+
+  const toggleModulSperre = async (userId: string, modul: string) => {
+    setFehler(null)
+    const gesperrt = modulSperren[userId]?.has(modul) ?? false
+    setModulSperren((prev) => {
+      const next = { ...prev, [userId]: new Set(prev[userId] ?? []) }
+      if (gesperrt) next[userId].delete(modul)
+      else next[userId].add(modul)
+      return next
+    })
+    const { error } = gesperrt
+      ? await supabase.from('nutzer_modul_sperren').delete().eq('user_id', userId).eq('modul', modul)
+      : await supabase.from('nutzer_modul_sperren').insert({ user_id: userId, modul, gesperrt_von: user?.id })
     if (error) {
       setFehler(error.message)
       load()
@@ -341,6 +376,32 @@ export function Nutzerverwaltung() {
                     </div>
                   )}
                 </>
+              )}
+
+              <button
+                onClick={() => setOffenerNutzerModule((prev) => (prev === p.id ? null : p.id))}
+                className="mt-2 text-xs font-medium text-brand"
+              >
+                {offenerNutzerModule === p.id
+                  ? 'Modul-Zugriff ausblenden'
+                  : `Modul-Zugriff einschränken (${modulSperren[p.id]?.size ?? 0} gesperrt)`}
+              </button>
+              {offenerNutzerModule === p.id && (
+                <div className="mt-2 space-y-1 border-t border-border pt-2">
+                  <p className="text-xs text-text-subtle">
+                    Angehakte Module bleiben für diese Person zugänglich, unabhängig von der Rolle oben.
+                  </p>
+                  {sperrbareModule.map((m) => (
+                    <label key={m.id} className="flex items-center gap-2 text-sm text-text-muted">
+                      <input
+                        type="checkbox"
+                        checked={!(modulSperren[p.id]?.has(m.id) ?? false)}
+                        onChange={() => toggleModulSperre(p.id, m.id)}
+                      />
+                      {m.label}
+                    </label>
+                  ))}
+                </div>
               )}
             </li>
           ))}

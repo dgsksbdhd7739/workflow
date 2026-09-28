@@ -12,6 +12,7 @@ interface AuthContextValue {
   setMussPasswortAendern: (v: boolean) => void
   onboardingGesehen: boolean
   setOnboardingGesehen: (v: boolean) => void
+  gesperrteModule: Set<string>
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [unternehmenId, setUnternehmenId] = useState<string | null>(null)
   const [mussPasswortAendern, setMussPasswortAendern] = useState(false)
   const [onboardingGesehen, setOnboardingGesehen] = useState(true)
+  const [gesperrteModule, setGesperrteModule] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUnternehmenId(null)
       setMussPasswortAendern(false)
       setOnboardingGesehen(true)
+      setGesperrteModule(new Set())
       return
     }
     supabase
@@ -60,6 +63,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMussPasswortAendern(data?.muss_passwort_aendern ?? false)
         setOnboardingGesehen(data?.onboarding_gesehen ?? true)
       })
+    supabase
+      .from('nutzer_modul_sperren')
+      .select('modul')
+      .eq('user_id', userId)
+      .then(({ data }) => setGesperrteModule(new Set((data ?? []).map((r) => r.modul))))
   }, [session?.user.id])
 
   const signIn = async (email: string, password: string) => {
@@ -82,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMussPasswortAendern,
         onboardingGesehen,
         setOnboardingGesehen,
+        gesperrteModule,
         loading,
         signIn,
         signOut,

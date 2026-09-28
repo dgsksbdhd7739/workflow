@@ -57,7 +57,7 @@ function taetigkeitenAnzeige(text: string): string {
 
 export function Tagesberichte() {
   const { id: projektId } = useParams<{ id: string }>()
-  const { user, role } = useAuth()
+  const { user, role, gesperrteModule } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const kannLoeschen = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
@@ -318,6 +318,14 @@ export function Tagesberichte() {
       return true
     })
   }, [berichte, datumsFilter, suche, projekt, nummern])
+
+  if (gesperrteModule.has('tagesberichte')) {
+    return (
+      <div className="page">
+        <p className="text-sm text-text-muted">Sie haben keinen Zugang zu diesem Bereich.</p>
+      </div>
+    )
+  }
 
   return (
     <>

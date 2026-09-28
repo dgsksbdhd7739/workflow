@@ -82,7 +82,7 @@ function UploadForm({
 
 export function Dokumente() {
   const { id: projektId } = useParams<{ id: string }>()
-  const { role } = useAuth()
+  const { role, gesperrteModule } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const kannLoeschen = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
@@ -171,6 +171,14 @@ export function Dokumente() {
           </button>
         )}
       </li>
+    )
+  }
+
+  if (gesperrteModule.has('dokumente')) {
+    return (
+      <div className="page">
+        <p className="text-sm text-text-muted">Sie haben keinen Zugang zu diesem Bereich.</p>
+      </div>
     )
   }
 

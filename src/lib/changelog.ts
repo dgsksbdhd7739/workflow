@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.6.3',
+    datum: '2026-09-28',
+    aenderungen: [
+      'Nutzerverwaltung: Admin/Planer können einzelnen Nutzern den Zugriff auf Material, Dokumente, Tagesberichte oder Termine gezielt entziehen — unabhängig von deren Rolle.',
+    ],
+  },
+  {
     version: '1.6.2',
     datum: '2026-09-28',
     aenderungen: [

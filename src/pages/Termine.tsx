@@ -31,7 +31,7 @@ const tageSeitEpoch = (d: string) => Math.floor(new Date(d).getTime() / 86_400_0
 
 export function Termine() {
   const { id: projektId } = useParams<{ id: string }>()
-  const { user, role } = useAuth()
+  const { user, role, gesperrteModule } = useAuth()
   const kannBearbeiten = role !== 'kunde'
   const [termine, setTermine] = useState<Termin[]>([])
   const [loading, setLoading] = useState(true)
@@ -103,6 +103,14 @@ export function Termine() {
   const minTag = termine.length > 0 ? Math.min(...termine.map((t) => tageSeitEpoch(t.start_datum))) : 0
   const maxTag = termine.length > 0 ? Math.max(...termine.map((t) => tageSeitEpoch(t.end_datum))) : 1
   const spanne = Math.max(maxTag - minTag, 1)
+
+  if (gesperrteModule.has('termine')) {
+    return (
+      <div className="page">
+        <p className="text-sm text-text-muted">Sie haben keinen Zugang zu diesem Bereich.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="page">

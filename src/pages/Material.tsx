@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { exportMaterialPdf } from '../lib/pdf'
+import { useAuth } from '../contexts/AuthContext'
 import type { Projekt, AufgabeMaterial } from '../types/database'
 
 interface MaterialZeile extends AufgabeMaterial {
@@ -11,6 +12,7 @@ interface MaterialZeile extends AufgabeMaterial {
 
 export function Material() {
   const { id: projektId } = useParams<{ id: string }>()
+  const { gesperrteModule } = useAuth()
   const [projekt, setProjekt] = useState<Projekt | null>(null)
   const [zeilen, setZeilen] = useState<MaterialZeile[]>([])
   const [loading, setLoading] = useState(true)
@@ -65,6 +67,14 @@ export function Material() {
     }
     return [...map.values()].sort((a, b) => a.bezeichnung.localeCompare(b.bezeichnung))
   }, [zeilen])
+
+  if (gesperrteModule.has('material')) {
+    return (
+      <div className="page">
+        <p className="text-sm text-text-muted">Sie haben keinen Zugang zu diesem Bereich.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="page">

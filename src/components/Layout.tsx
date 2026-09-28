@@ -22,7 +22,15 @@ import { useAuth } from '../contexts/AuthContext'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import type { Rolle } from '../types/database'
 
-type NavItem = { to: string; label: string; icon: LucideIcon; end: boolean; roles?: Rolle[]; primary?: boolean }
+type NavItem = {
+  to: string
+  label: string
+  icon: LucideIcon
+  end: boolean
+  roles?: Rolle[]
+  primary?: boolean
+  modul?: string
+}
 
 // Nutzer und Materialstamm sind bewusst nicht hier gelistet -- erreichbar
 // nur ueber Einstellungen, damit die Leiste kurz und aufgeraeumt bleibt.
@@ -51,11 +59,17 @@ function projektNav(id: string): NavItem[] {
   return [
     { to: `/projekte/${id}`, label: 'Übersicht', icon: LayoutDashboard, end: true, primary: true },
     { to: `/projekte/${id}/plaene`, label: 'Pläne', icon: MapIcon, end: false, primary: true },
-    { to: `/projekte/${id}/dokumente`, label: 'Dokumente', icon: FileText, end: false },
+    { to: `/projekte/${id}/dokumente`, label: 'Dokumente', icon: FileText, end: false, modul: 'dokumente' },
     { to: `/projekte/${id}/aufgaben`, label: 'Aufgaben', icon: ListChecks, end: false, primary: true },
-    { to: `/projekte/${id}/tagesberichte`, label: 'Tagesberichte', icon: ClipboardList, end: false },
-    { to: `/projekte/${id}/material`, label: 'Material', icon: Package, end: false },
-    { to: `/projekte/${id}/termine`, label: 'Termine', icon: CalendarDays, end: false },
+    {
+      to: `/projekte/${id}/tagesberichte`,
+      label: 'Tagesberichte',
+      icon: ClipboardList,
+      end: false,
+      modul: 'tagesberichte',
+    },
+    { to: `/projekte/${id}/material`, label: 'Material', icon: Package, end: false, modul: 'material' },
+    { to: `/projekte/${id}/termine`, label: 'Termine', icon: CalendarDays, end: false, modul: 'termine' },
     {
       to: `/projekte/${id}/zeiterfassung`,
       label: 'Zeiterfassung',
@@ -74,17 +88,19 @@ function projektNav(id: string): NavItem[] {
   ]
 }
 
-function passtZurRolle(item: NavItem, role: Rolle | null) {
-  return !item.roles || (role && item.roles.includes(role))
+function passtZurRolle(item: NavItem, role: Rolle | null, gesperrteModule: Set<string>) {
+  const rolleOk = !item.roles || (role && item.roles.includes(role))
+  const modulOk = !item.modul || !gesperrteModule.has(item.modul)
+  return rolleOk && modulOk
 }
 
 export function Layout() {
-  const { user, role } = useAuth()
+  const { user, role, gesperrteModule } = useAuth()
   const { id } = useParams()
   const online = useOnlineStatus()
 
-  const navHaupt = mainNav.filter((item) => passtZurRolle(item, role))
-  const navProjekt = id ? projektNav(id).filter((item) => passtZurRolle(item, role)) : []
+  const navHaupt = mainNav.filter((item) => passtZurRolle(item, role, gesperrteModule))
+  const navProjekt = id ? projektNav(id).filter((item) => passtZurRolle(item, role, gesperrteModule)) : []
   const navUnten = id ? [mainNav[0], ...navProjekt.filter((item) => item.primary)] : navHaupt
 
   return (

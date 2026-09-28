@@ -209,6 +209,14 @@ export interface AufgabeTicket {
   ist_gesperrt: boolean
 }
 
+export interface AufgabeTicketEmpfaenger {
+  id: string
+  ticket_id: string
+  user_id: string
+  hinzugefuegt_von: string
+  hinzugefuegt_am: string
+}
+
 export interface AufgabeTicketFoto {
   id: string
   ticket_id: string

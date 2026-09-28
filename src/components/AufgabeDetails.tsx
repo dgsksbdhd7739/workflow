@@ -14,6 +14,7 @@ import type {
   AufgabeMaterial,
   AufgabeTicket,
   AufgabeTicketFoto,
+  AufgabeTicketEmpfaenger,
   MaterialStamm,
   StatusVorlageWert,
 } from '../types/database'
@@ -51,7 +52,7 @@ export function AufgabeDetails({
   const kannTicketErstellen = role === 'admin' || role === 'planer' || role === 'kunde'
   const kannTicketAbschliessen = role === 'admin' || role === 'planer'
   const kannTicketBestaetigen = role === 'techniker'
-  const { nameOf } = useProfiles()
+  const { nameOf, profiles } = useProfiles()
   const [aufgabe, setAufgabe] = useState<Aufgabe | null>(null)
   const [werteLokal, setWerteLokal] = useState<StatusVorlageWert[]>([])
   const [vorlageIdLokal, setVorlageIdLokal] = useState<string | null>(null)
@@ -60,6 +61,9 @@ export function AufgabeDetails({
   const [kommentare, setKommentare] = useState<AufgabeKommentar[]>([])
   const [tickets, setTickets] = useState<AufgabeTicket[]>([])
   const [ticketFotos, setTicketFotos] = useState<Record<string, AufgabeTicketFoto[]>>({})
+  const [ticketEmpfaenger, setTicketEmpfaenger] = useState<Record<string, AufgabeTicketEmpfaenger[]>>({})
+  const [empfaengerOffenFuer, setEmpfaengerOffenFuer] = useState<string | null>(null)
+  const [neuerEmpfaengerId, setNeuerEmpfaengerId] = useState('')
   const [material, setMaterial] = useState<AufgabeMaterial[]>([])
   const [dokumente, setDokumente] = useState<Dokument[]>([])
   const [freieDokumente, setFreieDokumente] = useState<Dokument[]>([])
@@ -123,8 +127,20 @@ export function AufgabeDetails({
         ;(gruppiert[foto.ticket_id] ??= []).push(foto)
       }
       setTicketFotos(gruppiert)
+
+      const { data: empfaengerData } = await supabase
+        .from('aufgabe_ticket_empfaenger')
+        .select('*')
+        .in('ticket_id', ticketIds)
+        .order('hinzugefuegt_am')
+      const empfaengerGruppiert: Record<string, AufgabeTicketEmpfaenger[]> = {}
+      for (const e of empfaengerData ?? []) {
+        ;(empfaengerGruppiert[e.ticket_id] ??= []).push(e)
+      }
+      setTicketEmpfaenger(empfaengerGruppiert)
     } else {
       setTicketFotos({})
+      setTicketEmpfaenger({})
     }
 
     if (aufgabeData?.projekt_id) {
@@ -431,6 +447,34 @@ export function AufgabeDetails({
     }
   }
 
+  const addEmpfaenger = async (ticket: AufgabeTicket, userId: string) => {
+    if (!user || !userId) return
+    setFehler(null)
+    const { error } = await supabase
+      .from('aufgabe_ticket_empfaenger')
+      .insert({ ticket_id: ticket.id, user_id: userId, hinzugefuegt_von: user.id })
+    if (error) {
+      setFehler(error.message)
+      return
+    }
+    setNeuerEmpfaengerId('')
+    setEmpfaengerOffenFuer(null)
+    load()
+  }
+
+  const removeEmpfaenger = async (empfaenger: AufgabeTicketEmpfaenger) => {
+    setFehler(null)
+    setTicketEmpfaenger((prev) => ({
+      ...prev,
+      [empfaenger.ticket_id]: (prev[empfaenger.ticket_id] ?? []).filter((e) => e.id !== empfaenger.id),
+    }))
+    const { error } = await supabase.from('aufgabe_ticket_empfaenger').delete().eq('id', empfaenger.id)
+    if (error) {
+      setFehler(error.message)
+      load()
+    }
+  }
+
   const toggleTicketStatus = async (ticket: AufgabeTicket) => {
     if (!user) return
     setFehler(null)
@@ -679,6 +723,78 @@ export function AufgabeDetails({
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {((ticketEmpfaenger[t.id]?.length ?? 0) > 0 || kannTicketAbschliessen) && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {(ticketEmpfaenger[t.id] ?? []).map((e) => (
+                      <span
+                        key={e.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-xs text-text-muted"
+                      >
+                        {nameOf(e.user_id)}
+                        {kannTicketAbschliessen && (
+                          <button
+                            type="button"
+                            onClick={() => removeEmpfaenger(e)}
+                            aria-label="Empfänger entfernen"
+                            className="text-text-subtle hover:text-red-600 dark:hover:text-red-400"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                    {kannTicketAbschliessen &&
+                      (empfaengerOffenFuer === t.id ? (
+                        <span className="inline-flex items-center gap-1">
+                          <select
+                            value={neuerEmpfaengerId}
+                            onChange={(e) => setNeuerEmpfaengerId(e.target.value)}
+                            className="field-input h-6 py-0 text-xs"
+                          >
+                            <option value="">Person wählen…</option>
+                            {profiles
+                              .filter(
+                                (p) =>
+                                  p.id !== t.erstellt_von &&
+                                  !(ticketEmpfaenger[t.id] ?? []).some((e) => e.user_id === p.id),
+                              )
+                              .map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.full_name}
+                                </option>
+                              ))}
+                          </select>
+                          <button
+                            type="button"
+                            disabled={!neuerEmpfaengerId}
+                            onClick={() => addEmpfaenger(t, neuerEmpfaengerId)}
+                            className="text-xs font-medium text-brand disabled:opacity-40"
+                          >
+                            Hinzufügen
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEmpfaengerOffenFuer(null)}
+                            className="text-xs text-text-subtle"
+                          >
+                            Abbrechen
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmpfaengerOffenFuer(t.id)
+                            setNeuerEmpfaengerId('')
+                          }}
+                          className="text-xs font-medium text-brand"
+                        >
+                          + Empfänger (cc)
+                        </button>
+                      ))}
                   </div>
                 )}
 

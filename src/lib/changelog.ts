@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.6.1',
+    datum: '2026-09-28',
+    aenderungen: [
+      'Tickets: zusätzliche Empfänger (cc) können ergänzt werden, die das Ticket dann ebenfalls einsehen können — auch wenn sie sonst keinen Zugriff auf das Projekt haben.',
+    ],
+  },
+  {
     version: '1.6.0',
     datum: '2026-09-28',
     aenderungen: [

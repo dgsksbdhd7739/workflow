@@ -15,8 +15,11 @@ import type {
   AufgabeTicket,
   AufgabeTicketFoto,
   AufgabeTicketEmpfaenger,
+  AufgabeTicketFeldwert,
   MaterialStamm,
   StatusVorlageWert,
+  TicketFormular,
+  TicketFormularFeld,
 } from '../types/database'
 
 // Gruen ist standardmaessig fuer "Abnahme" reserviert, deshalb hier nicht zur Auswahl.
@@ -64,6 +67,11 @@ export function AufgabeDetails({
   const [ticketEmpfaenger, setTicketEmpfaenger] = useState<Record<string, AufgabeTicketEmpfaenger[]>>({})
   const [empfaengerOffenFuer, setEmpfaengerOffenFuer] = useState<string | null>(null)
   const [neuerEmpfaengerId, setNeuerEmpfaengerId] = useState('')
+  const [ticketFeldwerte, setTicketFeldwerte] = useState<Record<string, AufgabeTicketFeldwert[]>>({})
+  const [ticketFormulare, setTicketFormulare] = useState<TicketFormular[]>([])
+  const [ticketFormularFelder, setTicketFormularFelder] = useState<Record<string, TicketFormularFeld>>({})
+  const [ticketFormularId, setTicketFormularId] = useState('')
+  const [ticketFeldEingaben, setTicketFeldEingaben] = useState<Record<string, string>>({})
   const [material, setMaterial] = useState<AufgabeMaterial[]>([])
   const [dokumente, setDokumente] = useState<Dokument[]>([])
   const [freieDokumente, setFreieDokumente] = useState<Dokument[]>([])
@@ -138,9 +146,20 @@ export function AufgabeDetails({
         ;(empfaengerGruppiert[e.ticket_id] ??= []).push(e)
       }
       setTicketEmpfaenger(empfaengerGruppiert)
+
+      const { data: feldwerteData } = await supabase
+        .from('aufgabe_ticket_feldwerte')
+        .select('*')
+        .in('ticket_id', ticketIds)
+      const feldwerteGruppiert: Record<string, AufgabeTicketFeldwert[]> = {}
+      for (const fw of feldwerteData ?? []) {
+        ;(feldwerteGruppiert[fw.ticket_id] ??= []).push(fw)
+      }
+      setTicketFeldwerte(feldwerteGruppiert)
     } else {
       setTicketFotos({})
       setTicketEmpfaenger({})
+      setTicketFeldwerte({})
     }
 
     if (aufgabeData?.projekt_id) {
@@ -204,6 +223,31 @@ export function AufgabeDetails({
       .then(({ data }) => setMaterialStamm(data ?? []))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kannMaterialDefinieren, unternehmenId])
+
+  useEffect(() => {
+    if (!kannTicketErstellen || !unternehmenId) return
+    supabase
+      .from('ticket_formulare')
+      .select('*')
+      .eq('unternehmen_id', unternehmenId)
+      .order('erstellt_am')
+      .then(async ({ data: formulare }) => {
+        setTicketFormulare(formulare ?? [])
+        const standard = (formulare ?? []).find((f) => f.ist_standard)
+        setTicketFormularId(standard?.id ?? '')
+        const formularIds = (formulare ?? []).map((f) => f.id)
+        if (formularIds.length === 0) return
+        const { data: felder } = await supabase
+          .from('ticket_formular_felder')
+          .select('*')
+          .in('formular_id', formularIds)
+          .order('reihenfolge')
+        const felderMap: Record<string, TicketFormularFeld> = {}
+        for (const feld of felder ?? []) felderMap[feld.id] = feld
+        setTicketFormularFelder(felderMap)
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kannTicketErstellen, unternehmenId])
 
   const waehleFortschritt = async (wert: StatusVorlageWert) => {
     if (!aufgabe) return
@@ -413,26 +457,50 @@ export function AufgabeDetails({
     load()
   }
 
+  const ausgewaehlteFormularFelder = Object.values(ticketFormularFelder)
+    .filter((f) => f.formular_id === ticketFormularId)
+    .sort((a, b) => a.reihenfolge - b.reihenfolge)
+
   const handleTicketSenden = async (e: FormEvent) => {
     e.preventDefault()
     if (!user || !ticketText.trim()) return
+    for (const feld of ausgewaehlteFormularFelder) {
+      if (feld.pflichtfeld && !(ticketFeldEingaben[feld.id] ?? '').trim()) {
+        setFehler(`Pflichtfeld "${feld.titel}" fehlt.`)
+        return
+      }
+    }
     setTicketSaving(true)
     setFehler(null)
-    const { error } = await supabase.from('aufgabe_tickets').insert({
-      aufgabe_id: aufgabeId,
-      text: ticketText.trim(),
-      erstellt_von: user.id,
-      erledigen_bis: ticketErledigenBis || null,
-      nachfrist: ticketNachfrist || null,
-    })
-    setTicketSaving(false)
-    if (error) {
-      setFehler(error.message)
+    const { data: neuesTicket, error } = await supabase
+      .from('aufgabe_tickets')
+      .insert({
+        aufgabe_id: aufgabeId,
+        text: ticketText.trim(),
+        erstellt_von: user.id,
+        erledigen_bis: ticketErledigenBis || null,
+        nachfrist: ticketNachfrist || null,
+        formular_id: ticketFormularId || null,
+      })
+      .select()
+      .single()
+    if (error || !neuesTicket) {
+      setTicketSaving(false)
+      setFehler(error?.message ?? 'Ticket konnte nicht angelegt werden.')
       return
     }
+    const feldwerteZeilen = ausgewaehlteFormularFelder
+      .filter((feld) => (ticketFeldEingaben[feld.id] ?? '').trim())
+      .map((feld) => ({ ticket_id: neuesTicket.id, feld_id: feld.id, wert: ticketFeldEingaben[feld.id].trim() }))
+    if (feldwerteZeilen.length > 0) {
+      const { error: feldwerteError } = await supabase.from('aufgabe_ticket_feldwerte').insert(feldwerteZeilen)
+      if (feldwerteError) setFehler(feldwerteError.message)
+    }
+    setTicketSaving(false)
     setTicketText('')
     setTicketErledigenBis('')
     setTicketNachfrist('')
+    setTicketFeldEingaben({})
     load()
   }
 
@@ -678,6 +746,20 @@ export function AufgabeDetails({
                         {t.nachfrist && <>Nachfrist bis {formatDatum(t.nachfrist)}</>}
                       </p>
                     )}
+                    {(ticketFeldwerte[t.id]?.length ?? 0) > 0 && (
+                      <dl className="mt-1 space-y-0.5">
+                        {ticketFeldwerte[t.id].map((fw) => {
+                          const feld = ticketFormularFelder[fw.feld_id]
+                          if (!feld || !fw.wert) return null
+                          return (
+                            <div key={fw.id} className="flex gap-1 text-xs">
+                              <dt className="text-text-subtle">{feld.titel}:</dt>
+                              <dd className="text-text-muted">{feld.feldtyp === 'checkbox' ? (fw.wert === 'true' ? 'Ja' : 'Nein') : fw.wert}</dd>
+                            </div>
+                          )
+                        })}
+                      </dl>
+                    )}
                   </div>
                   <div className="flex flex-shrink-0 flex-col items-end gap-1">
                     <span
@@ -918,7 +1000,67 @@ export function AufgabeDetails({
                   className="field-input py-1"
                 />
               </label>
+              {ticketFormulare.length > 0 && (
+                <label className="flex items-center gap-1.5">
+                  Formular
+                  <select
+                    value={ticketFormularId}
+                    onChange={(e) => {
+                      setTicketFormularId(e.target.value)
+                      setTicketFeldEingaben({})
+                    }}
+                    className="field-input py-1"
+                  >
+                    <option value="">Ohne Formular</option>
+                    {ticketFormulare.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
+            {ausgewaehlteFormularFelder.length > 0 && (
+              <div className="grid gap-2 rounded-lg bg-surface-hover p-2 sm:grid-cols-2">
+                {ausgewaehlteFormularFelder.map((feld) => (
+                  <label key={feld.id} className="flex flex-col gap-0.5 text-xs text-text-subtle">
+                    {feld.titel}
+                    {feld.pflichtfeld && <span className="text-red-600 dark:text-red-400"> *</span>}
+                    {feld.feldtyp === 'checkbox' ? (
+                      <input
+                        type="checkbox"
+                        checked={ticketFeldEingaben[feld.id] === 'true'}
+                        onChange={(e) =>
+                          setTicketFeldEingaben((prev) => ({ ...prev, [feld.id]: e.target.checked ? 'true' : 'false' }))
+                        }
+                        className="self-start"
+                      />
+                    ) : feld.feldtyp === 'auswahl' ? (
+                      <select
+                        value={ticketFeldEingaben[feld.id] ?? ''}
+                        onChange={(e) => setTicketFeldEingaben((prev) => ({ ...prev, [feld.id]: e.target.value }))}
+                        className="field-input py-1"
+                      >
+                        <option value="">–</option>
+                        {(feld.optionen ?? []).map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={feld.feldtyp === 'zahl' ? 'number' : feld.feldtyp === 'datum' ? 'date' : 'text'}
+                        value={ticketFeldEingaben[feld.id] ?? ''}
+                        onChange={(e) => setTicketFeldEingaben((prev) => ({ ...prev, [feld.id]: e.target.value }))}
+                        className="field-input py-1"
+                      />
+                    )}
+                  </label>
+                ))}
+              </div>
+            )}
           </form>
         )}
       </div>

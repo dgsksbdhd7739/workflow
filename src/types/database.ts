@@ -207,6 +207,36 @@ export interface AufgabeTicket {
   erledigen_bis: string | null
   nachfrist: string | null
   ist_gesperrt: boolean
+  formular_id: string | null
+}
+
+export type TicketFormularFeldtyp = 'text' | 'zahl' | 'datum' | 'checkbox' | 'auswahl'
+
+export interface TicketFormular {
+  id: string
+  unternehmen_id: string
+  name: string
+  ist_standard: boolean
+  erstellt_von: string
+  erstellt_am: string
+}
+
+export interface TicketFormularFeld {
+  id: string
+  formular_id: string
+  titel: string
+  feldtyp: TicketFormularFeldtyp
+  pflichtfeld: boolean
+  optionen: string[] | null
+  reihenfolge: number
+  erstellt_am: string
+}
+
+export interface AufgabeTicketFeldwert {
+  id: string
+  ticket_id: string
+  feld_id: string
+  wert: string | null
 }
 
 export interface AufgabeTicketEmpfaenger {

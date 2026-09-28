@@ -94,6 +94,13 @@ export function Einstellungen() {
             <span>📦 Materialstamm</span>
             <span aria-hidden>›</span>
           </Link>
+          <Link
+            to="/ticket-formulare"
+            className="flex items-center justify-between rounded-lg px-1 py-1 text-sm text-text-muted hover:text-brand"
+          >
+            <span>📋 Ticket-Formulare</span>
+            <span aria-hidden>›</span>
+          </Link>
         </section>
       )}
 

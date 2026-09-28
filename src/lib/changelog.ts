@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.6.5',
+    datum: '2026-09-28',
+    aenderungen: [
+      'Neu: Ticket-Formulare — Admin/Planer können in den Einstellungen eigene Zusatzfelder je Formular anlegen (Text, Zahl, Datum, Ja/Nein, Auswahl, optional Pflichtfeld). Beim Erstellen eines Tickets ist das passende Formular wählbar, die Zusatzfelder erscheinen direkt im Formular und werden am Ticket angezeigt.',
+    ],
+  },
+  {
     version: '1.6.4',
     datum: '2026-09-28',
     aenderungen: [

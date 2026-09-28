@@ -17,6 +17,7 @@ import type {
   AufgabeMaterial,
   AufgabePrioritaet,
   AufgabeStatus,
+  AufgabenFilter,
   StatusVorlageWert,
 } from '../types/database'
 
@@ -202,6 +203,9 @@ export function Aufgaben() {
   const [kommentare, setKommentare] = useState<AufgabeKommentar[]>([])
   const [fehler, setFehler] = useState<string | null>(null)
   const [ausgewaehlt, setAusgewaehlt] = useState<Set<string>>(new Set())
+  const [gespeicherteFilter, setGespeicherteFilter] = useState<AufgabenFilter[]>([])
+  const [neuerFilterName, setNeuerFilterName] = useState('')
+  const [filterSpeichernOffen, setFilterSpeichernOffen] = useState(false)
 
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
@@ -248,8 +252,49 @@ export function Aufgaben() {
         for (const w of data ?? []) map[w.id] = w
         setWerteMap(map)
       })
+    if (projektId && user) {
+      supabase
+        .from('aufgaben_filter')
+        .select('*')
+        .eq('projekt_id', projektId)
+        .order('erstellt_am')
+        .then(({ data }) => setGespeicherteFilter(data ?? []))
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projektId])
+
+  const filterSpeichern = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!user || !projektId || !neuerFilterName.trim()) return
+    const { data, error } = await supabase
+      .from('aufgaben_filter')
+      .insert({
+        user_id: user.id,
+        projekt_id: projektId,
+        name: neuerFilterName.trim(),
+        filter: { filterStatus, suche },
+      })
+      .select()
+      .single()
+    if (error) {
+      setFehler(error.message)
+      return
+    }
+    if (data) setGespeicherteFilter((prev) => [...prev, data])
+    setNeuerFilterName('')
+    setFilterSpeichernOffen(false)
+  }
+
+  const filterAnwenden = (f: AufgabenFilter) => {
+    setFilterStatus(f.filter.filterStatus)
+    setSuche(f.filter.suche)
+  }
+
+  const filterLoeschen = async (f: AufgabenFilter) => {
+    setGespeicherteFilter((prev) => prev.filter((x) => x.id !== f.id))
+    const { error } = await supabase.from('aufgaben_filter').delete().eq('id', f.id)
+    if (error) setFehler(error.message)
+  }
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
@@ -448,7 +493,7 @@ export function Aufgaben() {
             Überfällig ({ueberfaelligAnzahl})
           </button>
         )}
-        <div className="relative ml-auto min-w-[10rem] flex-1 sm:flex-none">
+        <div className="relative min-w-[10rem] flex-1 sm:flex-none">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-subtle" strokeWidth={2.25} />
           <input
             value={suche}
@@ -456,6 +501,62 @@ export function Aufgaben() {
             placeholder="Aufgaben durchsuchen…"
             className="field-input py-1.5 pl-8 text-xs"
           />
+        </div>
+        {gespeicherteFilter.length > 0 && (
+          <select
+            value=""
+            onChange={(e) => {
+              const f = gespeicherteFilter.find((x) => x.id === e.target.value)
+              if (f) filterAnwenden(f)
+            }}
+            className="field-input py-1.5 text-xs"
+          >
+            <option value="">Gespeicherter Filter…</option>
+            {gespeicherteFilter.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {gespeicherteFilter.some((f) => f.filter.filterStatus === filterStatus && f.filter.suche === suche) && (
+          <button
+            type="button"
+            onClick={() => {
+              const f = gespeicherteFilter.find((x) => x.filter.filterStatus === filterStatus && x.filter.suche === suche)
+              if (f) filterLoeschen(f)
+            }}
+            className="text-xs text-text-subtle hover:text-red-600 dark:hover:text-red-400"
+          >
+            Filter löschen
+          </button>
+        )}
+        <div className="relative ml-auto">
+          {filterSpeichernOffen ? (
+            <form onSubmit={filterSpeichern} className="flex items-center gap-1.5">
+              <input
+                autoFocus
+                value={neuerFilterName}
+                onChange={(e) => setNeuerFilterName(e.target.value)}
+                placeholder="Name für diesen Filter"
+                className="field-input py-1.5 text-xs"
+              />
+              <button type="submit" disabled={!neuerFilterName.trim()} className="text-xs font-medium text-brand disabled:opacity-40">
+                Speichern
+              </button>
+              <button type="button" onClick={() => setFilterSpeichernOffen(false)} className="text-xs text-text-subtle">
+                Abbrechen
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setFilterSpeichernOffen(true)}
+              className="text-xs font-medium text-brand"
+            >
+              Filter speichern
+            </button>
+          )}
         </div>
       </div>
 

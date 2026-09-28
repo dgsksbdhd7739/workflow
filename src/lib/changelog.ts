@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.6.2',
+    datum: '2026-09-28',
+    aenderungen: [
+      'Aufgaben: aktuelle Status-/Suchfilter können jetzt unter einem eigenen Namen gespeichert und später per Dropdown wieder angewendet werden.',
+    ],
+  },
+  {
     version: '1.6.1',
     datum: '2026-09-28',
     aenderungen: [

@@ -266,3 +266,17 @@ export interface TagesberichtTuer {
   reihenfolge: number
   erstellt_am: string
 }
+
+export interface AufgabenFilterWerte {
+  filterStatus: AufgabeStatus | 'alle' | 'ueberfaellig'
+  suche: string
+}
+
+export interface AufgabenFilter {
+  id: string
+  user_id: string
+  projekt_id: string
+  name: string
+  filter: AufgabenFilterWerte
+  erstellt_am: string
+}

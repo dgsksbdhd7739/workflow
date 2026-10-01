@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.8.0',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Neu: Plattform-Verwaltung (nur für den WorkFlow-Betreiber sichtbar) — neue Firmen direkt in der App anlegen, inklusive Nutzerlimit je Firma. Jede Firma bleibt dabei vollständig von den anderen getrennt.',
+    ],
+  },
+  {
     version: '1.7.7',
     datum: '2026-10-01',
     aenderungen: [

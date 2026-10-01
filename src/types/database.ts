@@ -42,6 +42,15 @@ export interface Unternehmen {
   email: string | null
   website: string | null
   erstellt_am: string
+  max_nutzer: number | null
+}
+
+export interface PlattformUnternehmenUebersicht {
+  id: string
+  name: string
+  max_nutzer: number | null
+  nutzer_anzahl: number
+  erstellt_am: string
 }
 
 export interface ChatNachricht {

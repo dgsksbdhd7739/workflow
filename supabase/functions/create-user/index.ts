@@ -62,6 +62,21 @@ Deno.serve(async (req) => {
     // Service-Role-Client: nur serverseitig, nie im Browser sichtbar.
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
+    const { data: unternehmen } = await adminClient
+      .from('unternehmen')
+      .select('max_nutzer')
+      .eq('id', callerProfile.unternehmen_id)
+      .single()
+    if (unternehmen?.max_nutzer != null) {
+      const { count } = await adminClient
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('unternehmen_id', callerProfile.unternehmen_id)
+      if ((count ?? 0) >= unternehmen.max_nutzer) {
+        return json({ error: `Nutzerlimit erreicht (maximal ${unternehmen.max_nutzer} Nutzer für dieses Unternehmen).` }, 403)
+      }
+    }
+
     // Ohne diese Angabe wuerde handle_new_user() den Nutzer an das aelteste
     // Unternehmen in der Datenbank haengen, statt an das des einladenden
     // Admins -- das waere bei mehreren Firmen in derselben Datenbank falsch.

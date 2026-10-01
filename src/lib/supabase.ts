@@ -57,3 +57,28 @@ export async function getSignedUrl(
   }
   return { url: data?.signedUrl ?? null, error: error?.message ?? null }
 }
+
+/**
+ * supabase.functions.invoke() liefert bei einem Nicht-2xx-Status (z. B.
+ * unsere eigenen Edge-Function-Fehler wie "Nutzerlimit erreicht") `data`
+ * als null und in `error.message` nur eine generische Meldung ("Edge
+ * Function returned a non-2xx status code") -- der tatsaechliche Fehlertext
+ * steckt im Response-Body unter `error.context`. Diese Hilfsfunktion holt
+ * ihn da heraus, mit `data?.error` (Erfolgsfall-foermiger Fehler) und
+ * `error.message` als Fallbacks.
+ */
+export async function funktionsFehler(
+  error: { context?: unknown; message?: string } | null,
+  data: { error?: string } | null,
+): Promise<string | null> {
+  if (data?.error) return data.error
+  if (error?.context instanceof Response) {
+    try {
+      const body = await error.context.clone().json()
+      if (body?.error) return body.error
+    } catch {
+      // Body war kein JSON -- unten auf error.message zurueckfallen.
+    }
+  }
+  return error?.message ?? null
+}

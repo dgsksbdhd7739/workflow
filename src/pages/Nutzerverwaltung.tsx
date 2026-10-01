@@ -1,7 +1,21 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, funktionsFehler } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import type { Projekt, Profile, Rolle } from '../types/database'
+
+function useMaxNutzer(unternehmenId: string | null) {
+  const [maxNutzer, setMaxNutzer] = useState<number | null>(null)
+  useEffect(() => {
+    if (!unternehmenId) return
+    supabase
+      .from('unternehmen')
+      .select('max_nutzer')
+      .eq('id', unternehmenId)
+      .single()
+      .then(({ data }) => setMaxNutzer(data?.max_nutzer ?? null))
+  }, [unternehmenId])
+  return maxNutzer
+}
 
 const rollenLabel: Record<Rolle, string> = {
   admin: 'Admin',
@@ -18,7 +32,8 @@ const sperrbareModule = [
 ]
 
 export function Nutzerverwaltung() {
-  const { role, user } = useAuth()
+  const { role, user, unternehmenId } = useAuth()
+  const maxNutzer = useMaxNutzer(unternehmenId)
   const [profile, setProfile] = useState<Profile[]>([])
   const [projekte, setProjekte] = useState<Projekt[]>([])
   const [zuweisungen, setZuweisungen] = useState<Record<string, Set<string>>>({})
@@ -88,7 +103,7 @@ export function Nutzerverwaltung() {
     })
     setAnlegen(false)
     if (error || data?.error) {
-      setFehler(data?.error ?? error?.message ?? 'Nutzer konnte nicht angelegt werden.')
+      setFehler((await funktionsFehler(error, data)) ?? 'Nutzer konnte nicht angelegt werden.')
       return
     }
     setNeuEmail('')
@@ -108,7 +123,7 @@ export function Nutzerverwaltung() {
     })
     setAktionLaeuft(null)
     if (error || data?.error) {
-      setFehler(data?.error ?? error?.message ?? 'Passwort konnte nicht zurückgesetzt werden.')
+      setFehler((await funktionsFehler(error, data)) ?? 'Passwort konnte nicht zurückgesetzt werden.')
       return
     }
     setPwResetOffen(null)
@@ -129,7 +144,7 @@ export function Nutzerverwaltung() {
     })
     setAktionLaeuft(null)
     if (error || data?.error) {
-      setFehler(data?.error ?? error?.message ?? 'Status konnte nicht geändert werden.')
+      setFehler((await funktionsFehler(error, data)) ?? 'Status konnte nicht geändert werden.')
       return
     }
     load()
@@ -144,7 +159,7 @@ export function Nutzerverwaltung() {
     })
     setAktionLaeuft(null)
     if (error || data?.error) {
-      setFehler(data?.error ?? error?.message ?? 'Nutzer konnte nicht gelöscht werden.')
+      setFehler((await funktionsFehler(error, data)) ?? 'Nutzer konnte nicht gelöscht werden.')
       return
     }
     load()
@@ -204,6 +219,11 @@ export function Nutzerverwaltung() {
             Nutzerverwaltung. Techniker: Projektarbeit inkl. Zeiterfassung. Kunde: nur lesen, keine
             Zeiterfassung — und nur für ausdrücklich zugewiesene Projekte.
           </p>
+          {maxNutzer != null && (
+            <p className="mt-1 text-xs font-medium text-text-subtle">
+              {profile.length} / {maxNutzer} Nutzern belegt
+            </p>
+          )}
         </div>
         <button onClick={() => setFormOffen((v) => !v)} className="btn-primary flex-shrink-0">
           {formOffen ? 'Abbrechen' : '+ Nutzer anlegen'}

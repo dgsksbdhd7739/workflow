@@ -38,6 +38,7 @@ type NavItem = {
   roles?: Rolle[]
   primary?: boolean
   modul?: string
+  nurPlattformAdmin?: boolean
   children?: NavItem[]
 }
 
@@ -100,6 +101,7 @@ const mainNav: NavItem[] = [
   { to: '/archiv', label: 'Archiv', icon: Archive, end: false, roles: ['admin', 'planer'] },
   { to: '/hilfe', label: 'Hilfe', icon: HelpCircle, end: false },
   { to: '/einstellungen', label: 'Einstellungen', icon: Settings, end: false, children: einstellungenKinder },
+  { to: '/plattform-admin', label: 'Plattform-Verwaltung', icon: Building2, end: false, nurPlattformAdmin: true },
 ]
 
 function projektNav(id: string): NavItem[] {
@@ -135,16 +137,17 @@ function projektNav(id: string): NavItem[] {
   ]
 }
 
-function passtZurRolle(item: NavItem, role: Rolle | null, gesperrteModule: Set<string>) {
+function passtZurRolle(item: NavItem, role: Rolle | null, gesperrteModule: Set<string>, istPlattformAdmin: boolean) {
   const rolleOk = !item.roles || (role && item.roles.includes(role))
   const modulOk = !item.modul || !gesperrteModule.has(item.modul)
-  return rolleOk && modulOk
+  const plattformAdminOk = !item.nurPlattformAdmin || istPlattformAdmin
+  return rolleOk && modulOk && plattformAdminOk
 }
 
-function gefiltert(items: NavItem[], role: Rolle | null, gesperrteModule: Set<string>): NavItem[] {
+function gefiltert(items: NavItem[], role: Rolle | null, gesperrteModule: Set<string>, istPlattformAdmin: boolean): NavItem[] {
   return items
-    .filter((item) => passtZurRolle(item, role, gesperrteModule))
-    .map((item) => (item.children ? { ...item, children: gefiltert(item.children, role, gesperrteModule) } : item))
+    .filter((item) => passtZurRolle(item, role, gesperrteModule, istPlattformAdmin))
+    .map((item) => (item.children ? { ...item, children: gefiltert(item.children, role, gesperrteModule, istPlattformAdmin) } : item))
 }
 
 function pfadOhneQuery(to: string) {
@@ -205,18 +208,19 @@ function NavBaumKnoten({ item, pathname, hash, tiefe }: { item: NavItem; pathnam
 }
 
 export function Layout() {
-  const { user, role, gesperrteModule } = useAuth()
+  const { user, role, gesperrteModule, istPlattformAdmin } = useAuth()
   const { id } = useParams()
   const { pathname, hash } = useLocation()
   const online = useOnlineStatus()
 
-  const navProjekt = id ? gefiltert(projektNav(id), role, gesperrteModule) : []
+  const navProjekt = id ? gefiltert(projektNav(id), role, gesperrteModule, istPlattformAdmin) : []
   const navBaum = gefiltert(
     mainNav.map((item) => (item.to === '/' && navProjekt.length > 0 ? { ...item, children: navProjekt } : item)),
     role,
     gesperrteModule,
+    istPlattformAdmin,
   )
-  const navHaupt = gefiltert(mainNav, role, gesperrteModule)
+  const navHaupt = gefiltert(mainNav, role, gesperrteModule, istPlattformAdmin)
   const navUnten = id ? [mainNav[0], ...navProjekt.filter((item) => item.primary)] : navHaupt
 
   return (

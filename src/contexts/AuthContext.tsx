@@ -16,6 +16,7 @@ interface AuthContextValue {
   produktHinweise: boolean
   setProduktHinweise: (v: boolean) => void
   gesperrteModule: Set<string>
+  istPlattformAdmin: boolean
   mfaPending: boolean
   mfaFactorId: string | null
   bestaetigeMfaCode: (code: string) => Promise<{ error: string | null }>
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [onboardingGesehen, setOnboardingGesehen] = useState(true)
   const [produktHinweise, setProduktHinweise] = useState(true)
   const [gesperrteModule, setGesperrteModule] = useState<Set<string>>(new Set())
+  const [istPlattformAdmin, setIstPlattformAdmin] = useState(false)
   const [mfaPending, setMfaPending] = useState(false)
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -60,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setOnboardingGesehen(true)
       setProduktHinweise(true)
       setGesperrteModule(new Set())
+      setIstPlattformAdmin(false)
       setMfaPending(false)
       setMfaFactorId(null)
       return
@@ -81,6 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('modul')
       .eq('user_id', userId)
       .then(({ data }) => setGesperrteModule(new Set((data ?? []).map((r) => r.modul))))
+    supabase
+      .from('plattform_admins')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+      .then(({ data }) => setIstPlattformAdmin(!!data))
 
     supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) => {
       if (data && data.nextLevel === 'aal2' && data.currentLevel !== data.nextLevel) {
@@ -144,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         produktHinweise,
         setProduktHinweise,
         gesperrteModule,
+        istPlattformAdmin,
         mfaPending,
         mfaFactorId,
         bestaetigeMfaCode,

@@ -9,6 +9,7 @@ import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Datenschutz } from './pages/Datenschutz'
 import { Impressum } from './pages/Impressum'
+import { PlattformAdmin } from './pages/PlattformAdmin'
 import { Dashboard } from './pages/Dashboard'
 import { ProjektDashboard } from './pages/ProjektDashboard'
 import { Aufgaben } from './pages/Aufgaben'
@@ -69,6 +70,7 @@ function App() {
               <Route path="/ticket-formulare" element={<TicketFormulare />} />
               <Route path="/tagesbericht-vorlagen" element={<TagesberichtVorlagen />} />
               <Route path="/nutzer" element={<Nutzerverwaltung />} />
+              <Route path="/plattform-admin" element={<PlattformAdmin />} />
               <Route path="/team-chat" element={<Gruppenchat />} />
               <Route path="/projekt-chat" element={<ProjektChat />} />
               <Route path="/material-stamm" element={<MaterialStamm />} />

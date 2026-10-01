@@ -1,20 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ClipboardList, AlertTriangle, HelpCircle, Building2 } from 'lucide-react'
+import { AlertTriangle, HelpCircle, Building2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { ProjektForm } from '../components/ProjektForm'
 import { ProjektStatusKarte, type ProjektKartenStats } from '../components/ProjektStatusKarte'
 import { formatDatum } from '../lib/datum'
-import type { AufgabeTicket, Projekt, Tagesbericht } from '../types/database'
+import type { AufgabeTicket, Projekt } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
 
 const leereStats: ProjektKartenStats = { offen: 0, inBearbeitung: 0, erledigt: 0, ticketsOffen: 0, ticketsUeberfaellig: 0 }
-
-interface TagesberichtMitProjekt extends Tagesbericht {
-  projekt_name: string
-}
 
 interface TicketMitKontext extends AufgabeTicket {
   aufgabe_titel: string
@@ -30,7 +26,6 @@ export function Dashboard() {
   const [favoritenIds, setFavoritenIds] = useState<Set<string>>(new Set())
   const [projektStats, setProjektStats] = useState<Record<string, ProjektKartenStats>>({})
   const [heutigeBerichte, setHeutigeBerichte] = useState<Set<string>>(new Set())
-  const [neuesteTagesberichte, setNeuesteTagesberichte] = useState<TagesberichtMitProjekt[]>([])
   const [offeneTickets, setOffeneTickets] = useState<TicketMitKontext[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -93,20 +88,7 @@ export function Dashboard() {
     if (kannUebersichtSehen) {
       if (ids.length > 0) {
         const namenMap = Object.fromEntries((projekteData ?? []).map((b) => [b.id, b.name]))
-        const [{ data: tagesberichteData }, { data: aufgabenData }] = await Promise.all([
-          supabase
-            .from('tagesberichte')
-            .select('*')
-            .in('projekt_id', ids)
-            .order('datum', { ascending: false })
-            .order('erstellt_am', { ascending: false })
-            .limit(8),
-          supabase.from('aufgaben').select('id, titel, projekt_id').in('projekt_id', ids),
-        ])
-        setNeuesteTagesberichte(
-          (tagesberichteData ?? []).map((t) => ({ ...t, projekt_name: namenMap[t.projekt_id] ?? '—' })),
-        )
-
+        const { data: aufgabenData } = await supabase.from('aufgaben').select('id, titel, projekt_id').in('projekt_id', ids)
         const aufgabenMap = Object.fromEntries((aufgabenData ?? []).map((a) => [a.id, a]))
         const aufgabeIds = (aufgabenData ?? []).map((a) => a.id)
         if (aufgabeIds.length > 0) {
@@ -132,7 +114,6 @@ export function Dashboard() {
           setOffeneTickets([])
         }
       } else {
-        setNeuesteTagesberichte([])
         setOffeneTickets([])
       }
     }
@@ -206,33 +187,6 @@ export function Dashboard() {
                     <div className="truncate text-xs text-text-muted">{t.text}</div>
                   </div>
                   <span className="flex-shrink-0 text-xs text-text-subtle">{formatDatum(t.erstellt_am)}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {kannUebersichtSehen && !loading && neuesteTagesberichte.length > 0 && (
-        <div className="mb-6">
-          <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-text">
-            <ClipboardList className="h-4 w-4 text-brand" strokeWidth={2.25} />
-            Neueste Tagesberichte
-          </h2>
-          <ul className="space-y-1.5">
-            {neuesteTagesberichte.map((t) => (
-              <li key={t.id}>
-                <Link
-                  to={`/projekte/${t.projekt_id}/tagesberichte`}
-                  className="card flex items-center justify-between gap-3 p-3 text-sm transition-colors hover:border-brand/40 hover:bg-brand-soft/40"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate font-medium text-text">{t.projekt_name}</div>
-                    {t.besonderheiten && (
-                      <div className="truncate text-xs text-amber-700 dark:text-amber-400">⚠ {t.besonderheiten}</div>
-                    )}
-                  </div>
-                  <span className="flex-shrink-0 text-xs text-text-subtle">{formatDatum(t.datum)}</span>
                 </Link>
               </li>
             ))}

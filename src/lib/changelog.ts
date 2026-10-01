@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.8.4',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Dashboard: Bereich "Neueste Tagesberichte" entfernt — Tagesberichte sind in der Übersicht des jeweiligen Projekts zu finden.',
+    ],
+  },
+  {
     version: '1.8.3',
     datum: '2026-10-01',
     aenderungen: [

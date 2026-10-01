@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.8.5',
+    datum: '2026-10-01',
+    aenderungen: [
+      'App/Handy: Der Name oben in der Kopfzeile wird jetzt korrekt als "WorkFlow" ohne Leerzeichen angezeigt.',
+    ],
+  },
+  {
     version: '1.8.4',
     datum: '2026-10-01',
     aenderungen: [

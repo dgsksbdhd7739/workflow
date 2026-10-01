@@ -254,7 +254,10 @@ export function Layout() {
           <div className="logo-tile h-7 w-7 shrink-0">
             <HardHat className="h-3.5 w-3.5" strokeWidth={2.25} />
           </div>
-          Work<span className="brand-text">Flow</span>
+          {/* In eigenem span, sonst setzt gap-2 des Flex-Containers eine Luecke zwischen "Work" und "Flow" */}
+          <span>
+            Work<span className="brand-text">Flow</span>
+          </span>
         </Link>
       </header>
 

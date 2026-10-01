@@ -68,10 +68,13 @@ Deno.serve(async (req) => {
       .eq('id', callerProfile.unternehmen_id)
       .single()
     if (unternehmen?.max_nutzer != null) {
-      const { count } = await adminClient
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('unternehmen_id', callerProfile.unternehmen_id)
+      // Zaehlt ohne Plattform-Admins (Migration 0058), die belegen kein Limit.
+      const { data: count, error: countError } = await adminClient.rpc('unternehmen_nutzer_anzahl', {
+        p_unternehmen_id: callerProfile.unternehmen_id,
+      })
+      if (countError) {
+        return json({ error: `Nutzeranzahl konnte nicht geprüft werden: ${countError.message}` }, 500)
+      }
       if ((count ?? 0) >= unternehmen.max_nutzer) {
         return json({ error: `Nutzerlimit erreicht (maximal ${unternehmen.max_nutzer} Nutzer für dieses Unternehmen).` }, 403)
       }

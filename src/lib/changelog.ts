@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.8.8',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Der WorkFlow-Plattform-Admin erscheint nicht mehr in der Nutzerverwaltung einer Firma und zählt nicht mehr zum Nutzerlimit.',
+    ],
+  },
+  {
     version: '1.8.7',
     datum: '2026-10-01',
     aenderungen: [

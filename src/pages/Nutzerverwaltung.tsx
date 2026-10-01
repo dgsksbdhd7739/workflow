@@ -32,7 +32,7 @@ const sperrbareModule = [
 ]
 
 export function Nutzerverwaltung() {
-  const { role, user, unternehmenId } = useAuth()
+  const { role, user, unternehmenId, istPlattformAdmin } = useAuth()
   const maxNutzer = useMaxNutzer(unternehmenId)
   const [profile, setProfile] = useState<Profile[]>([])
   const [projekte, setProjekte] = useState<Projekt[]>([])
@@ -83,6 +83,10 @@ export function Nutzerverwaltung() {
   useEffect(() => {
     if (role === 'admin') load()
   }, [role])
+
+  // Plattform-Admins gehoeren nicht zur Firma (RLS blendet sie fuer andere aus,
+  // Migration 0058) -- nur das eigene Profil waere hier sonst noch sichtbar.
+  const sichtbareProfile = profile.filter((p) => !(istPlattformAdmin && p.id === user?.id))
 
   const updateRolle = async (profileId: string, neueRolle: Rolle) => {
     setFehler(null)
@@ -221,7 +225,7 @@ export function Nutzerverwaltung() {
           </p>
           {maxNutzer != null && (
             <p className="mt-1 text-xs font-medium text-text-subtle">
-              {profile.length} / {maxNutzer} Nutzern belegt
+              {sichtbareProfile.length} / {maxNutzer} Nutzern belegt
             </p>
           )}
         </div>
@@ -289,7 +293,7 @@ export function Nutzerverwaltung() {
         <p className="text-sm text-text-muted">Lädt…</p>
       ) : (
         <ul className="space-y-2">
-          {profile.map((p) => (
+          {sichtbareProfile.map((p) => (
             <li key={p.id} className="card p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">

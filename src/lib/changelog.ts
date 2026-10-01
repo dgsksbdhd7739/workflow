@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.7.4',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Dashboard: jede Projekt-Karte zeigt jetzt "Heutiges Tagesbericht erstellt?" mit grünem/rotem Hinweis, je nachdem ob für das Projekt heute schon ein Tagesbericht angelegt wurde.',
+    ],
+  },
+  {
     version: '1.7.3',
     datum: '2026-10-01',
     aenderungen: [

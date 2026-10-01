@@ -51,11 +51,13 @@ function FortschrittsRing({ prozent }: { prozent: number }) {
 export function ProjektStatusKarte({
   projekt,
   stats,
+  heutigerBerichtErstellt,
   istFavorit,
   onToggleFavorit,
 }: {
   projekt: Projekt
   stats: ProjektKartenStats
+  heutigerBerichtErstellt: boolean
   istFavorit: boolean
   onToggleFavorit: () => void
 }) {
@@ -115,6 +117,19 @@ export function ProjektStatusKarte({
           <div className="text-text-subtle">Projektende</div>
           <div className="font-medium text-text">{projekt.projekt_ende ? formatDatum(projekt.projekt_ende) : 'nicht vorhanden'}</div>
         </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3 text-xs">
+        <span className="text-text-muted">Heutiges Tagesbericht erstellt?</span>
+        <span
+          className={`rounded-full px-2 py-0.5 font-medium ${
+            heutigerBerichtErstellt
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+              : 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300'
+          }`}
+        >
+          {heutigerBerichtErstellt ? 'Ja' : 'Nein'}
+        </span>
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-xs">

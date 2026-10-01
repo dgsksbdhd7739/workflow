@@ -29,6 +29,7 @@ export function Dashboard() {
   const [projekte, setProjekte] = useState<Projekt[]>([])
   const [favoritenIds, setFavoritenIds] = useState<Set<string>>(new Set())
   const [projektStats, setProjektStats] = useState<Record<string, ProjektKartenStats>>({})
+  const [heutigeBerichte, setHeutigeBerichte] = useState<Set<string>>(new Set())
   const [neuesteTagesberichte, setNeuesteTagesberichte] = useState<TagesberichtMitProjekt[]>([])
   const [offeneTickets, setOffeneTickets] = useState<TicketMitKontext[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,6 +47,13 @@ export function Dashboard() {
 
     const ids = (projekteData ?? []).map((b) => b.id)
     if (ids.length > 0) {
+      const { data: heutigeBerichteData } = await supabase
+        .from('tagesberichte')
+        .select('projekt_id')
+        .eq('datum', heute())
+        .in('projekt_id', ids)
+      setHeutigeBerichte(new Set((heutigeBerichteData ?? []).map((b) => b.projekt_id)))
+
       const { data: aufgabenFuerStats } = await supabase.from('aufgaben').select('id, projekt_id, status').in('projekt_id', ids)
       const aufgabeProjektMap = Object.fromEntries((aufgabenFuerStats ?? []).map((a) => [a.id, a.projekt_id]))
       const aufgabeIdsFuerStats = (aufgabenFuerStats ?? []).map((a) => a.id)
@@ -79,6 +87,7 @@ export function Dashboard() {
       setProjektStats(statsMap)
     } else {
       setProjektStats({})
+      setHeutigeBerichte(new Set())
     }
 
     if (kannUebersichtSehen) {
@@ -246,6 +255,7 @@ export function Dashboard() {
               key={b.id}
               projekt={b}
               stats={projektStats[b.id] ?? leereStats}
+              heutigerBerichtErstellt={heutigeBerichte.has(b.id)}
               istFavorit={favoritenIds.has(b.id)}
               onToggleFavorit={() => toggleFavorit(b.id)}
             />

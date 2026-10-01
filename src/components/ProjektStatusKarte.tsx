@@ -119,7 +119,7 @@ export function ProjektStatusKarte({
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3 text-xs">
+      <div className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-xs">
         <span className="text-text-muted">Heutiges Tagesbericht erstellt?</span>
         <span
           className={`rounded-full px-2 py-0.5 font-medium ${

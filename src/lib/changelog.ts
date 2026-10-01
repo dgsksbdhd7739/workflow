@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.7.5',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Dashboard: Abstand zwischen "Heutiges Tagesbericht erstellt?" und dem Ja/Nein-Hinweis verkleinert.',
+    ],
+  },
+  {
     version: '1.7.4',
     datum: '2026-10-01',
     aenderungen: [

@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.6.7',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Dashboard: jedes Projekt zeigt jetzt eine Status-Karte mit Projektnummer/-zeitraum, Aufgaben-Verteilung (Stopp/In Arbeit/Abgeschlossen), offenen und überfälligen Tickets sowie einem Fortschritts-Ring.',
+    ],
+  },
+  {
     version: '1.6.6',
     datum: '2026-09-28',
     aenderungen: [

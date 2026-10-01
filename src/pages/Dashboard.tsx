@@ -4,10 +4,13 @@ import { ClipboardList, AlertTriangle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { ProjektForm } from '../components/ProjektForm'
-import { SignedImage } from '../components/SignedImage'
-import { formatProjektAdresse, kartenUrl } from '../lib/adresse'
+import { ProjektStatusKarte, type ProjektKartenStats } from '../components/ProjektStatusKarte'
 import { formatDatum } from '../lib/datum'
 import type { AufgabeTicket, Projekt, Tagesbericht } from '../types/database'
+
+const heute = () => new Date().toISOString().slice(0, 10)
+
+const leereStats: ProjektKartenStats = { offen: 0, inBearbeitung: 0, erledigt: 0, ticketsOffen: 0, ticketsUeberfaellig: 0 }
 
 interface TagesberichtMitProjekt extends Tagesbericht {
   projekt_name: string
@@ -25,6 +28,7 @@ export function Dashboard() {
   const kannUebersichtSehen = role === 'admin' || role === 'planer'
   const [projekte, setProjekte] = useState<Projekt[]>([])
   const [favoritenIds, setFavoritenIds] = useState<Set<string>>(new Set())
+  const [projektStats, setProjektStats] = useState<Record<string, ProjektKartenStats>>({})
   const [neuesteTagesberichte, setNeuesteTagesberichte] = useState<TagesberichtMitProjekt[]>([])
   const [offeneTickets, setOffeneTickets] = useState<TicketMitKontext[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,8 +44,44 @@ export function Dashboard() {
     setProjekte(projekteData ?? [])
     setFavoritenIds(new Set((favoritenData ?? []).map((f) => f.projekt_id)))
 
+    const ids = (projekteData ?? []).map((b) => b.id)
+    if (ids.length > 0) {
+      const { data: aufgabenFuerStats } = await supabase.from('aufgaben').select('id, projekt_id, status').in('projekt_id', ids)
+      const aufgabeProjektMap = Object.fromEntries((aufgabenFuerStats ?? []).map((a) => [a.id, a.projekt_id]))
+      const aufgabeIdsFuerStats = (aufgabenFuerStats ?? []).map((a) => a.id)
+
+      const statsMap: Record<string, ProjektKartenStats> = {}
+      for (const id of ids) statsMap[id] = { ...leereStats }
+      for (const a of aufgabenFuerStats ?? []) {
+        const s = statsMap[a.projekt_id]
+        if (!s) continue
+        if (a.status === 'offen') s.offen++
+        else if (a.status === 'in_bearbeitung') s.inBearbeitung++
+        else if (a.status === 'erledigt') s.erledigt++
+      }
+
+      if (aufgabeIdsFuerStats.length > 0) {
+        const { data: ticketsFuerStats } = await supabase
+          .from('aufgabe_tickets')
+          .select('aufgabe_id, status, erledigen_bis, nachfrist')
+          .eq('status', 'offen')
+          .in('aufgabe_id', aufgabeIdsFuerStats)
+        const heuteDatum = heute()
+        for (const t of ticketsFuerStats ?? []) {
+          const projektId = aufgabeProjektMap[t.aufgabe_id]
+          const s = statsMap[projektId]
+          if (!s) continue
+          s.ticketsOffen++
+          const faelligkeit = t.nachfrist ?? t.erledigen_bis
+          if (faelligkeit && faelligkeit < heuteDatum) s.ticketsUeberfaellig++
+        }
+      }
+      setProjektStats(statsMap)
+    } else {
+      setProjektStats({})
+    }
+
     if (kannUebersichtSehen) {
-      const ids = (projekteData ?? []).map((b) => b.id)
       if (ids.length > 0) {
         const namenMap = Object.fromEntries((projekteData ?? []).map((b) => [b.id, b.name]))
         const [{ data: tagesberichteData }, { data: aufgabenData }] = await Promise.all([
@@ -200,46 +240,15 @@ export function Dashboard() {
       ) : sortiert.length === 0 ? (
         <p className="text-sm text-text-muted">Noch keine Projekte angelegt.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {sortiert.map((b) => (
-            <li key={b.id} className="flex items-center gap-2">
-              <button
-                onClick={() => toggleFavorit(b.id)}
-                aria-label={favoritenIds.has(b.id) ? 'Favorit entfernen' : 'Als Favorit markieren'}
-                className="flex-shrink-0 text-xl leading-none text-amber-500"
-              >
-                {favoritenIds.has(b.id) ? '★' : '☆'}
-              </button>
-              <Link
-                to={`/projekte/${b.id}`}
-                className="card flex flex-1 items-center gap-3 p-4 transition-colors hover:border-brand/40 hover:bg-brand-soft/40"
-              >
-                {b.logo_pfad && (
-                  <SignedImage
-                    bucket="projekt-logos"
-                    path={b.logo_pfad}
-                    alt=""
-                    className="h-12 w-12 flex-shrink-0 rounded-lg object-cover"
-                  />
-                )}
-                <div className="min-w-0">
-                  <div className="truncate font-medium text-text">{b.name}</div>
-                  {formatProjektAdresse(b) && (
-                    <span
-                      role="link"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        window.open(kartenUrl(formatProjektAdresse(b)!), '_blank', 'noreferrer')
-                      }}
-                      className="block truncate text-sm text-text-muted hover:text-brand hover:underline"
-                    >
-                      📍 {formatProjektAdresse(b)}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            </li>
+            <ProjektStatusKarte
+              key={b.id}
+              projekt={b}
+              stats={projektStats[b.id] ?? leereStats}
+              istFavorit={favoritenIds.has(b.id)}
+              onToggleFavorit={() => toggleFavorit(b.id)}
+            />
           ))}
         </ul>
       )}

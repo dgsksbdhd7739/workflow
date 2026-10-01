@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { geraetKennung, geraetName, sitzungIdAusToken } from '../lib/geraet'
+import { FIRMENDATEN_PFLICHT, firmendatenVollstaendig, type FirmendatenPflicht } from '../lib/firmendaten'
 
 // Dieses Geraet in nutzer_sitzungen eintragen/aktualisieren, inkl. der
 // Auth-Sitzungs-ID, damit nur wirklich angemeldete Geraete angezeigt werden.
@@ -33,6 +34,9 @@ interface AuthContextValue {
   setProduktHinweise: (v: boolean) => void
   gesperrteModule: Set<string>
   istPlattformAdmin: boolean
+  // Firmen-Admin muss nach der Erstanmeldung zuerst die Firmendaten (inkl. Logo) pflegen.
+  firmendatenFehlen: boolean
+  pruefeFirmendaten: () => Promise<void>
   mfaPending: boolean
   mfaFactorId: string | null
   bestaetigeMfaCode: (code: string) => Promise<{ error: string | null }>
@@ -52,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [produktHinweise, setProduktHinweise] = useState(true)
   const [gesperrteModule, setGesperrteModule] = useState<Set<string>>(new Set())
   const [istPlattformAdmin, setIstPlattformAdmin] = useState(false)
+  const [firmendatenFehlen, setFirmendatenFehlen] = useState(false)
   const [mfaPending, setMfaPending] = useState(false)
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -69,6 +74,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  // Nur Firmen-Admins (nicht der Plattform-Admin) muessen die Firmendaten pflegen.
+  const pruefeFirmendatenFuer = async (rolle: Rolle | null, plattformAdmin: boolean, firmaId: string | null) => {
+    if (rolle !== 'admin' || plattformAdmin || !firmaId) {
+      setFirmendatenFehlen(false)
+      return
+    }
+    const { data } = await supabase
+      .from('unternehmen')
+      .select(FIRMENDATEN_PFLICHT.join(', '))
+      .eq('id', firmaId)
+      .single()
+    setFirmendatenFehlen(!firmendatenVollstaendig(data as Partial<FirmendatenPflicht> | null))
+  }
+
+  const pruefeFirmendaten = () => pruefeFirmendatenFuer(role, istPlattformAdmin, unternehmenId)
+
   useEffect(() => {
     const userId = session?.user.id
     if (!userId) {
@@ -79,33 +100,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProduktHinweise(true)
       setGesperrteModule(new Set())
       setIstPlattformAdmin(false)
+      setFirmendatenFehlen(false)
       setMfaPending(false)
       setMfaFactorId(null)
       return
     }
-    supabase
-      .from('profiles')
-      .select('role, muss_passwort_aendern, onboarding_gesehen, unternehmen_id, produkt_hinweise')
-      .eq('id', userId)
-      .single()
-      .then(({ data }) => {
-        setRole(data?.role ?? null)
-        setUnternehmenId(data?.unternehmen_id ?? null)
-        setMussPasswortAendern(data?.muss_passwort_aendern ?? false)
-        setOnboardingGesehen(data?.onboarding_gesehen ?? true)
-        setProduktHinweise(data?.produkt_hinweise ?? true)
-      })
+    // Profil und Plattform-Admin-Status gemeinsam laden, damit die
+    // Firmendaten-Pruefung den Plattform-Admin sicher ausnehmen kann.
+    Promise.all([
+      supabase
+        .from('profiles')
+        .select('role, muss_passwort_aendern, onboarding_gesehen, unternehmen_id, produkt_hinweise')
+        .eq('id', userId)
+        .single(),
+      supabase.from('plattform_admins').select('user_id').eq('user_id', userId).maybeSingle(),
+    ]).then(([{ data }, { data: plattformAdmin }]) => {
+      setRole(data?.role ?? null)
+      setUnternehmenId(data?.unternehmen_id ?? null)
+      setMussPasswortAendern(data?.muss_passwort_aendern ?? false)
+      setOnboardingGesehen(data?.onboarding_gesehen ?? true)
+      setProduktHinweise(data?.produkt_hinweise ?? true)
+      setIstPlattformAdmin(!!plattformAdmin)
+      pruefeFirmendatenFuer(data?.role ?? null, !!plattformAdmin, data?.unternehmen_id ?? null)
+    })
     supabase
       .from('nutzer_modul_sperren')
       .select('modul')
       .eq('user_id', userId)
       .then(({ data }) => setGesperrteModule(new Set((data ?? []).map((r) => r.modul))))
-    supabase
-      .from('plattform_admins')
-      .select('user_id')
-      .eq('user_id', userId)
-      .maybeSingle()
-      .then(({ data }) => setIstPlattformAdmin(!!data))
 
     supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) => {
       if (data && data.nextLevel === 'aal2' && data.currentLevel !== data.nextLevel) {
@@ -162,6 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProduktHinweise,
         gesperrteModule,
         istPlattformAdmin,
+        firmendatenFehlen,
+        pruefeFirmendaten,
         mfaPending,
         mfaFactorId,
         bestaetigeMfaCode,

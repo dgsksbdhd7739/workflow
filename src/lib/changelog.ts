@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.8.9',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Neu: Firmen-Admins müssen nach der Erstanmeldung (und dem Passwortwechsel) zuerst die Firmendaten inklusive Firmenlogo hinterlegen, bevor sie die App nutzen können.',
+    ],
+  },
+  {
     version: '1.8.8',
     datum: '2026-10-01',
     aenderungen: [

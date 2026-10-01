@@ -43,6 +43,7 @@ Admin-Login:
 
 - Zugangsdaten sicher an den Kunden übermitteln (nicht per unverschlüsselter Mail).
 - Der Admin muss das Passwort beim ersten Login ändern (`muss_passwort_aendern`, wie bei jedem neu angelegten Nutzer).
+- Direkt danach muss der Firmen-Admin die Firmendaten pflegen (Name, Adresse, Land, Telefon, E-Mail, Logo — Website optional), sonst kommt er nicht weiter (`/firmendaten-einrichten`, Pflichtfelder in `src/lib/firmendaten.ts`). Der Plattform-Admin ist davon ausgenommen.
 - Weitere Nutzer legt der Admin der neuen Firma anschließend selbst über *Einstellungen → Nutzerverwaltung* an — dafür ist kein weiterer Eingriff nötig.
 
 ## Technischer Hintergrund

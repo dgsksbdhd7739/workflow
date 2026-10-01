@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export function ProtectedRoute() {
-  const { user, loading, mussPasswortAendern, mfaPending } = useAuth()
+  const { user, loading, mussPasswortAendern, mfaPending, firmendatenFehlen } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -23,6 +23,11 @@ export function ProtectedRoute() {
 
   if (mussPasswortAendern && location.pathname !== '/passwort-aendern') {
     return <Navigate to="/passwort-aendern" replace />
+  }
+
+  // Erst nach dem Passwortwechsel: Firmen-Admin muss die Firmendaten pflegen.
+  if (!mussPasswortAendern && firmendatenFehlen && location.pathname !== '/firmendaten-einrichten') {
+    return <Navigate to="/firmendaten-einrichten" replace />
   }
 
   return <Outlet />

@@ -9,7 +9,8 @@ const laender = ['Deutschland', 'Österreich', 'Schweiz', 'Sonstiges']
 export function UnternehmenForm({
   unternehmenId: unternehmenIdProp,
   onGespeichert,
-}: { unternehmenId?: string; onGespeichert?: () => void } = {}) {
+  pflicht = false,
+}: { unternehmenId?: string; onGespeichert?: () => void; pflicht?: boolean } = {}) {
   const { unternehmenId: eigeneUnternehmenId } = useAuth()
   const unternehmenId = unternehmenIdProp ?? eigeneUnternehmenId
   const [unternehmen, setUnternehmen] = useState<Unternehmen | null>(null)
@@ -62,6 +63,12 @@ export function UnternehmenForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!unternehmenId) return
+    // Pflichtmodus (Erstanmeldung): ohne Logo nicht speichern -- Textfelder
+    // erzwingt bereits das required-Attribut.
+    if (pflicht && (logoEntfernen || (!logoDatei && !unternehmen?.logo_pfad))) {
+      setFehler('Bitte ein Firmenlogo hochladen.')
+      return
+    }
     setSaving(true)
     setFehler(null)
     setGespeichert(false)
@@ -126,7 +133,7 @@ export function UnternehmenForm({
             ) : null}
           </div>
           <label className="cursor-pointer text-xs font-medium text-brand">
-            Firmenlogo hochladen
+            Firmenlogo hochladen{pflicht && ' *'}
             <input
               type="file"
               accept="image/*"
@@ -154,32 +161,35 @@ export function UnternehmenForm({
         <div className="min-w-0 flex-1 space-y-2">
           <div>
             <label className="field-label">Firmenname</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="field-input" />
+            <input value={name} onChange={(e) => setName(e.target.value)} required={pflicht} className="field-input" />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <input
               value={strasse}
               onChange={(e) => setStrasse(e.target.value)}
+              required={pflicht}
               placeholder="Straße"
               className="field-input col-span-2"
             />
             <input
               value={hausnummer}
               onChange={(e) => setHausnummer(e.target.value)}
+              required={pflicht}
               placeholder="Nr."
               className="field-input"
             />
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <input value={plz} onChange={(e) => setPlz(e.target.value)} placeholder="PLZ" className="field-input" />
+            <input value={plz} onChange={(e) => setPlz(e.target.value)} required={pflicht} placeholder="PLZ" className="field-input" />
             <input
               value={stadt}
               onChange={(e) => setStadt(e.target.value)}
+              required={pflicht}
               placeholder="Stadt"
               className="field-input col-span-2"
             />
           </div>
-          <select value={land} onChange={(e) => setLand(e.target.value)} className="field-input">
+          <select value={land} onChange={(e) => setLand(e.target.value)} required={pflicht} className="field-input">
             <option value="">— Land wählen —</option>
             {laender.map((l) => (
               <option key={l} value={l}>
@@ -191,8 +201,8 @@ export function UnternehmenForm({
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <input value={telefon} onChange={(e) => setTelefon(e.target.value)} placeholder="Telefon" className="field-input" />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-Mail" className="field-input" />
+        <input value={telefon} onChange={(e) => setTelefon(e.target.value)} required={pflicht} placeholder="Telefon" className="field-input" />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} required={pflicht} type="email" placeholder="E-Mail" className="field-input" />
         <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="Website" className="field-input" />
       </div>
 

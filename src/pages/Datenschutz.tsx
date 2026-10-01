@@ -6,12 +6,19 @@ import { HardHat } from 'lucide-react'
 // Datenschutzerklaerung muss laut DSGVO ohne Login einsehbar sein, u. a.
 // damit sie vor der Registrierung gelesen werden kann.
 //
-// WICHTIG fuer kuenftige Bearbeitung: Dies ist ein technisch auf Basis der
-// tatsaechlich eingesetzten Dienste erstellter ERSTENTWURF, noch nicht
-// anwaltlich geprueft. Vor jeder inhaltlichen Aenderung (neuer Dienst,
-// neues Subprozessor, neue Datenkategorie) muss dieser Text aktualisiert
-// werden, sonst stimmt er nicht mehr mit der tatsaechlichen Verarbeitung
-// ueberein.
+// WICHTIG fuer kuenftige Bearbeitung: Dieser Text ist technisch gegen die
+// tatsaechlich eingesetzten Dienste geprueft, aber noch NICHT anwaltlich
+// geprueft. Vor jeder inhaltlichen Aenderung (neuer Dienst, neuer
+// Subprozessor, neue Datenkategorie, neue App-Berechtigung) muss dieser Text
+// aktualisiert werden, sonst stimmt er nicht mehr mit der tatsaechlichen
+// Verarbeitung ueberein. Stand der Pruefung (Oktober 2026):
+// - Supabase-Projekt in eu-central-1 (Frankfurt)
+// - Live-Updates laden aus dem eigenen Supabase-Speicher (Capgo nur als
+//   Open-Source-Plugin, kein Capgo-Clouddienst)
+// - keine iOS-App, Push nur Android/FCM und nur fuer den Team-Chat
+// - Android-Manifest: nur INTERNET; Mitteilungen fragt das Push-Plugin ab,
+//   Fotos/Dateien kommen ueber die System-Dateiauswahl
+// - nginx-Logs auf dem VPS: logrotate daily, rotate 14
 
 function Abschnitt({ titel, children }: { titel: string; children: ReactNode }) {
   return (
@@ -20,6 +27,10 @@ function Abschnitt({ titel, children }: { titel: string; children: ReactNode }) 
       <div className="space-y-3 text-sm leading-relaxed text-text-muted">{children}</div>
     </section>
   )
+}
+
+function Liste({ children }: { children: ReactNode }) {
+  return <ul className="list-disc space-y-1 pl-5">{children}</ul>
 }
 
 export function Datenschutz() {
@@ -46,10 +57,13 @@ export function Datenschutz() {
 
       <div className="mx-auto max-w-3xl px-4 py-8">
         <h1 className="mb-1 text-2xl font-semibold text-text">Datenschutzerklärung</h1>
-        <p className="mb-8 text-xs text-text-subtle">Stand: 1. Oktober 2026</p>
+        <p className="mb-8 text-xs text-text-subtle">Stand: Oktober 2026</p>
 
         <Abschnitt titel="1. Verantwortlicher">
-          <p>Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:</p>
+          <p>
+            Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) und sonstiger nationaler
+            Datenschutzgesetze ist:
+          </p>
           <p>
             Mesut Hano
             <br />
@@ -59,205 +73,307 @@ export function Datenschutz() {
             <br />
             Deutschland
             <br />
-            E-Mail: Mesut.hano@gmail.com
+            E-Mail:{' '}
+            <a href="mailto:Mesut.hano@gmail.com" className="text-brand hover:underline">
+              Mesut.hano@gmail.com
+            </a>
+            <br />
+            Telefon: +49 179 7007240
           </p>
           <p>
-            Ein gesonderter Datenschutzbeauftragter ist nicht bestellt; Anfragen zum Datenschutz richten Sie bitte an die
-            oben genannte E-Mail-Adresse.
+            Ein betrieblicher Datenschutzbeauftragter ist gesetzlich nicht erforderlich und nicht bestellt. Bei Fragen
+            zur Verarbeitung Ihrer personenbezogenen Daten wenden Sie sich bitte direkt an die oben genannte
+            Kontaktadresse.
           </p>
         </Abschnitt>
 
-        <Abschnitt titel="2. Überblick über Ihre Rechte als betroffene Person">
-          <p>Sie haben jederzeit das Recht,</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li>Auskunft über Ihre bei uns verarbeiteten personenbezogenen Daten zu erhalten (Art. 15 DSGVO),</li>
-            <li>die Berichtigung unrichtiger oder Vervollständigung unvollständiger Daten zu verlangen (Art. 16 DSGVO),</li>
-            <li>die Löschung Ihrer bei uns gespeicherten Daten zu verlangen (Art. 17 DSGVO),</li>
-            <li>die Einschränkung der Verarbeitung Ihrer Daten zu verlangen (Art. 18 DSGVO),</li>
-            <li>Ihre bereitgestellten Daten in einem strukturierten, gängigen Format zu erhalten (Art. 20 DSGVO),</li>
+        <Abschnitt titel="2. Eigene Datenverarbeitung und Auftragsverarbeitung (Art. 28 DSGVO)">
+          <p>
+            WorkFlow ist eine B2B-Plattform zur Projekt- und Einsatzkoordination für Handwerks- und Bauunternehmen. Dabei
+            treten wir in zwei unterschiedlichen Rollen auf:
+          </p>
+          <ol className="list-decimal space-y-2 pl-5">
             <li>
-              einer zukünftigen Verarbeitung Ihrer Daten zu widersprechen, soweit diese auf Grundlage eines berechtigten
-              Interesses erfolgt (Art. 21 DSGVO),
+              <strong>Als Verantwortlicher (Art. 4 Nr. 7 DSGVO)</strong> für den Betrieb der Webseiten (workflow-app.de,
+              app.workflow-app.de), die Bereitstellung der Apps, die Führung der Kundenstammdaten sowie die
+              Nutzerverwaltung und Anmeldung.
             </li>
-            <li>eine erteilte Einwilligung jederzeit mit Wirkung für die Zukunft zu widerrufen (Art. 7 Abs. 3 DSGVO), sowie</li>
             <li>
-              sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren (Art. 77 DSGVO), z. B. beim Bayerischen Landesamt
-              für Datenschutzaufsicht.
+              <strong>Als Auftragsverarbeiter (Art. 28 DSGVO)</strong>, soweit Unternehmen („Kunden“) projektbezogene
+              Inhalte in WorkFlow einpflegen (z. B. Baustellendaten, Aufgaben, Dokumente, Bautagebücher, Arbeitszeiten
+              von Mitarbeitern oder Chatverläufe). Diese Daten verarbeiten wir ausschließlich weisungsgebunden im Auftrag
+              des jeweiligen Kunden; der Kunde bleibt für diese Inhaltsdaten allein verantwortlich. Hierzu wird mit dem
+              Kunden ein gesonderter Vertrag zur Auftragsverarbeitung (AVV) gemäß Art. 28 DSGVO geschlossen. Betroffene
+              Personen (z. B. Mitarbeiter oder Auftraggeber der Betriebe) wenden sich zu diesen Inhaltsdaten bitte
+              vorrangig an das jeweilige Unternehmen.
             </li>
-          </ul>
+          </ol>
         </Abschnitt>
 
-        <Abschnitt titel="3. Allgemeine Informationen beim Aufruf der Webseite und App">
-          <p>
-            Beim Aufruf von workflow-app.de bzw. app.workflow-app.de sowie bei jeder Anfrage an die App verarbeitet der
-            jeweilige Hostinganbieter technisch notwendig sogenannte Server-Logfiles, u. a. IP-Adresse, Datum und
-            Uhrzeit der Anfrage, aufgerufene Seite/Ressource, übertragene Datenmenge, Browsertyp und -version sowie das
-            verwendete Betriebssystem. Diese Daten werden ausschließlich zur Gewährleistung eines störungsfreien
-            Betriebs, zur Auslastungskontrolle und zur Abwehr von Angriffen verarbeitet (Art. 6 Abs. 1 lit. f DSGVO,
-            berechtigtes Interesse an Betriebssicherheit) und nach kurzer Zeit automatisch gelöscht.
-          </p>
-          <p>Hosting erfolgt über:</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li>App (app.workflow-app.de): eigener Server bei STRATO AG, Pascalstraße 10, 10587 Berlin, Deutschland,</li>
+        <Abschnitt titel="3. Ihre Rechte als betroffene Person">
+          <p>Soweit wir für die Datenverarbeitung verantwortlich sind, haben Sie nach der DSGVO folgende Rechte:</p>
+          <Liste>
             <li>
-              Landingpage (workflow-app.de): Vercel Inc., 340 S Lemon Ave #4133, Walnut, CA 91789, USA (Hosting über
-              Content-Delivery-Netzwerk, ggf. mit Serverstandorten außerhalb der EU, siehe Abschnitt 8).
+              <strong>Auskunft (Art. 15 DSGVO):</strong> Auskunft über Ihre von uns verarbeiteten personenbezogenen
+              Daten.
             </li>
-          </ul>
+            <li>
+              <strong>Berichtigung (Art. 16 DSGVO):</strong> unverzügliche Berichtigung unrichtiger oder Vervollständigung
+              unvollständiger Daten.
+            </li>
+            <li>
+              <strong>Löschung (Art. 17 DSGVO):</strong> Löschung Ihrer Daten, sofern keine gesetzlichen
+              Aufbewahrungspflichten oder überwiegenden berechtigten Interessen entgegenstehen.
+            </li>
+            <li>
+              <strong>Einschränkung der Verarbeitung (Art. 18 DSGVO):</strong> z. B. wenn die Richtigkeit der Daten
+              bestritten wird oder die Verarbeitung unrechtmäßig ist.
+            </li>
+            <li>
+              <strong>Datenübertragbarkeit (Art. 20 DSGVO):</strong> Herausgabe der von Ihnen bereitgestellten Daten in
+              einem strukturierten, gängigen und maschinenlesbaren Format.
+            </li>
+            <li>
+              <strong>Widerspruch (Art. 21 DSGVO):</strong> gegen Verarbeitungen auf Grundlage eines berechtigten
+              Interesses (Art. 6 Abs. 1 lit. f DSGVO), aus Gründen, die sich aus Ihrer besonderen Situation ergeben.
+            </li>
+            <li>
+              <strong>Widerruf einer Einwilligung (Art. 7 Abs. 3 DSGVO):</strong> jederzeit mit Wirkung für die Zukunft.
+            </li>
+            <li>
+              <strong>Beschwerde bei einer Aufsichtsbehörde (Art. 77 DSGVO),</strong> insbesondere im Mitgliedstaat
+              Ihres Aufenthaltsorts oder des Orts des mutmaßlichen Verstoßes. Für uns zuständig ist das Bayerische
+              Landesamt für Datenschutzaufsicht (BayLDA), Promenade 18, 91522 Ansbach,{' '}
+              <a href="https://www.lda.bayern.de" target="_blank" rel="noreferrer" className="text-brand hover:underline">
+                www.lda.bayern.de
+              </a>
+              .
+            </li>
+          </Liste>
         </Abschnitt>
 
-        <Abschnitt titel="4. Registrierung und Nutzerkonto">
+        <Abschnitt titel="4. Bereitstellung der Webseite, Web-App und Server-Logfiles">
           <p>
-            Der Zugang zu WorkFlow erfolgt ausschließlich über ein persönliches Nutzerkonto, das von Ihrem Unternehmen
-            bzw. dessen Administrator für Sie angelegt wird (keine öffentliche Selbstregistrierung). Dabei werden
-            folgende Daten verarbeitet:
+            Beim Aufruf unserer Dienste verarbeiten die eingesetzten Server technisch notwendige Verbindungsdaten
+            (Server-Logfiles):
           </p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li>Name, E-Mail-Adresse, Passwort (verschlüsselt gespeichert, für uns nicht einsehbar),</li>
-            <li>Rolle im Unternehmen (z. B. Admin, Planer, Techniker, Kunde) sowie Zugehörigkeit zum Unternehmen,</li>
-            <li>optional: Telefonnummer, Positionsbezeichnung, Anschrift, sofern Sie diese im Profil hinterlegen.</li>
-          </ul>
+          <Liste>
+            <li>IP-Adresse des anfragenden Geräts,</li>
+            <li>Datum und Uhrzeit des Zugriffs,</li>
+            <li>aufgerufene Ressource/URL,</li>
+            <li>übertragene Datenmenge und HTTP-Statuscode,</li>
+            <li>Browsertyp, Browserversion und Betriebssystem.</li>
+          </Liste>
           <p>
-            Rechtsgrundlage ist die Erfüllung des Nutzungsvertrags zwischen Ihrem Unternehmen und uns bzw. zwischen
-            Ihnen und Ihrem Unternehmen (Art. 6 Abs. 1 lit. b DSGVO).
+            <strong>Zweck und Rechtsgrundlage:</strong> technische Stabilität, Auslastungssteuerung, Fehleranalyse und
+            Abwehr von Angriffen. Rechtsgrundlage ist unser berechtigtes Interesse an einem sicheren und zuverlässigen
+            Betrieb (Art. 6 Abs. 1 lit. f DSGVO). Die Logdaten auf unserem eigenen Server werden nach spätestens 14
+            Tagen automatisch gelöscht; bei den unten genannten Dienstleistern gelten deren Löschfristen.
+          </p>
+          <p>
+            <strong>Eingesetzte Hoster:</strong>
+          </p>
+          <Liste>
+            <li>
+              Web-App (app.workflow-app.de): eigener Server bei der STRATO AG, Pascalstraße 10, 10587 Berlin,
+              Deutschland (Serverstandort Deutschland). Bis zum Abschluss der Umstellung kann die Web-App übergangsweise
+              noch über Vercel Inc. ausgeliefert werden.
+            </li>
+            <li>
+              Landingpage (workflow-app.de): Vercel Inc., 340 S Lemon Ave #4133, Walnut, CA 91789, USA
+              (Content-Delivery-Netzwerk, siehe Abschnitte 11 und 12).
+            </li>
+          </Liste>
+        </Abschnitt>
+
+        <Abschnitt titel="5. Benutzerkonto">
+          <p>
+            Der Zugang zu WorkFlow erfolgt über ein persönliches Benutzerkonto, das durch den Administrator Ihres
+            Unternehmens für Sie eingerichtet wird (keine öffentliche Selbstregistrierung). Verarbeitet werden:
+          </p>
+          <Liste>
+            <li>Stammdaten: Name und geschäftliche E-Mail-Adresse,</li>
+            <li>
+              Anmeldedaten: Passwort (ausschließlich als kryptografischer Hash gespeichert, für uns nicht im Klartext
+              einsehbar),
+            </li>
+            <li>Rollen- und Berechtigungsdaten: Benutzerrolle (z. B. Admin, Planer, Techniker, Kunde) und Zuordnung zu
+              Ihrem Unternehmen,</li>
+            <li>optionale Profildaten: Telefonnummer, Positionsbezeichnung und Anschrift, sofern Sie diese freiwillig
+              hinterlegen.</li>
+          </Liste>
+          <p>
+            <strong>Zweck und Rechtsgrundlage:</strong> Bereitstellung und Absicherung der Funktionen von WorkFlow sowie
+            Erfüllung des Nutzungs- bzw. Vertragsverhältnisses (Art. 6 Abs. 1 lit. b DSGVO) und unser berechtigtes
+            Interesse an einer geordneten Nutzerverwaltung (Art. 6 Abs. 1 lit. f DSGVO).
           </p>
         </Abschnitt>
 
-        <Abschnitt titel="5. Im Rahmen der Projektnutzung verarbeitete Daten">
+        <Abschnitt titel="6. Im Rahmen der Projektnutzung verarbeitete Daten">
           <p>
-            WorkFlow ist eine Projektmanagement-Software für Bau-/Handwerksbetriebe. Im Rahmen der Nutzung werden je
-            nach Einsatz folgende Datenkategorien verarbeitet, jeweils streng getrennt je Unternehmen (Mandantentrennung
-            auf Datenbankebene):
+            Zur Erfüllung des Leistungsumfangs verarbeitet WorkFlow projekt- und betriebsbezogene Daten, die dem jeweiligen
+            Unternehmen (Mandanten) technisch strikt getrennt zugeordnet sind:
           </p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li>Projekt-, Aufgaben- und Ticketdaten (Titel, Beschreibung, Status, Fristen, Priorität, Zuständigkeit),</li>
-            <li>hochgeladene Dokumente, Pläne und Fotos (z. B. Baustellenfotos, Schaltpläne),</li>
-            <li>Tagesberichte/Bautagebuch (Datum, Personalanzahl, Tätigkeiten, Besonderheiten),</li>
-            <li>Zeiterfassungsdaten (Datum, Beginn/Ende, Pausen, zugeordnete Tätigkeit),</li>
-            <li>Chat-Nachrichten in Team- und Projekt-Chats,</li>
-            <li>Materialstamm- und Materialverwendungsdaten.</li>
-          </ul>
+          <Liste>
+            <li>Projektdaten, Baustellenadressen, Aufgaben, Tickets, Zuständigkeiten und Status,</li>
+            <li>Bautagebücher/Tagesberichte sowie Material- und Materialstammdaten,</li>
+            <li>Zeiterfassungsdaten (Datum, Beginn, Ende, Pausen, zugeordnete Tätigkeit),</li>
+            <li>hochgeladene Dateien (z. B. Baustellenfotos, Pläne, PDF-Dokumente, Protokolle),</li>
+            <li>Termine,</li>
+            <li>Nachrichten im Team- und Projekt-Chat.</li>
+          </Liste>
           <p>
-            Diese Daten werden ausschließlich zur Abwicklung der Projekt-/Bauarbeiten im Auftrag des jeweiligen
-            Unternehmens verarbeitet (Art. 6 Abs. 1 lit. b, f DSGVO) und sind für andere Unternehmen auf derselben
-            Plattform technisch nicht einsehbar.
+            <strong>Rechtsgrundlage:</strong> Diese Daten verarbeiten wir als Auftragsverarbeiter für das jeweilige
+            Unternehmen (Art. 28 DSGVO, siehe Abschnitt 2). Grundlage im Verhältnis zwischen uns und dem Unternehmen ist der
+            Vertrag (Art. 6 Abs. 1 lit. b DSGVO).
           </p>
         </Abschnitt>
 
-        <Abschnitt titel="6. Zwei-Faktor-Authentifizierung (optional)">
+        <Abschnitt titel="7. Berechtigungen der mobilen App">
+          <p>Die Android-App greift nur in folgenden Fällen auf Funktionen Ihres Geräts zu:</p>
+          <Liste>
+            <li>
+              <strong>Mitteilungen:</strong> Zur Zustellung von Push-Benachrichtigungen über neue Nachrichten im
+              Team-Chat. Die Berechtigung wird vom Betriebssystem bei Ihnen abgefragt.
+            </li>
+            <li>
+              <strong>Fotos, Kamera und Dateien:</strong> Wenn Sie ein Foto oder Dokument hochladen, öffnet die App die
+              Dateiauswahl bzw. Kamera-App Ihres Betriebssystems. Übertragen wird nur die von Ihnen ausgewählte oder
+              aufgenommene Datei; einen dauerhaften Zugriff auf Ihre Mediathek erhält die App nicht.
+            </li>
+          </Liste>
           <p>
-            Sie können Ihr Konto optional durch eine Zwei-Faktor-Authentifizierung (TOTP, z. B. über Google
-            Authenticator) zusätzlich absichern. Hierbei wird ein geheimer Schlüssel für Ihr Konto erzeugt und bei
-            unserem Auftragsverarbeiter (siehe Abschnitt 9) gespeichert. Die Aktivierung erfolgt freiwillig auf Ihre
-            Veranlassung (Art. 6 Abs. 1 lit. a DSGVO); Sie können die Funktion jederzeit in den Einstellungen wieder
+            <strong>Rechtsgrundlage:</strong> Erfüllung des Nutzungsverhältnisses (Art. 6 Abs. 1 lit. b DSGVO) bzw. Ihre
+            Bestätigung im Betriebssystem (Art. 6 Abs. 1 lit. a DSGVO). Berechtigungen können Sie jederzeit in den
+            Einstellungen Ihres Geräts widerrufen.
+          </p>
+        </Abschnitt>
+
+        <Abschnitt titel="8. Zwei-Faktor-Authentifizierung (2FA/TOTP)">
+          <p>
+            Sie können Ihr Konto optional mit einem zeitbasierten Einmalcode (TOTP) aus einer gängigen Authenticator-App
+            absichern. Dabei wird ein geheimer Schlüssel für Ihr Konto erzeugt und beim Anmeldedienst unseres
+            Dienstleisters Supabase (siehe Abschnitt 11) gespeichert.
+          </p>
+          <p>
+            <strong>Rechtsgrundlage:</strong> Die Aktivierung erfolgt freiwillig zur Erhöhung Ihrer Kontosicherheit
+            (Art. 6 Abs. 1 lit. a DSGVO). Sie können die Funktion jederzeit unter Einstellungen → Sicherheit wieder
             deaktivieren.
           </p>
         </Abschnitt>
 
-        <Abschnitt titel="7. Geräte- und Sitzungsübersicht">
+        <Abschnitt titel="9. Geräte- und Sitzungsverwaltung">
           <p>
-            Zur Anzeige der unter „Einstellungen → Sicherheit → Angemeldete Geräte" sichtbaren Übersicht wird je von
-            Ihnen genutztem Gerät eine zufällige Kennung (gespeichert im lokalen Browserspeicher) zusammen mit einer
-            groben, aus dem Browser abgeleiteten Gerätebezeichnung (z. B. „Chrome auf Windows") und dem Zeitpunkt des
-            letzten Zugriffs gespeichert. Zweck ist die Erkennung unbefugter Zugriffe und die Möglichkeit, sich von
-            anderen Geräten abzumelden (Art. 6 Abs. 1 lit. f DSGVO, berechtigtes Interesse an Kontosicherheit).
+            Für die Übersicht „Einstellungen → Sicherheit → Angemeldete Geräte“ speichern wir je genutztem Gerät eine
+            zufällig erzeugte Gerätekennung (im lokalen Speicher Ihres Browsers bzw. der App) sowie serverseitig eine
+            grobe Gerätebezeichnung (z. B. „Chrome auf Windows“), den Zeitpunkt des letzten Zugriffs und eine Kennung der
+            zugehörigen Anmeldesitzung. Einträge zu nicht mehr gültigen Anmeldungen werden automatisch gelöscht, beim
+            Abmelden wird der Eintrag des Geräts entfernt.
+          </p>
+          <p>
+            <strong>Rechtsgrundlage:</strong> unser berechtigtes Interesse an der Kontosicherheit und am Schutz vor
+            unbefugten Zugriffen (Art. 6 Abs. 1 lit. f DSGVO).
           </p>
         </Abschnitt>
 
-        <Abschnitt titel="8. Cookies und lokale Speicherung">
+        <Abschnitt titel="10. Lokaler Speicher und keine Tracking-Cookies">
           <p>
-            WorkFlow verwendet keine Marketing- oder Analyse-Cookies und keine Tracking- oder Analysedienste (z. B.
-            Google Analytics). Zur technischen Funktion der Anwendung wird der Browser-eigene lokale Speicher
-            („localStorage") für folgende, technisch notwendige Zwecke genutzt:
+            WorkFlow setzt <strong>keine Marketing-, Werbe- oder Tracking-Tools</strong> (z. B. Google Analytics, Facebook
+            Pixel) ein. Für technische Grundfunktionen nutzen wir den lokalen Speicher Ihres Endgeräts (localStorage):
           </p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li>Ihre Anmeldesitzung (Sitzungstoken, ausgestellt von unserem Auftragsverarbeiter für die Anmeldung),</li>
-            <li>die gewählte Darstellung (helles/dunkles Farbschema),</li>
-            <li>die zufällige Gerätekennung gemäß Abschnitt 7,</li>
-            <li>die zuletzt gesehene Programmversion, um „Was ist neu"-Hinweise nur einmalig anzuzeigen.</li>
-          </ul>
+          <Liste>
+            <li>Anmeldesitzung (Sitzungstoken zur Aufrechterhaltung des Logins),</li>
+            <li>Darstellungseinstellungen (helles/dunkles Farbschema),</li>
+            <li>die Gerätekennung gemäß Abschnitt 9,</li>
+            <li>die zuletzt angezeigte Programmversion, damit „Was ist neu“-Hinweise nur einmal erscheinen.</li>
+          </Liste>
           <p>
-            Diese Speicherung ist gemäß § 25 Abs. 2 Nr. 2 TTDSG zulässig, da sie zur Bereitstellung des von Ihnen
-            ausdrücklich gewünschten Telemediendienstes unbedingt erforderlich ist; eine gesonderte Einwilligung ist
-            dafür nicht erforderlich.
+            <strong>Rechtsgrundlage:</strong> Die Speicherung dieser unbedingt erforderlichen Informationen erfolgt auf
+            Grundlage von § 25 Abs. 2 Nr. 2 TDDDG (Telekommunikation-Digitale-Dienste-Datenschutz-Gesetz). Eine Einwilligung
+            über ein Cookie-Banner ist dafür nicht erforderlich.
           </p>
         </Abschnitt>
 
-        <Abschnitt titel="9. Weitergabe an Auftragsverarbeiter / Empfänger">
+        <Abschnitt titel="11. Empfänger und Auftragsverarbeiter">
           <p>
-            Zur Erbringung unserer Leistungen setzen wir folgende Auftragsverarbeiter und Dienste ein, mit denen,
-            soweit gesetzlich erforderlich, Verträge zur Auftragsverarbeitung (Art. 28 DSGVO) bestehen bzw. abzuschließen
-            sind:
+            Zur Erbringung unserer Dienste setzen wir folgende Dienstleister ein, mit denen, soweit erforderlich,
+            Verträge zur Auftragsverarbeitung nach Art. 28 DSGVO bestehen bzw. abgeschlossen werden:
           </p>
-          <ul className="list-disc space-y-1 pl-5">
+          <Liste>
             <li>
-              <strong>Supabase, Inc.</strong> (970 Toa Payoh North #07-04, Singapur, mit Datenverarbeitung über AWS
-              Rechenzentren in Frankfurt am Main, Deutschland) — Datenbank, Authentifizierung und Dateispeicher (u. a.
-              Dokumente, Fotos, Pläne); zentraler Dienstleister für nahezu alle in dieser Erklärung genannten Daten.
+              <strong>Supabase, Inc.</strong> (970 Toa Payoh North #07-04, Singapur): Datenbank, Benutzeranmeldung und
+              Dateispeicher (Dokumente, Fotos, Pläne, Berichte) sowie Bereitstellung der App-Updates. Die Daten werden in
+              Rechenzentren von Amazon Web Services (AWS) in <strong>Frankfurt am Main, Deutschland</strong>, gespeichert.
+              Supabase ist damit der zentrale Dienstleister für nahezu alle in dieser Erklärung genannten Daten.
             </li>
             <li>
-              <strong>STRATO AG</strong> (Pascalstraße 10, 10587 Berlin, Deutschland) — Serverbetrieb der Web-App
-              (app.workflow-app.de).
+              <strong>STRATO AG</strong> (Pascalstraße 10, 10587 Berlin, Deutschland): Serverbetrieb und Bereitstellung
+              der Web-App (app.workflow-app.de).
             </li>
             <li>
-              <strong>Vercel Inc.</strong> (USA) — Hosting der Informations-/Landingpage (workflow-app.de).
+              <strong>Vercel Inc.</strong> (340 S Lemon Ave #4133, Walnut, CA 91789, USA): Hosting der Landingpage
+              (workflow-app.de) und übergangsweise der Web-App (siehe Abschnitt 4).
             </li>
             <li>
-              <strong>Capgo</strong> — Auslieferung von Programm-Updates an die mobile App (keine personenbezogenen
-              Nutzerdaten, nur Programmcode).
+              <strong>Google LLC / Google Ireland Limited</strong> (Firebase Cloud Messaging): ausschließlich bei
+              aktivierten Push-Benachrichtigungen in der Android-App. Übermittelt werden ein gerätebezogenes Push-Token
+              sowie der Inhalt der Benachrichtigung, um diese auf Ihr Gerät zuzustellen (Art. 6 Abs. 1 lit. b DSGVO).
+            </li>
+          </Liste>
+          <p>
+            Programm-Updates der mobilen App werden aus unserem eigenen Speicher bei Supabase geladen; dafür wird kein
+            weiterer externer Update-Dienst eingesetzt. Eine Weitergabe an sonstige Dritte, insbesondere zu Werbezwecken,
+            findet nicht statt.
+          </p>
+        </Abschnitt>
+
+        <Abschnitt titel="12. Datenübermittlung in Drittländer">
+          <p>
+            Soweit Daten in Länder außerhalb der Europäischen Union bzw. des Europäischen Wirtschaftsraums übermittelt
+            werden (insbesondere in die USA) oder Dienstleister dort ihren Sitz haben, stellen wir ein angemessenes
+            Datenschutzniveau sicher durch:
+          </p>
+          <Liste>
+            <li>
+              den Angemessenheitsbeschluss der EU-Kommission zum <strong>EU-U.S. Data Privacy Framework (DPF)</strong>,
+              soweit der jeweilige US-Dienstleister danach zertifiziert ist (z. B. Google LLC, Vercel Inc.), bzw.
             </li>
             <li>
-              <strong>Google LLC</strong> (Firebase Cloud Messaging) und <strong>Apple Inc.</strong> (Apple Push
-              Notification Service) — ausschließlich bei aktivierten Push-Benachrichtigungen in der mobilen App, zur
-              Zustellung von Benachrichtigungen über neue Chat-Nachrichten.
+              die von der EU-Kommission genehmigten <strong>Standardvertragsklauseln</strong> gemäß Art. 46 Abs. 2 lit. c
+              DSGVO, soweit ein Dienstleister nicht unter das DPF fällt oder in einem anderen Drittstaat ansässig ist (wie
+              Supabase, Inc. in Singapur; die Datenspeicherung erfolgt dabei in Frankfurt am Main).
             </li>
-          </ul>
-          <p>Eine Weitergabe an sonstige Dritte, insbesondere zu Werbezwecken, findet nicht statt.</p>
+          </Liste>
         </Abschnitt>
 
-        <Abschnitt titel="10. Datenübermittlung in Drittländer">
+        <Abschnitt titel="13. Speicherdauer und Löschung">
           <p>
-            Einzelne der in Abschnitt 9 genannten Dienstleister haben ihren Sitz oder Serverstandorte außerhalb der
-            EU/des EWR (insbesondere USA, Vercel/Google/Apple; Singapur als Unternehmenssitz von Supabase, Inc., bei
-            Datenverarbeitung in der EU). Soweit personenbezogene Daten dabei in Drittländer ohne Angemessenheitsbeschluss
-            der EU-Kommission übermittelt werden, stützen wir dies auf die EU-Standardvertragsklauseln gemäß Art. 46
-            Abs. 2 lit. c DSGVO mit dem jeweiligen Anbieter.
+            Wir speichern personenbezogene Daten nur so lange, wie es für den jeweiligen Zweck erforderlich ist oder
+            gesetzliche Aufbewahrungspflichten es vorschreiben (z. B. nach HGB oder AO: 6 bis 10 Jahre für steuerlich
+            relevante Unterlagen).
+          </p>
+          <p>
+            Bei Löschung eines Benutzerkontos oder Beendigung des Vertrags mit dem Unternehmen werden die betroffenen Daten
+            gelöscht oder anonymisiert, sofern das Unternehmen nicht zur weiteren Aufbewahrung verpflichtet ist oder noch
+            offene Ansprüche bestehen.
           </p>
         </Abschnitt>
 
-        <Abschnitt titel="11. Speicherdauer">
+        <Abschnitt titel="14. Datensicherheit">
           <p>
-            Wir speichern personenbezogene Daten nur so lange, wie dies für die jeweiligen Zwecke erforderlich ist,
-            insbesondere für die Dauer der Nutzung Ihres Kontos und des Vertragsverhältnisses zwischen Ihnen bzw. Ihrem
-            Unternehmen und uns. Nach Beendigung der Nutzung bzw. auf Löschungsverlangen werden Daten gelöscht, soweit
-            keine gesetzlichen Aufbewahrungspflichten (z. B. handels- oder steuerrechtliche Fristen) entgegenstehen.
+            Alle Datenübertragungen zwischen Ihren Geräten und unseren Servern erfolgen verschlüsselt per TLS. Der Zugriff
+            auf Daten in der Datenbank ist durch Zugriffsregeln auf Zeilenebene (Row-Level Security) pro Unternehmen
+            strikt getrennt, sodass kein Unternehmen Einblick in die Daten eines anderen Unternehmens erhält. Passwörter
+            werden ausschließlich als gesalzener Hash mit einem modernen Verfahren gespeichert. Zusätzlich steht eine
+            optionale Zwei-Faktor-Authentifizierung zur Verfügung.
           </p>
         </Abschnitt>
 
-        <Abschnitt titel="12. Datensicherheit">
+        <Abschnitt titel="15. Aktualität und Änderungen dieser Erklärung">
           <p>
-            Die Übertragung Ihrer Daten erfolgt stets verschlüsselt über TLS/SSL. Der Zugriff auf Daten innerhalb der
-            Datenbank ist durch feingranulare Zugriffsregeln (Row-Level-Security) technisch so eingeschränkt, dass
-            jedes Unternehmen ausschließlich auf seine eigenen Daten zugreifen kann. Passwörter werden ausschließlich
-            in gehashter, nicht umkehrbarer Form gespeichert. Für Konten steht optional eine Zwei-Faktor-Authentifizierung
-            zur Verfügung.
-          </p>
-        </Abschnitt>
-
-        <Abschnitt titel="13. Änderungen dieser Datenschutzerklärung">
-          <p>
-            Wir passen diese Datenschutzerklärung an, sobald sich die Art der verarbeiteten Daten, eingesetzte
-            Dienstleister oder die Rechtslage ändern. Es gilt jeweils die zum Zeitpunkt Ihres Besuchs aktuelle, auf
-            dieser Seite veröffentlichte Fassung.
-          </p>
-        </Abschnitt>
-
-        <Abschnitt titel="14. Kontakt">
-          <p>
-            Für Fragen zum Datenschutz sowie zur Geltendmachung Ihrer Rechte wenden Sie sich bitte an:{' '}
-            <a href="mailto:Mesut.hano@gmail.com" className="text-brand hover:underline">
-              Mesut.hano@gmail.com
-            </a>
+            Durch die Weiterentwicklung von WorkFlow oder geänderte gesetzliche Vorgaben kann eine Anpassung dieser
+            Datenschutzerklärung erforderlich werden. Die jeweils aktuelle Fassung ist jederzeit in der App und auf der
+            Webseite abrufbar.
           </p>
         </Abschnitt>
       </div>

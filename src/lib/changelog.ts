@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.10.1',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Datenschutzerklärung überarbeitet und erweitert: Rollen als Verantwortlicher und Auftragsverarbeiter, App-Berechtigungen, Speicherfristen, zuständige Aufsichtsbehörde.',
+    ],
+  },
+  {
     version: '1.10.0',
     datum: '2026-10-01',
     aenderungen: [

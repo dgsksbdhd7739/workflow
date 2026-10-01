@@ -37,3 +37,16 @@ export function geraetName(): string {
 
   return `${browser} auf ${betriebssystem}`
 }
+
+// Supabase-Sitzungs-ID (Claim "session_id") aus dem Access-Token -- damit
+// lassen sich Eintraege in nutzer_sitzungen mit den echten, noch aktiven
+// Auth-Sitzungen abgleichen (siehe meine_aktiven_geraete(), Migration 0056).
+export function sitzungIdAusToken(accessToken: string | undefined): string | null {
+  if (!accessToken) return null
+  try {
+    const payload = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(payload)).session_id ?? null
+  } catch {
+    return null
+  }
+}

@@ -24,7 +24,19 @@ export function ZweiFaktorEinstellungen() {
   const starteEinrichtung = async () => {
     setFehler(null)
     setArbeitet(true)
-    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' })
+    // Abgebrochene Einrichtungen (App geschlossen vor dem Bestaetigen)
+    // hinterlassen unbestaetigte Faktoren; Supabase lehnt dann jeden neuen
+    // Faktor mit gleichem (leerem) Namen ab ("factor ... already exists").
+    const { data: vorhandene } = await supabase.auth.mfa.listFactors()
+    for (const f of vorhandene?.all ?? []) {
+      if (f.factor_type === 'totp' && f.status !== 'verified') {
+        await supabase.auth.mfa.unenroll({ factorId: f.id })
+      }
+    }
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName: `Authenticator ${new Date().toISOString()}`,
+    })
     setArbeitet(false)
     if (error) {
       setFehler(error.message)

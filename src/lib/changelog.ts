@@ -11,6 +11,15 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.8.7',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Behoben: Zwei-Faktor-Authentifizierung ließ sich nach einem abgebrochenen Einrichtungsversuch nicht mehr aktivieren ("factor ... already exists").',
+      'Angemeldete Geräte zeigt nur noch Geräte mit aktiver Anmeldung — alte Einträge verschwinden automatisch, beim Abmelden wird das Gerät entfernt.',
+      'Über WorkFlow zeigt nur noch die letzten 5 Versionen, ältere lassen sich bei Bedarf aufklappen.',
+    ],
+  },
+  {
     version: '1.8.6',
     datum: '2026-10-01',
     aenderungen: [

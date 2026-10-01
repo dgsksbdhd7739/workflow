@@ -1,7 +1,23 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { geraetKennung, geraetName } from '../lib/geraet'
+import { geraetKennung, geraetName, sitzungIdAusToken } from '../lib/geraet'
+
+// Dieses Geraet in nutzer_sitzungen eintragen/aktualisieren, inkl. der
+// Auth-Sitzungs-ID, damit nur wirklich angemeldete Geraete angezeigt werden.
+async function geraetEintragen(userId: string) {
+  const { data } = await supabase.auth.getSession()
+  await supabase.from('nutzer_sitzungen').upsert(
+    {
+      user_id: userId,
+      geraet_kennung: geraetKennung(),
+      geraet_name: geraetName(),
+      sitzung_id: sitzungIdAusToken(data.session?.access_token),
+      letzter_zugriff: new Date().toISOString(),
+    },
+    { onConflict: 'user_id,geraet_kennung' },
+  )
+}
 import type { Rolle } from '../types/database'
 
 interface AuthContextValue {
@@ -102,13 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMfaFactorId(null)
         // Geraet nur bei vollstaendig abgeschlossener Anmeldung (kein
         // ausstehender zweiter Faktor) in die Liste eintragen/aktualisieren.
-        supabase
-          .from('nutzer_sitzungen')
-          .upsert(
-            { user_id: userId, geraet_kennung: geraetKennung(), geraet_name: geraetName(), letzter_zugriff: new Date().toISOString() },
-            { onConflict: 'user_id,geraet_kennung' },
-          )
-          .then(() => {})
+        geraetEintragen(userId)
       }
     })
   }, [session?.user.id])
@@ -119,6 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
+    // Eigenen Geraete-Eintrag entfernen, solange die Sitzung noch gilt (RLS).
+    const userId = session?.user.id
+    if (userId) await supabase.from('nutzer_sitzungen').delete().eq('user_id', userId).eq('geraet_kennung', geraetKennung())
     await supabase.auth.signOut()
   }
 
@@ -129,12 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMfaPending(false)
     const userId = session?.user.id
     if (userId) {
-      await supabase
-        .from('nutzer_sitzungen')
-        .upsert(
-          { user_id: userId, geraet_kennung: geraetKennung(), geraet_name: geraetName(), letzter_zugriff: new Date().toISOString() },
-          { onConflict: 'user_id,geraet_kennung' },
-        )
+      await geraetEintragen(userId)
     }
     return { error: null }
   }

@@ -31,6 +31,9 @@ type SectionId =
 // Entspricht Tailwinds md-Breakpoint (Seitenleiste ab 768px sichtbar).
 const MOBIL_QUERY = '(max-width: 767px)'
 
+// "Ueber WorkFlow" zeigt standardmaessig nur die letzten Versionen.
+const CHANGELOG_KURZ = 5
+
 export function Einstellungen() {
   const { user, role, signOut, setOnboardingGesehen, produktHinweise, setProduktHinweise } = useAuth()
   const { theme, toggleTheme } = useTheme()
@@ -66,6 +69,7 @@ export function Einstellungen() {
     return () => mq.removeEventListener('change', aendern)
   }, [])
   const zeigen = (id: SectionId) => istMobil || aktivId === id
+  const [alleVersionen, setAlleVersionen] = useState(false)
 
   const toggleProduktHinweise = async () => {
     const neuerWert = !produktHinweise
@@ -228,7 +232,7 @@ export function Einstellungen() {
             <span className="text-xs text-text-subtle">Version {__APP_VERSION__}</span>
           </div>
           <div className="space-y-4">
-            {CHANGELOG.map((eintrag) => (
+            {(alleVersionen ? CHANGELOG : CHANGELOG.slice(0, CHANGELOG_KURZ)).map((eintrag) => (
               <div key={eintrag.version}>
                 <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-text-subtle">
                   <span>Version {eintrag.version}</span>
@@ -246,6 +250,11 @@ export function Einstellungen() {
               </div>
             ))}
           </div>
+          {CHANGELOG.length > CHANGELOG_KURZ && (
+            <button onClick={() => setAlleVersionen((v) => !v)} className="btn-ghost mt-3 text-xs">
+              {alleVersionen ? 'Weniger anzeigen' : `Ältere Versionen anzeigen (${CHANGELOG.length - CHANGELOG_KURZ})`}
+            </button>
+          )}
         </section>
       )}
     </div>

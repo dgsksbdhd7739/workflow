@@ -27,6 +27,7 @@ export interface NutzerSitzung {
   geraet_name: string
   letzter_zugriff: string
   erstellt_am: string
+  sitzung_id: string | null
 }
 
 export interface Unternehmen {

@@ -16,11 +16,8 @@ export function AngemeldeteGeraete() {
   const laden = async () => {
     if (!user) return
     setLoading(true)
-    const { data } = await supabase
-      .from('nutzer_sitzungen')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('letzter_zugriff', { ascending: false })
+    // Nur Geraete mit noch gueltiger Auth-Sitzung, raeumt veraltete Eintraege auf (Migration 0056).
+    const { data } = await supabase.rpc('meine_aktiven_geraete')
     setSitzungen(data ?? [])
     setLoading(false)
   }

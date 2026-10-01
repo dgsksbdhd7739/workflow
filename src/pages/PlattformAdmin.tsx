@@ -4,6 +4,20 @@ import { useAuth } from '../contexts/AuthContext'
 import { UnternehmenForm } from '../components/UnternehmenForm'
 import { formatDatum } from '../lib/datum'
 import type { PlattformUnternehmenUebersicht } from '../types/database'
+import { PAKETE, PAKET_REIHENFOLGE, type Paket } from '../lib/pakete'
+
+function PaketAuswahl({ wert, onChange }: { wert: Paket; onChange: (p: Paket) => void }) {
+  return (
+    <select value={wert} onChange={(e) => onChange(e.target.value as Paket)} className="field-input">
+      {PAKET_REIHENFOLGE.map((p) => (
+        <option key={p} value={p}>
+          {PAKETE[p].label} – bis {PAKETE[p].maxNutzer} Nutzer, {PAKETE[p].speicherGb} GB
+          {PAKETE[p].maxAktiveProjekte != null ? `, max. ${PAKETE[p].maxAktiveProjekte} aktive Projekte` : ''}
+        </option>
+      ))}
+    </select>
+  )
+}
 
 export function PlattformAdmin() {
   const { istPlattformAdmin } = useAuth()
@@ -13,12 +27,14 @@ export function PlattformAdmin() {
   const [firmenname, setFirmenname] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
   const [adminName, setAdminName] = useState('')
-  const [maxNutzer, setMaxNutzer] = useState('')
+  const [paket, setPaket] = useState<Paket>('team')
+  const [maxNutzer, setMaxNutzer] = useState(String(PAKETE.team.maxNutzer))
   const [anlegen, setAnlegen] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
   const [angelegtesPasswort, setAngelegtesPasswort] = useState<{ email: string; passwort: string } | null>(null)
   const [bearbeiteFirma, setBearbeiteFirma] = useState<string | null>(null)
   const [limitEingabe, setLimitEingabe] = useState('')
+  const [paketEingabe, setPaketEingabe] = useState<Paket>('team')
   const [limitSpeichert, setLimitSpeichert] = useState(false)
 
   const load = async () => {
@@ -42,6 +58,7 @@ export function PlattformAdmin() {
         firmenname: firmenname.trim(),
         admin_email: adminEmail.trim(),
         admin_name: adminName.trim(),
+        paket,
         max_nutzer: maxNutzer.trim() || null,
       },
     })
@@ -54,7 +71,8 @@ export function PlattformAdmin() {
     setFirmenname('')
     setAdminEmail('')
     setAdminName('')
-    setMaxNutzer('')
+    setPaket('team')
+    setMaxNutzer(String(PAKETE.team.maxNutzer))
     setFormOffen(false)
     load()
   }
@@ -66,6 +84,7 @@ export function PlattformAdmin() {
     }
     setBearbeiteFirma(f.id)
     setLimitEingabe(f.max_nutzer != null ? String(f.max_nutzer) : '')
+    setPaketEingabe(f.paket)
   }
 
   const handleLimitSpeichern = async (firmaId: string) => {
@@ -76,7 +95,7 @@ export function PlattformAdmin() {
       return
     }
     setLimitSpeichert(true)
-    const { error } = await supabase.from('unternehmen').update({ max_nutzer: neuerWert }).eq('id', firmaId)
+    const { error } = await supabase.from('unternehmen').update({ paket: paketEingabe, max_nutzer: neuerWert }).eq('id', firmaId)
     setLimitSpeichert(false)
     if (error) {
       setFehler(error.message)
@@ -149,7 +168,17 @@ export function PlattformAdmin() {
             <input value={adminName} onChange={(e) => setAdminName(e.target.value)} className="field-input" placeholder="Vor- und Nachname" />
           </div>
           <div>
-            <label className="field-label">Max. Nutzer (optional)</label>
+            <label className="field-label">Paket</label>
+            <PaketAuswahl
+              wert={paket}
+              onChange={(p) => {
+                setPaket(p)
+                setMaxNutzer(String(PAKETE[p].maxNutzer))
+              }}
+            />
+          </div>
+          <div>
+            <label className="field-label">Max. Nutzer (Standard des Pakets, anpassbar)</label>
             <input
               type="number"
               min={1}
@@ -179,7 +208,12 @@ export function PlattformAdmin() {
             <li key={f.id} className="card p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-medium text-text">{f.name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-text">{f.name}</span>
+                    <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand-text">
+                      {PAKETE[f.paket]?.label ?? f.paket}
+                    </span>
+                  </div>
                   <div className="text-xs text-text-subtle">Angelegt am {formatDatum(f.erstellt_am)}</div>
                 </div>
                 <div className="flex flex-shrink-0 items-center gap-3">
@@ -197,8 +231,15 @@ export function PlattformAdmin() {
 
               {bearbeiteFirma === f.id && (
                 <div className="mt-4 space-y-4 border-t border-border pt-4">
-                  <div>
-                    <label className="field-label">Nutzerlimit</label>
+                  <div className="space-y-2">
+                    <label className="field-label">Paket &amp; Nutzerlimit</label>
+                    <PaketAuswahl
+                      wert={paketEingabe}
+                      onChange={(p) => {
+                        setPaketEingabe(p)
+                        setLimitEingabe(String(PAKETE[p].maxNutzer))
+                      }}
+                    />
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -213,7 +254,7 @@ export function PlattformAdmin() {
                         disabled={limitSpeichert}
                         className="btn-primary flex-shrink-0 text-xs"
                       >
-                        {limitSpeichert ? 'Speichert…' : 'Limit speichern'}
+                        {limitSpeichert ? 'Speichert…' : 'Paket & Limit speichern'}
                       </button>
                     </div>
                   </div>

@@ -3,6 +3,7 @@ import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { geraetKennung, geraetName, sitzungIdAusToken } from '../lib/geraet'
 import { FIRMENDATEN_PFLICHT, firmendatenVollstaendig, type FirmendatenPflicht } from '../lib/firmendaten'
+import { paketErlaubt, type Paket, type PaketFunktion } from '../lib/pakete'
 
 // Dieses Geraet in nutzer_sitzungen eintragen/aktualisieren, inkl. der
 // Auth-Sitzungs-ID, damit nur wirklich angemeldete Geraete angezeigt werden.
@@ -34,6 +35,9 @@ interface AuthContextValue {
   setProduktHinweise: (v: boolean) => void
   gesperrteModule: Set<string>
   istPlattformAdmin: boolean
+  // Paket der eigenen Firma (Starter/Team/Business) und Pruefung einzelner Funktionen.
+  paket: Paket | null
+  hatFunktion: (funktion: PaketFunktion) => boolean
   // Firmen-Admin muss nach der Erstanmeldung zuerst die Firmendaten (inkl. Logo) pflegen.
   firmendatenFehlen: boolean
   pruefeFirmendaten: () => Promise<void>
@@ -57,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [gesperrteModule, setGesperrteModule] = useState<Set<string>>(new Set())
   const [istPlattformAdmin, setIstPlattformAdmin] = useState(false)
   const [firmendatenFehlen, setFirmendatenFehlen] = useState(false)
+  const [paket, setPaket] = useState<Paket | null>(null)
   const [mfaPending, setMfaPending] = useState(false)
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -101,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setGesperrteModule(new Set())
       setIstPlattformAdmin(false)
       setFirmendatenFehlen(false)
+      setPaket(null)
       setMfaPending(false)
       setMfaFactorId(null)
       return
@@ -122,6 +128,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProduktHinweise(data?.produkt_hinweise ?? true)
       setIstPlattformAdmin(!!plattformAdmin)
       pruefeFirmendatenFuer(data?.role ?? null, !!plattformAdmin, data?.unternehmen_id ?? null)
+      if (data?.unternehmen_id) {
+        supabase
+          .from('unternehmen')
+          .select('paket')
+          .eq('id', data.unternehmen_id)
+          .single()
+          .then(({ data: firma }) => setPaket((firma?.paket as Paket | undefined) ?? null))
+      }
     })
     supabase
       .from('nutzer_modul_sperren')
@@ -184,6 +198,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProduktHinweise,
         gesperrteModule,
         istPlattformAdmin,
+        paket,
+        hatFunktion: (funktion: PaketFunktion) => paketErlaubt(paket, funktion),
         firmendatenFehlen,
         pruefeFirmendaten,
         mfaPending,

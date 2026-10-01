@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { ProjektForm } from '../components/ProjektForm'
 import { ProjektStatusKarte, type ProjektKartenStats } from '../components/ProjektStatusKarte'
 import { formatDatum } from '../lib/datum'
+import { PAKETE } from '../lib/pakete'
 import type { AufgabeTicket, Projekt } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
@@ -19,8 +20,10 @@ interface TicketMitKontext extends AufgabeTicket {
 }
 
 export function Dashboard() {
-  const { user, role, istPlattformAdmin } = useAuth()
+  const { user, role, istPlattformAdmin, paket } = useAuth()
   const kannAnlegen = role === 'admin' || role === 'planer'
+  // Starter-Paket: begrenzte Zahl aktiver Projekte (serverseitig per Trigger, Migration 0059).
+  const maxAktiveProjekte = paket ? PAKETE[paket].maxAktiveProjekte : null
   const kannUebersichtSehen = role === 'admin' || role === 'planer'
   const [projekte, setProjekte] = useState<Projekt[]>([])
   const [favoritenIds, setFavoritenIds] = useState<Set<string>>(new Set())
@@ -195,9 +198,21 @@ export function Dashboard() {
       )}
 
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-text">Projekte</h1>
+        <div>
+          <h1 className="text-xl font-semibold text-text">Projekte</h1>
+          {maxAktiveProjekte != null && !loading && (
+            <p className="text-xs text-text-subtle">
+              {projekte.length} / {maxAktiveProjekte} aktive Projekte (Starter-Paket)
+            </p>
+          )}
+        </div>
         {kannAnlegen && (
-          <button onClick={() => setShowForm((v) => !v)} className="btn-primary">
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            disabled={!showForm && maxAktiveProjekte != null && projekte.length >= maxAktiveProjekte}
+            title={maxAktiveProjekte != null && projekte.length >= maxAktiveProjekte ? 'Limit erreicht – ein Projekt archivieren oder auf das Team-Paket wechseln' : undefined}
+            className="btn-primary"
+          >
             {showForm ? 'Abbrechen' : '+ Neues Projekt'}
           </button>
         )}

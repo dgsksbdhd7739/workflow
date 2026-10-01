@@ -13,6 +13,7 @@ export function Archiv() {
   const [projekte, setProjekte] = useState<Projekt[]>([])
   const [loading, setLoading] = useState(true)
   const [loeschenId, setLoeschenId] = useState<string | null>(null)
+  const [fehler, setFehler] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -27,9 +28,14 @@ export function Archiv() {
   }, [kannZugreifen])
 
   const reaktivieren = async (id: string) => {
+    setFehler(null)
     setProjekte((prev) => prev.filter((b) => b.id !== id))
     const { error } = await supabase.from('projekte').update({ archiviert: false }).eq('id', id)
-    if (error) load()
+    if (error) {
+      // z. B. Projektlimit im Starter-Paket (Trigger aus Migration 0059)
+      setFehler(error.message)
+      load()
+    }
   }
 
   if (!kannZugreifen) {
@@ -44,6 +50,7 @@ export function Archiv() {
     <div className="page">
       <h1 className="mb-1 text-xl font-semibold text-text">Archiv</h1>
       <p className="mb-4 text-xs text-text-muted">Archivierte Projekte. Reaktivieren bringt sie zurück ins Dashboard.</p>
+      {fehler && <p className="banner-error mb-4">{fehler}</p>}
 
       {loading ? (
         <p className="text-sm text-text-muted">Lädt…</p>

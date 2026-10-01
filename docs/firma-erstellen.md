@@ -6,9 +6,25 @@ Es gibt bewusst **keine Selbstregistrierung** — eine neue Firma entsteht nur �
 
 ## Plattform-Verwaltung (In-App)
 
-- **Firma anlegen:** Name, Admin-E-Mail, optional Nutzerlimit — Passwort wird generiert und einmalig angezeigt.
-- **Firma bearbeiten:** *Bearbeiten* an der Firma → Nutzerlimit ändern (leer = unbegrenzt) sowie Firmendaten (Adresse, Kontakt, Logo) pflegen.
-- Das Nutzerlimit (`unternehmen.max_nutzer`) kann nur ein Plattform-Admin ändern; ein DB-Trigger blockiert Änderungen durch Firmen-Admins (Migration `0055`).
+- **Firma anlegen:** Name, Admin-E-Mail, **Paket** (Starter/Team/Business) und Nutzerlimit (vorbelegt mit dem Standard des Pakets, anpassbar). Das Passwort wird generiert und einmalig angezeigt.
+- **Firma bearbeiten:** *Bearbeiten* an der Firma → Paket und Nutzerlimit ändern (leer = unbegrenzt) sowie Firmendaten (Adresse, Kontakt, Logo) pflegen.
+- Paket (`unternehmen.paket`) und Nutzerlimit (`unternehmen.max_nutzer`) kann nur ein Plattform-Admin ändern; ein DB-Trigger blockiert Änderungen durch Firmen-Admins (Migrationen `0055`, `0059`).
+
+## Pakete (Migration `0059_pakete.sql`, `src/lib/pakete.ts`)
+
+| | Starter | Team | Business |
+|---|---|---|---|
+| Nutzer (Standard) | 5 | 15 | 30 |
+| Aktive Projekte | max. 5 | unbegrenzt | unbegrenzt |
+| Grundfunktionen (Aufgaben, Pläne, Bautagebuch, Zeiterfassung, Team-Chat) | ✓ | ✓ | ✓ |
+| Projekt-Chat, Dokumente, Termine, Material/Materialstamm, eigene Vorlagen, Kunden-Zugänge | – | ✓ | ✓ |
+| Modul-Sperren pro Nutzer | – | – | ✓ |
+
+- Durchgesetzt wird serverseitig: restriktive RLS-Policies auf Anlegen/Ändern (`paket_erlaubt()`), Trigger für das Projektlimit und die Rolle „Kunde“, Prüfung in `create-user`. Die App zeigt gesperrte Funktionen mit Schloss und einen Hinweis statt des Inhalts.
+- Nach einem Downgrade bleiben vorhandene Daten lesbar und löschbar, nur Neues anlegen bzw. Ändern ist gesperrt.
+- Ohne Paketangabe (z. B. über das Skript) legt `create-unternehmen` eine Firma im Team-Paket an. Bestandsfirmen wurden auf Business gesetzt.
+- Enterprise und Speicher-Kontingente (5/20/50 GB) sind noch nicht technisch umgesetzt.
+- Beide Listen (`pakete.ts` und `paket_erlaubt_fuer()`) müssen bei Änderungen synchron gehalten werden.
 
 ## Voraussetzung
 

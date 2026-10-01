@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { supabase, funktionsFehler } from '../lib/supabase'
+import { PaketHinweis } from '../components/PaketSperre'
 import { useAuth } from '../contexts/AuthContext'
 import type { Projekt, Profile, Rolle } from '../types/database'
 
@@ -32,7 +33,9 @@ const sperrbareModule = [
 ]
 
 export function Nutzerverwaltung() {
-  const { role, user, unternehmenId, istPlattformAdmin } = useAuth()
+  const { role, user, unternehmenId, istPlattformAdmin, hatFunktion } = useAuth()
+  const kundenErlaubt = hatFunktion('kunden')
+  const modulsperrenErlaubt = hatFunktion('modulsperren')
   const maxNutzer = useMaxNutzer(unternehmenId)
   const [profile, setProfile] = useState<Profile[]>([])
   const [projekte, setProjekte] = useState<Projekt[]>([])
@@ -277,8 +280,9 @@ export function Nutzerverwaltung() {
               className="field-input"
             >
               {(Object.keys(rollenLabel) as Rolle[]).map((r) => (
-                <option key={r} value={r}>
+                <option key={r} value={r} disabled={r === 'kunde' && !kundenErlaubt}>
                   {rollenLabel[r]}
+                  {r === 'kunde' && !kundenErlaubt && ' (ab Team-Paket)'}
                 </option>
               ))}
             </select>
@@ -313,8 +317,9 @@ export function Nutzerverwaltung() {
                   className="flex-shrink-0 rounded-lg border border-border-strong bg-surface px-2 py-1 text-sm text-text"
                 >
                   {(Object.keys(rollenLabel) as Rolle[]).map((r) => (
-                    <option key={r} value={r}>
+                    <option key={r} value={r} disabled={r === 'kunde' && !kundenErlaubt && p.role !== 'kunde'}>
                       {rollenLabel[r]}
+                      {r === 'kunde' && !kundenErlaubt && ' (ab Team-Paket)'}
                     </option>
                   ))}
                 </select>
@@ -402,6 +407,12 @@ export function Nutzerverwaltung() {
                 </>
               )}
 
+              {!modulsperrenErlaubt && (
+                <div className="mt-2">
+                  <PaketHinweis funktion="modulsperren" kompakt />
+                </div>
+              )}
+              {modulsperrenErlaubt && (
               <button
                 onClick={() => setOffenerNutzerModule((prev) => (prev === p.id ? null : p.id))}
                 className="mt-2 text-xs font-medium text-brand"
@@ -410,7 +421,8 @@ export function Nutzerverwaltung() {
                   ? 'Modul-Zugriff ausblenden'
                   : `Modul-Zugriff einschränken (${modulSperren[p.id]?.size ?? 0} gesperrt)`}
               </button>
-              {offenerNutzerModule === p.id && (
+              )}
+              {offenerNutzerModule === p.id && modulsperrenErlaubt && (
                 <div className="mt-2 space-y-1 border-t border-border pt-2">
                   <p className="text-xs text-text-subtle">
                     Angehakte Module bleiben für diese Person zugänglich, unabhängig von der Rolle oben.

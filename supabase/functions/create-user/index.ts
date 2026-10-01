@@ -64,9 +64,14 @@ Deno.serve(async (req) => {
 
     const { data: unternehmen } = await adminClient
       .from('unternehmen')
-      .select('max_nutzer')
+      .select('max_nutzer, paket')
       .eq('id', callerProfile.unternehmen_id)
       .single()
+    // Kunden-Zugaenge erst ab Team-Paket (Migration 0059) -- der Rollen-Trigger
+    // greift hier nicht, weil die Rolle per Service-Role gesetzt wird.
+    if (role === 'kunde' && unternehmen?.paket === 'starter') {
+      return json({ error: 'Kunden-Zugänge sind erst ab dem Team-Paket verfügbar.' }, 403)
+    }
     if (unternehmen?.max_nutzer != null) {
       // Zaehlt ohne Plattform-Admins (Migration 0058), die belegen kein Limit.
       const { data: count, error: countError } = await adminClient.rpc('unternehmen_nutzer_anzahl', {

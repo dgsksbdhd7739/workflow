@@ -1,3 +1,5 @@
+import type { Paket } from '../lib/pakete'
+
 export type AufgabeStatus = 'offen' | 'in_bearbeitung' | 'erledigt'
 export type AufgabePrioritaet = 'niedrig' | 'mittel' | 'hoch'
 
@@ -44,11 +46,13 @@ export interface Unternehmen {
   website: string | null
   erstellt_am: string
   max_nutzer: number | null
+  paket: Paket
 }
 
 export interface PlattformUnternehmenUebersicht {
   id: string
   name: string
+  paket: Paket
   max_nutzer: number | null
   nutzer_anzahl: number
   erstellt_am: string

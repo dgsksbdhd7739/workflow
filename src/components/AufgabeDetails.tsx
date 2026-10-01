@@ -7,6 +7,7 @@ import { useProfiles } from '../hooks/useProfiles'
 import { SignedImage } from './SignedImage'
 import { komprimiereBild } from '../lib/bildKompression'
 import { formatDatum } from '../lib/datum'
+import { PaketHinweis } from './PaketSperre'
 import type {
   Dokument,
   Aufgabe,
@@ -47,7 +48,9 @@ export function AufgabeDetails({
   vorlageId?: string | null
   onChange?: () => void
 }) {
-  const { user, role, unternehmenId } = useAuth()
+  const { user, role, unternehmenId, hatFunktion } = useAuth()
+  const materialErlaubt = hatFunktion('material')
+  const dokumenteErlaubt = hatFunktion('dokumente')
   const kannBearbeiten = role !== 'kunde'
   const kannMaterialDefinieren = role === 'admin' || role === 'planer'
   const kannMaterialAbhaken = role !== 'kunde'
@@ -1068,7 +1071,7 @@ export function AufgabeDetails({
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-medium text-text">Materialliste</h3>
-          {kannMaterialDefinieren && (
+          {kannMaterialDefinieren && materialErlaubt && (
             <button
               onClick={() => setMaterialFormOffen((v) => !v)}
               className="text-xs font-medium text-brand"
@@ -1123,7 +1126,11 @@ export function AufgabeDetails({
         )}
 
         {material.length === 0 ? (
-          <p className="text-xs text-text-subtle">Noch kein Material festgelegt.</p>
+          materialErlaubt ? (
+            <p className="text-xs text-text-subtle">Noch kein Material festgelegt.</p>
+          ) : (
+            <PaketHinweis funktion="material" kompakt />
+          )
         ) : (
           <ul className="space-y-1.5">
             {material.map((m) => (
@@ -1162,7 +1169,7 @@ export function AufgabeDetails({
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-medium text-text">Dokumente ({dokumente.length})</h3>
-          {kannBearbeiten && (
+          {kannBearbeiten && dokumenteErlaubt && (
             <button onClick={() => setZuordnenOffen((v) => !v)} className="text-xs font-medium text-brand">
               {zuordnenOffen ? 'Abbrechen' : '+ Zuordnen'}
             </button>
@@ -1202,7 +1209,11 @@ export function AufgabeDetails({
           ))}
 
         {dokumente.length === 0 ? (
-          <p className="text-xs text-text-subtle">Noch keine Dokumente zu dieser Aufgabe zugeordnet.</p>
+          dokumenteErlaubt ? (
+            <p className="text-xs text-text-subtle">Noch keine Dokumente zu dieser Aufgabe zugeordnet.</p>
+          ) : (
+            <PaketHinweis funktion="dokumente" kompakt />
+          )
         ) : (
           <ul className="space-y-1.5">
             {dokumente.map((d) => (

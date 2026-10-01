@@ -51,7 +51,12 @@ Deno.serve(async (req) => {
     const firmenname = String(body.firmenname ?? '').trim()
     const adminEmail = String(body.admin_email ?? '').trim()
     const adminName = String(body.admin_name ?? '').trim()
-    const maxNutzer = body.max_nutzer != null && body.max_nutzer !== '' ? Number(body.max_nutzer) : null
+    // Paket (Starter/Team/Business, siehe Migration 0059 + src/lib/pakete.ts).
+    // Ohne Angabe Team; ohne Nutzerlimit gilt das Limit des Pakets.
+    const PAKET_NUTZER: Record<string, number> = { starter: 5, team: 15, business: 30 }
+    const paket = String(body.paket ?? 'team')
+    if (!(paket in PAKET_NUTZER)) return json({ error: 'paket muss starter, team oder business sein.' }, 400)
+    const maxNutzer = body.max_nutzer != null && body.max_nutzer !== '' ? Number(body.max_nutzer) : PAKET_NUTZER[paket]
     // Ohne mitgegebenes Passwort generiert die Funktion selbst eins (Weg 2,
     // die Plattform-Admin-UI fragt den Nutzer nicht nach einem Passwort) --
     // das Skript (Weg 1) generiert es weiterhin selbst und schickt es mit.
@@ -71,7 +76,7 @@ Deno.serve(async (req) => {
 
     const { data: unternehmen, error: unternehmenError } = await admin
       .from('unternehmen')
-      .insert({ name: firmenname, max_nutzer: maxNutzer })
+      .insert({ name: firmenname, paket, max_nutzer: maxNutzer })
       .select('id')
       .single()
     if (unternehmenError || !unternehmen) {

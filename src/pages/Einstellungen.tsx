@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../hooks/useTheme'
 import { CHANGELOG } from '../lib/changelog'
+import { PAKETE } from '../lib/pakete'
 import { formatDatum } from '../lib/datum'
 import { UnternehmenForm } from '../components/UnternehmenForm'
 import { ProfilForm } from '../components/ProfilForm'
@@ -35,7 +36,7 @@ const MOBIL_QUERY = '(max-width: 767px)'
 const CHANGELOG_KURZ = 5
 
 export function Einstellungen() {
-  const { user, role, signOut, setOnboardingGesehen, produktHinweise, setProduktHinweise } = useAuth()
+  const { user, role, signOut, setOnboardingGesehen, produktHinweise, setProduktHinweise, paket } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const { hash } = useLocation()
   const kannVerwalten = role === 'admin' || role === 'planer'
@@ -221,6 +222,13 @@ export function Einstellungen() {
       {kannVerwalten && zeigen('unternehmen') && (
         <section className="card mb-4 p-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Unternehmen</h2>
+          {paket && (
+            <p className="mb-3 text-xs text-text-muted">
+              Gebuchtes Paket: <span className="font-medium text-text">{PAKETE[paket].label}</span> · bis{' '}
+              {PAKETE[paket].maxNutzer} Nutzer · {PAKETE[paket].speicherGb} GB Speicher
+              {PAKETE[paket].maxAktiveProjekte != null && ` · max. ${PAKETE[paket].maxAktiveProjekte} aktive Projekte`}
+            </p>
+          )}
           <UnternehmenForm />
         </section>
       )}

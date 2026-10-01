@@ -11,6 +11,16 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.10.0',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Neu: Pakete Starter, Team und Business. Das gebuchte Paket steht unter Einstellungen → Unternehmen.',
+      'Funktionen, die nicht im Paket enthalten sind, bleiben sichtbar und sind mit einem Schloss markiert.',
+      'Starter-Paket: bis zu 5 aktive Projekte gleichzeitig.',
+      'Archiv: Fehler beim Reaktivieren eines Projekts werden jetzt angezeigt.',
+    ],
+  },
+  {
     version: '1.9.0',
     datum: '2026-10-01',
     aenderungen: ['Dashboard: Projektnamen auf den Projekt-Karten werden größer und fett dargestellt.'],

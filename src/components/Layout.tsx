@@ -29,6 +29,7 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import type { Rolle } from '../types/database'
+import type { PaketFunktion } from '../lib/pakete'
 
 type NavItem = {
   to: string
@@ -42,6 +43,9 @@ type NavItem = {
   // Nicht in der festen unteren Leiste (Mobil/App) -- dort nur 5 Punkte,
   // stattdessen als Kachel auf dem Dashboard erreichbar.
   nichtInLeiste?: boolean
+  // Funktion, die erst ab einem bestimmten Paket enthalten ist -- bleibt
+  // sichtbar, bekommt aber ein Schloss (Hinweisseite statt Inhalt).
+  paketFunktion?: PaketFunktion
   children?: NavItem[]
 }
 
@@ -66,15 +70,16 @@ const einstellungenKinder: NavItem[] = [
     roles: ['admin', 'planer'],
     children: [
       { to: '/nutzer', label: 'Nutzer', icon: Users, end: false, roles: ['admin'] },
-      { to: '/statusvorlagen', label: 'Statusvorlagen', icon: Tag, end: false, roles: ['admin', 'planer'] },
-      { to: '/material-stamm', label: 'Materialstamm', icon: Package, end: false, roles: ['admin', 'planer'] },
-      { to: '/ticket-formulare', label: 'Ticket-Formulare', icon: FileText, end: false, roles: ['admin', 'planer'] },
+      { to: '/statusvorlagen', label: 'Statusvorlagen', icon: Tag, end: false, roles: ['admin', 'planer'], paketFunktion: 'vorlagen' },
+      { to: '/material-stamm', label: 'Materialstamm', icon: Package, end: false, roles: ['admin', 'planer'], paketFunktion: 'material' },
+      { to: '/ticket-formulare', label: 'Ticket-Formulare', icon: FileText, end: false, roles: ['admin', 'planer'], paketFunktion: 'vorlagen' },
       {
         to: '/tagesbericht-vorlagen',
         label: 'Tagesbericht-Vorlagen',
         icon: ClipboardList,
         end: false,
         roles: ['admin', 'planer'],
+        paketFunktion: 'vorlagen',
       },
     ],
   },
@@ -100,6 +105,7 @@ const mainNav: NavItem[] = [
     icon: MessageCircle,
     end: false,
     roles: ['admin', 'planer', 'techniker'],
+    paketFunktion: 'projekt_chat',
   },
   { to: '/archiv', label: 'Archiv', icon: Archive, end: false, roles: ['admin', 'planer'] },
   { to: '/hilfe', label: 'Hilfe', icon: HelpCircle, end: false, nichtInLeiste: true },
@@ -111,7 +117,7 @@ function projektNav(id: string): NavItem[] {
   return [
     { to: `/projekte/${id}`, label: 'Übersicht', icon: LayoutDashboard, end: true, primary: true },
     { to: `/projekte/${id}/plaene`, label: 'Pläne', icon: MapIcon, end: false, primary: true },
-    { to: `/projekte/${id}/dokumente`, label: 'Dokumente', icon: FileText, end: false, modul: 'dokumente' },
+    { to: `/projekte/${id}/dokumente`, label: 'Dokumente', icon: FileText, end: false, modul: 'dokumente', paketFunktion: 'dokumente' },
     { to: `/projekte/${id}/aufgaben`, label: 'Aufgaben', icon: ListChecks, end: false, primary: true },
     {
       to: `/projekte/${id}/tagesberichte`,
@@ -120,8 +126,8 @@ function projektNav(id: string): NavItem[] {
       end: false,
       modul: 'tagesberichte',
     },
-    { to: `/projekte/${id}/material`, label: 'Material', icon: Package, end: false, modul: 'material' },
-    { to: `/projekte/${id}/termine`, label: 'Termine', icon: CalendarDays, end: false, modul: 'termine' },
+    { to: `/projekte/${id}/material`, label: 'Material', icon: Package, end: false, modul: 'material', paketFunktion: 'material' },
+    { to: `/projekte/${id}/termine`, label: 'Termine', icon: CalendarDays, end: false, modul: 'termine', paketFunktion: 'termine' },
     {
       to: `/projekte/${id}/zeiterfassung`,
       label: 'Zeiterfassung',
@@ -136,6 +142,7 @@ function projektNav(id: string): NavItem[] {
       end: false,
       roles: ['admin', 'planer', 'techniker'],
       primary: true,
+      paketFunktion: 'projekt_chat',
     },
   ]
 }
@@ -181,6 +188,8 @@ function istImAktuellenZweig(item: NavItem, pathname: string, hash: string): boo
 }
 
 function NavBaumKnoten({ item, pathname, hash, tiefe }: { item: NavItem; pathname: string; hash: string; tiefe: number }) {
+  const { hatFunktion } = useAuth()
+  const gesperrt = !!item.paketFunktion && !hatFunktion(item.paketFunktion)
   const aktiv = istAktiv(item, pathname, hash)
   const aufgeklappt = istImAktuellenZweig(item, pathname, hash)
   return (
@@ -198,6 +207,7 @@ function NavBaumKnoten({ item, pathname, hash, tiefe }: { item: NavItem; pathnam
       >
         <item.icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
         {item.label}
+        {gesperrt && <Lock className="ml-auto h-3.5 w-3.5 shrink-0 text-text-subtle" strokeWidth={2.25} aria-label="Nicht im aktuellen Paket" />}
       </NavLink>
       {item.children && item.children.length > 0 && aufgeklappt && (
         <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
@@ -211,7 +221,7 @@ function NavBaumKnoten({ item, pathname, hash, tiefe }: { item: NavItem; pathnam
 }
 
 export function Layout() {
-  const { user, role, gesperrteModule, istPlattformAdmin } = useAuth()
+  const { user, role, gesperrteModule, istPlattformAdmin, hatFunktion } = useAuth()
   const { id } = useParams()
   const { pathname, hash } = useLocation()
   const online = useOnlineStatus()
@@ -283,7 +293,12 @@ export function Layout() {
               }`
             }
           >
-            <item.icon className="h-5 w-5" strokeWidth={2.25} />
+            <span className="relative">
+              <item.icon className="h-5 w-5" strokeWidth={2.25} />
+              {item.paketFunktion && !hatFunktion(item.paketFunktion) && (
+                <Lock className="absolute -right-1.5 -top-1 h-3 w-3 rounded-full bg-surface text-text-subtle" strokeWidth={2.5} />
+              )}
+            </span>
             <span className="truncate px-0.5">{item.label}</span>
           </NavLink>
         ))}

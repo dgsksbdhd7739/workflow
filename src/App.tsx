@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { PaketRoute } from './components/PaketSperre'
 import { initPushNotifications } from './lib/push'
 import { ChangelogDialog } from './components/ChangelogDialog'
 import { OnboardingDialog } from './components/OnboardingDialog'
@@ -68,23 +69,23 @@ function App() {
               <Route path="/archiv" element={<Archiv />} />
               <Route path="/einstellungen" element={<Einstellungen />} />
               <Route path="/hilfe" element={<Hilfe />} />
-              <Route path="/statusvorlagen" element={<StatusVorlagen />} />
-              <Route path="/ticket-formulare" element={<TicketFormulare />} />
-              <Route path="/tagesbericht-vorlagen" element={<TagesberichtVorlagen />} />
+              <Route path="/statusvorlagen" element={<PaketRoute funktion="vorlagen"><StatusVorlagen /></PaketRoute>} />
+              <Route path="/ticket-formulare" element={<PaketRoute funktion="vorlagen"><TicketFormulare /></PaketRoute>} />
+              <Route path="/tagesbericht-vorlagen" element={<PaketRoute funktion="vorlagen"><TagesberichtVorlagen /></PaketRoute>} />
               <Route path="/nutzer" element={<Nutzerverwaltung />} />
               <Route path="/plattform-admin" element={<PlattformAdmin />} />
               <Route path="/team-chat" element={<Gruppenchat />} />
-              <Route path="/projekt-chat" element={<ProjektChat />} />
-              <Route path="/material-stamm" element={<MaterialStamm />} />
+              <Route path="/projekt-chat" element={<PaketRoute funktion="projekt_chat"><ProjektChat /></PaketRoute>} />
+              <Route path="/material-stamm" element={<PaketRoute funktion="material"><MaterialStamm /></PaketRoute>} />
               <Route path="/projekte/:id" element={<ProjektDashboard />} />
               <Route path="/projekte/:id/aufgaben" element={<Aufgaben />} />
-              <Route path="/projekte/:id/material" element={<Material />} />
+              <Route path="/projekte/:id/material" element={<PaketRoute funktion="material"><Material /></PaketRoute>} />
               <Route path="/projekte/:id/plaene" element={<Plaene />} />
               <Route path="/projekte/:id/plaene/:planId" element={<PlanDetail />} />
-              <Route path="/projekte/:id/dokumente" element={<Dokumente />} />
+              <Route path="/projekte/:id/dokumente" element={<PaketRoute funktion="dokumente"><Dokumente /></PaketRoute>} />
               <Route path="/projekte/:id/tagesberichte" element={<Tagesberichte />} />
               <Route path="/projekte/:id/zeiterfassung" element={<Zeiterfassung />} />
-              <Route path="/projekte/:id/termine" element={<Termine />} />
+              <Route path="/projekte/:id/termine" element={<PaketRoute funktion="termine"><Termine /></PaketRoute>} />
             </Route>
           </Route>
         </Routes>

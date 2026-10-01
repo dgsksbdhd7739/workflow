@@ -6,8 +6,12 @@ import type { Unternehmen } from '../types/database'
 
 const laender = ['Deutschland', 'Österreich', 'Schweiz', 'Sonstiges']
 
-export function UnternehmenForm() {
-  const { unternehmenId } = useAuth()
+export function UnternehmenForm({
+  unternehmenId: unternehmenIdProp,
+  onGespeichert,
+}: { unternehmenId?: string; onGespeichert?: () => void } = {}) {
+  const { unternehmenId: eigeneUnternehmenId } = useAuth()
+  const unternehmenId = unternehmenIdProp ?? eigeneUnternehmenId
   const [unternehmen, setUnternehmen] = useState<Unternehmen | null>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [logoDatei, setLogoDatei] = useState<File | null>(null)
@@ -103,6 +107,7 @@ export function UnternehmenForm() {
     setLogoDatei(null)
     setLogoEntfernen(false)
     setGespeichert(true)
+    onGespeichert?.()
   }
 
   if (loading) return <p className="text-sm text-text-muted">Lädt…</p>

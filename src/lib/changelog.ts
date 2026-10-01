@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.8.1',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Plattform-Verwaltung: bestehende Firmen lassen sich jetzt bearbeiten — Nutzerlimit ändern sowie Firmendaten (Adresse, Kontakt, Logo) pflegen.',
+      'Sicherheit: Das Nutzerlimit einer Firma kann nur noch vom WorkFlow-Betreiber geändert werden, nicht mehr vom Firmen-Admin selbst.',
+    ],
+  },
+  {
     version: '1.8.0',
     datum: '2026-10-01',
     aenderungen: [

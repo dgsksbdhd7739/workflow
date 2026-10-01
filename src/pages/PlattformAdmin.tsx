@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { supabase, funktionsFehler } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { UnternehmenForm } from '../components/UnternehmenForm'
 import { formatDatum } from '../lib/datum'
 import type { PlattformUnternehmenUebersicht } from '../types/database'
 
@@ -16,6 +17,9 @@ export function PlattformAdmin() {
   const [anlegen, setAnlegen] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
   const [angelegtesPasswort, setAngelegtesPasswort] = useState<{ email: string; passwort: string } | null>(null)
+  const [bearbeiteFirma, setBearbeiteFirma] = useState<string | null>(null)
+  const [limitEingabe, setLimitEingabe] = useState('')
+  const [limitSpeichert, setLimitSpeichert] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -52,6 +56,32 @@ export function PlattformAdmin() {
     setAdminName('')
     setMaxNutzer('')
     setFormOffen(false)
+    load()
+  }
+
+  const toggleBearbeiten = (f: PlattformUnternehmenUebersicht) => {
+    if (bearbeiteFirma === f.id) {
+      setBearbeiteFirma(null)
+      return
+    }
+    setBearbeiteFirma(f.id)
+    setLimitEingabe(f.max_nutzer != null ? String(f.max_nutzer) : '')
+  }
+
+  const handleLimitSpeichern = async (firmaId: string) => {
+    setFehler(null)
+    const neuerWert = limitEingabe.trim() ? Number(limitEingabe.trim()) : null
+    if (neuerWert != null && (!Number.isInteger(neuerWert) || neuerWert < 1)) {
+      setFehler('Nutzerlimit muss eine ganze Zahl ab 1 sein (oder leer für unbegrenzt).')
+      return
+    }
+    setLimitSpeichert(true)
+    const { error } = await supabase.from('unternehmen').update({ max_nutzer: neuerWert }).eq('id', firmaId)
+    setLimitSpeichert(false)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
     load()
   }
 
@@ -146,17 +176,54 @@ export function PlattformAdmin() {
       ) : (
         <ul className="space-y-2">
           {firmen.map((f) => (
-            <li key={f.id} className="card flex items-center justify-between gap-3 p-4">
-              <div className="min-w-0">
-                <div className="font-medium text-text">{f.name}</div>
-                <div className="text-xs text-text-subtle">Angelegt am {formatDatum(f.erstellt_am)}</div>
-              </div>
-              <div className="flex-shrink-0 text-right text-sm">
-                <div className="font-medium text-text">
-                  {f.nutzer_anzahl} {f.max_nutzer != null && <>/ {f.max_nutzer}</>} Nutzer
+            <li key={f.id} className="card p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-text">{f.name}</div>
+                  <div className="text-xs text-text-subtle">Angelegt am {formatDatum(f.erstellt_am)}</div>
                 </div>
-                {f.max_nutzer == null && <div className="text-xs text-text-subtle">unbegrenzt</div>}
+                <div className="flex flex-shrink-0 items-center gap-3">
+                  <div className="text-right text-sm">
+                    <div className="font-medium text-text">
+                      {f.nutzer_anzahl} {f.max_nutzer != null && <>/ {f.max_nutzer}</>} Nutzer
+                    </div>
+                    {f.max_nutzer == null && <div className="text-xs text-text-subtle">unbegrenzt</div>}
+                  </div>
+                  <button onClick={() => toggleBearbeiten(f)} className="btn-secondary text-xs">
+                    {bearbeiteFirma === f.id ? 'Schließen' : 'Bearbeiten'}
+                  </button>
+                </div>
               </div>
+
+              {bearbeiteFirma === f.id && (
+                <div className="mt-4 space-y-4 border-t border-border pt-4">
+                  <div>
+                    <label className="field-label">Nutzerlimit</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        value={limitEingabe}
+                        onChange={(e) => setLimitEingabe(e.target.value)}
+                        placeholder="Leer lassen = unbegrenzt"
+                        className="field-input max-w-[12rem]"
+                      />
+                      <button
+                        onClick={() => handleLimitSpeichern(f.id)}
+                        disabled={limitSpeichert}
+                        className="btn-primary flex-shrink-0 text-xs"
+                      >
+                        {limitSpeichert ? 'Speichert…' : 'Limit speichern'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="field-label">Firmendaten (Adresse, Kontakt, Logo)</label>
+                    <UnternehmenForm unternehmenId={f.id} onGespeichert={load} />
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         </ul>

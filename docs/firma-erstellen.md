@@ -2,7 +2,13 @@
 
 WorkFlow ist mandantenfähig: mehrere Firmen können dieselbe App nutzen, ohne dass sie gegenseitig ihre Daten sehen (Projekte, Aufgaben, Nutzer, Statusvorlagen etc. sind strikt pro Firma getrennt, siehe Migration `supabase/migrations/0033_mandantentrennung.sql`).
 
-Es gibt bewusst **keine Selbstregistrierung** — eine neue Firma entsteht nur über das Skript unten. Kein Nutzer, auch kein Admin einer bestehenden Firma, kann selbst eine neue Firma anlegen oder eine fremde sehen.
+Es gibt bewusst **keine Selbstregistrierung** — eine neue Firma entsteht nur über das Skript unten oder über die **Plattform-Verwaltung** in der App (`/plattform-admin`, nur für Einträge in `plattform_admins` sichtbar, siehe Migration `0053_plattform_admin.sql`). Kein normaler Nutzer, auch kein Admin einer bestehenden Firma, kann selbst eine neue Firma anlegen oder eine fremde sehen.
+
+## Plattform-Verwaltung (In-App)
+
+- **Firma anlegen:** Name, Admin-E-Mail, optional Nutzerlimit — Passwort wird generiert und einmalig angezeigt.
+- **Firma bearbeiten:** *Bearbeiten* an der Firma → Nutzerlimit ändern (leer = unbegrenzt) sowie Firmendaten (Adresse, Kontakt, Logo) pflegen.
+- Das Nutzerlimit (`unternehmen.max_nutzer`) kann nur ein Plattform-Admin ändern; ein DB-Trigger blockiert Änderungen durch Firmen-Admins (Migration `0055`).
 
 ## Voraussetzung
 

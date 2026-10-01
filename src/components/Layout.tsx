@@ -39,6 +39,9 @@ type NavItem = {
   primary?: boolean
   modul?: string
   nurPlattformAdmin?: boolean
+  // Nicht in der festen unteren Leiste (Mobil/App) -- dort nur 5 Punkte,
+  // stattdessen als Kachel auf dem Dashboard erreichbar.
+  nichtInLeiste?: boolean
   children?: NavItem[]
 }
 
@@ -99,9 +102,9 @@ const mainNav: NavItem[] = [
     roles: ['admin', 'planer', 'techniker'],
   },
   { to: '/archiv', label: 'Archiv', icon: Archive, end: false, roles: ['admin', 'planer'] },
-  { to: '/hilfe', label: 'Hilfe', icon: HelpCircle, end: false },
+  { to: '/hilfe', label: 'Hilfe', icon: HelpCircle, end: false, nichtInLeiste: true },
   { to: '/einstellungen', label: 'Einstellungen', icon: Settings, end: false, children: einstellungenKinder },
-  { to: '/plattform-admin', label: 'Plattform-Verwaltung', icon: Building2, end: false, nurPlattformAdmin: true },
+  { to: '/plattform-admin', label: 'Plattform-Verwaltung', icon: Building2, end: false, nurPlattformAdmin: true, nichtInLeiste: true },
 ]
 
 function projektNav(id: string): NavItem[] {
@@ -221,7 +224,9 @@ export function Layout() {
     istPlattformAdmin,
   )
   const navHaupt = gefiltert(mainNav, role, gesperrteModule, istPlattformAdmin)
-  const navUnten = id ? [mainNav[0], ...navProjekt.filter((item) => item.primary)] : navHaupt
+  const navUnten = (
+    id ? [mainNav[0], ...navProjekt.filter((item) => item.primary)] : navHaupt.filter((item) => !item.nichtInLeiste)
+  ).slice(0, 5)
 
   return (
     <div className="flex h-screen flex-col bg-bg md:flex-row">
@@ -263,14 +268,14 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 flex overflow-x-auto border-t border-border bg-surface md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 flex border-t border-border bg-surface md:hidden">
         {navUnten.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
-              `flex min-w-16 flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
+              `flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
                 isActive ? 'text-brand' : 'text-text-subtle'
               }`
             }

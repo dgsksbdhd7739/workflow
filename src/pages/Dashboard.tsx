@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ClipboardList, AlertTriangle } from 'lucide-react'
+import { ClipboardList, AlertTriangle, HelpCircle, Building2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { ProjektForm } from '../components/ProjektForm'
@@ -23,7 +23,7 @@ interface TicketMitKontext extends AufgabeTicket {
 }
 
 export function Dashboard() {
-  const { user, role } = useAuth()
+  const { user, role, istPlattformAdmin } = useAuth()
   const kannAnlegen = role === 'admin' || role === 'planer'
   const kannUebersichtSehen = role === 'admin' || role === 'planer'
   const [projekte, setProjekte] = useState<Projekt[]>([])
@@ -169,6 +169,23 @@ export function Dashboard() {
 
   return (
     <div className="page">
+      {/* Nur Mobil/App: Punkte, die nicht in die feste untere Leiste (max. 5) passen */}
+      <div className="mb-6 grid grid-cols-2 gap-2 md:hidden">
+        <Link to="/hilfe" className="card flex items-center gap-2 p-3 text-sm font-medium text-text hover:border-brand/40">
+          <HelpCircle className="h-4 w-4 text-brand" strokeWidth={2.25} />
+          Hilfe
+        </Link>
+        {istPlattformAdmin && (
+          <Link
+            to="/plattform-admin"
+            className="card flex items-center gap-2 p-3 text-sm font-medium text-text hover:border-brand/40"
+          >
+            <Building2 className="h-4 w-4 flex-shrink-0 text-brand" strokeWidth={2.25} />
+            <span className="truncate">Plattform-Verwaltung</span>
+          </Link>
+        )}
+      </div>
+
       {kannUebersichtSehen && !loading && offeneTickets.length > 0 && (
         <div className="mb-6">
           <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-text">

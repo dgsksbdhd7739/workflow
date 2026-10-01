@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.8.3',
+    datum: '2026-10-01',
+    aenderungen: [
+      'App/Handy: Die untere Leiste hat jetzt fest maximal 5 Punkte (Home, Team-Chat, Projekt-Chat, Archiv, Einstellungen) und verrutscht nicht mehr. Hilfe und die Plattform-Verwaltung sind stattdessen als Kacheln oben auf dem Dashboard erreichbar.',
+    ],
+  },
+  {
     version: '1.8.2',
     datum: '2026-10-01',
     aenderungen: [

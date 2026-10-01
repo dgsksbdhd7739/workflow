@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.6.9',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Einstellungen: neuer Bereich "Profil & persönliche Einstellungen" — Telefon, Position, Adresse hinterlegen und die eigene E-Mail-Adresse per Bestätigungslink ändern.',
+    ],
+  },
+  {
     version: '1.6.8',
     datum: '2026-10-01',
     aenderungen: [

@@ -12,6 +12,11 @@ export interface Profile {
   deaktiviert: boolean
   unternehmen_id: string
   created_at: string
+  telefon: string | null
+  positionsbezeichnung: string | null
+  strasse: string | null
+  plz: string | null
+  stadt: string | null
 }
 
 export interface Unternehmen {

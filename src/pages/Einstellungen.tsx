@@ -5,6 +5,7 @@ import { useTheme } from '../hooks/useTheme'
 import { CHANGELOG } from '../lib/changelog'
 import { formatDatum } from '../lib/datum'
 import { UnternehmenForm } from '../components/UnternehmenForm'
+import { ProfilForm } from '../components/ProfilForm'
 
 const rollenLabel: Record<string, string> = {
   admin: 'Admin',
@@ -41,6 +42,11 @@ export function Einstellungen() {
             Abmelden
           </button>
         </div>
+      </section>
+
+      <section className="card mb-4 p-4">
+        <h2 className="mb-3 text-sm font-semibold text-text">Profil & persönliche Einstellungen</h2>
+        <ProfilForm />
       </section>
 
       <section className="card mb-4 p-4">

@@ -11,6 +11,11 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.9.0',
+    datum: '2026-10-01',
+    aenderungen: ['Dashboard: Projektnamen auf den Projekt-Karten werden größer und fett dargestellt.'],
+  },
+  {
     version: '1.8.9',
     datum: '2026-10-01',
     aenderungen: [

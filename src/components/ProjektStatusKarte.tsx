@@ -78,7 +78,7 @@ export function ProjektStatusKarte({
               />
             )}
             <div className="min-w-0">
-              <div className="truncate font-medium text-text hover:text-brand">{projekt.name}</div>
+              <div className="truncate text-lg font-bold text-text hover:text-brand">{projekt.name}</div>
               {formatProjektAdresse(projekt) && (
                 <span
                   role="link"

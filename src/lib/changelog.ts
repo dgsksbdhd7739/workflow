@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.7.2',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Einstellungen zeigt jetzt immer nur einen Bereich gleichzeitig (Start: Konto) statt aller Bereiche untereinander — Auswahl über die Reiter oben auf der Seite oder den Strukturbaum in der Seitenleiste.',
+    ],
+  },
+  {
     version: '1.7.1',
     datum: '2026-10-01',
     aenderungen: [

@@ -155,7 +155,12 @@ function pfadOhneQuery(to: string) {
 // Sprungmarken (/einstellungen#profil) den Hash und wuerde sonst alle
 // Einstellungen-Unterpunkte gleichzeitig als aktiv markieren.
 function istAktiv(item: NavItem, pathname: string, hash: string): boolean {
-  if (item.to.includes('#')) return `${pathname}${hash}` === item.to
+  if (item.to.includes('#')) {
+    // Einstellungen.tsx zeigt ohne Hash den Standard-Tab "Konto" -- damit
+    // der Baum dazu passt, gilt der Konto-Eintrag auch ohne Hash als aktiv.
+    if (item.to.endsWith('#konto') && hash === '' && pathname === pfadOhneQuery(item.to)) return true
+    return `${pathname}${hash}` === item.to
+  }
   const ziel = pfadOhneQuery(item.to)
   return item.end ? pathname === ziel : pathname === ziel || pathname.startsWith(`${ziel}/`)
 }

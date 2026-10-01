@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.7.3',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Einstellungen: Reiter-Leiste oben auf der Seite entfernt — die Auswahl des Bereichs erfolgt jetzt nur noch über den Strukturbaum in der Seitenleiste.',
+    ],
+  },
+  {
     version: '1.7.2',
     datum: '2026-10-01',
     aenderungen: [

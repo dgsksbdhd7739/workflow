@@ -62,22 +62,6 @@ export function Einstellungen() {
     <div className="page max-w-xl">
       <h1 className="mb-4 text-xl font-semibold text-text">Einstellungen</h1>
 
-      <nav className="mb-4 flex gap-1.5 overflow-x-auto pb-1">
-        {sichtbareSections.map((s) => (
-          <Link
-            key={s.id}
-            to={`#${s.id}`}
-            className={`flex-shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
-              aktivId === s.id
-                ? 'border-brand bg-brand-soft text-brand-text'
-                : 'border-border-strong text-text-muted hover:bg-surface-hover'
-            }`}
-          >
-            {s.label}
-          </Link>
-        ))}
-      </nav>
-
       {aktivId === 'konto' && (
         <section className="card p-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Konto</h2>

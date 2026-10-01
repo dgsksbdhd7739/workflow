@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import { HardHat } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -67,6 +67,12 @@ export function Login() {
             {submitting ? 'Anmelden…' : 'Anmelden'}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-xs text-text-subtle">
+          <Link to="/datenschutz" className="hover:text-brand hover:underline">
+            Datenschutzerklärung
+          </Link>
+        </p>
       </div>
     </div>
   )

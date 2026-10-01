@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { LogOut, Sparkles } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -27,6 +28,9 @@ type SectionId =
   | 'unternehmen'
   | 'ueber-workflow'
 
+// Entspricht Tailwinds md-Breakpoint (Seitenleiste ab 768px sichtbar).
+const MOBIL_QUERY = '(max-width: 767px)'
+
 export function Einstellungen() {
   const { user, role, signOut, setOnboardingGesehen, produktHinweise, setProduktHinweise } = useAuth()
   const { theme, toggleTheme } = useTheme()
@@ -45,10 +49,23 @@ export function Einstellungen() {
   ]
   const sichtbareSections = sections.filter((s) => s.sichtbar)
 
-  // Beim Aufruf ohne (oder mit unbekannter/nicht sichtbarer) Sprungmarke
-  // immer mit "Konto" starten, statt alle Bereiche untereinander zu zeigen.
+  // Desktop: Beim Aufruf ohne (oder mit unbekannter/nicht sichtbarer)
+  // Sprungmarke immer mit "Konto" starten, statt alle Bereiche untereinander
+  // zu zeigen -- die Auswahl laeuft ueber den Strukturbaum der Seitenleiste.
   const angefordert = hash.slice(1) as SectionId
   const aktivId: SectionId = sichtbareSections.some((s) => s.id === angefordert) ? angefordert : 'konto'
+
+  // Mobil/App: Die Seitenleiste (und damit der Strukturbaum) ist unterhalb
+  // von md ausgeblendet, es gaebe also keinen Weg zu den anderen Bereichen --
+  // dort alle Bereiche untereinander zeigen.
+  const [istMobil, setIstMobil] = useState(() => window.matchMedia(MOBIL_QUERY).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(MOBIL_QUERY)
+    const aendern = () => setIstMobil(mq.matches)
+    mq.addEventListener('change', aendern)
+    return () => mq.removeEventListener('change', aendern)
+  }, [])
+  const zeigen = (id: SectionId) => istMobil || aktivId === id
 
   const toggleProduktHinweise = async () => {
     const neuerWert = !produktHinweise
@@ -62,8 +79,8 @@ export function Einstellungen() {
     <div className="page max-w-xl">
       <h1 className="mb-4 text-xl font-semibold text-text">Einstellungen</h1>
 
-      {aktivId === 'konto' && (
-        <section className="card p-4">
+      {zeigen('konto') && (
+        <section className="card mb-4 p-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Konto</h2>
           <div className="mb-4 space-y-1 text-sm">
             <div className="text-text">{user?.email}</div>
@@ -85,15 +102,15 @@ export function Einstellungen() {
         </section>
       )}
 
-      {aktivId === 'profil' && (
-        <section className="card p-4">
+      {zeigen('profil') && (
+        <section className="card mb-4 p-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Profil & persönliche Einstellungen</h2>
           <ProfilForm />
         </section>
       )}
 
-      {aktivId === 'sicherheit' && (
-        <section className="card p-4">
+      {zeigen('sicherheit') && (
+        <section className="card mb-4 p-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Sicherheit</h2>
           <div className="space-y-4">
             <div>
@@ -108,8 +125,8 @@ export function Einstellungen() {
         </section>
       )}
 
-      {aktivId === 'datenschutz' && (
-        <section className="card p-4">
+      {zeigen('datenschutz') && (
+        <section className="card mb-4 p-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Datenschutz & Hinweise</h2>
           <p className="mb-3 text-xs text-text-muted">
             WorkFlow speichert nur die Daten, die du selbst im Profil hinterlegst, sowie deine Arbeitsdaten innerhalb deines
@@ -127,8 +144,8 @@ export function Einstellungen() {
         </section>
       )}
 
-      {aktivId === 'darstellung' && (
-        <section className="card p-4">
+      {zeigen('darstellung') && (
+        <section className="card mb-4 p-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Darstellung</h2>
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm text-text-muted">Farbschema</div>
@@ -154,8 +171,8 @@ export function Einstellungen() {
         </section>
       )}
 
-      {aktivId === 'verwaltung' && kannVerwalten && (
-        <section className="card p-4">
+      {kannVerwalten && zeigen('verwaltung') && (
+        <section className="card mb-4 p-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Verwaltung</h2>
           {role === 'admin' && (
             <Link
@@ -197,15 +214,15 @@ export function Einstellungen() {
         </section>
       )}
 
-      {aktivId === 'unternehmen' && kannVerwalten && (
-        <section className="card p-4">
+      {kannVerwalten && zeigen('unternehmen') && (
+        <section className="card mb-4 p-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Unternehmen</h2>
           <UnternehmenForm />
         </section>
       )}
 
-      {aktivId === 'ueber-workflow' && (
-        <section className="card p-4">
+      {zeigen('ueber-workflow') && (
+        <section className="card mb-4 p-4">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-semibold text-text">Über WorkFlow</h2>
             <span className="text-xs text-text-subtle">Version {__APP_VERSION__}</span>

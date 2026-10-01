@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.8.6',
+    datum: '2026-10-01',
+    aenderungen: [
+      'App/Handy: Einstellungen zeigt wieder alle Bereiche untereinander (Konto, Profil, Sicherheit, Datenschutz, Darstellung, Verwaltung, Unternehmen, Über WorkFlow) — bisher war dort nur "Konto" erreichbar, weil der Strukturbaum auf dem Handy nicht angezeigt wird. Am Computer bleibt die Auswahl über den Strukturbaum.',
+    ],
+  },
+  {
     version: '1.8.5',
     datum: '2026-10-01',
     aenderungen: [

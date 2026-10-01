@@ -9,4 +9,4 @@ Regeln für Claude:
 
 ## Offen
 
-(Keine offenen Punkte.)
+- [ ] E-Mail-Benachrichtigungssystem (2026-10-01, PlanRadar-Vergleich Profil-Einstellungen): echter Mail-Versand für Ticket-Ereignisse (neues Ticket, Statusänderung, Erledigungsdatum-Erinnerung) und Dokument-Ereignisse (neue Dokumente, Freigabe-Status) inkl. Nutzer-Einstellungen dazu (Häufigkeit: sofort/gesammelt, welche Tickets, eigene Änderungen ausblenden etc.) — fehlt komplett, aktuell keine Mail-Versand-Infrastruktur im Projekt. Braucht: E-Mail-Provider-Anbindung (z. B. Supabase Edge Function + Resend/SendGrid), Trigger-Logik je Ereignis, Präferenz-Speicherung pro Nutzer, UI dazu in Einstellungen → Profil & persönliche Einstellungen. **Nicht eigenständig starten** — Nutzer hat das ausdrücklich auf später verschoben, erst nach explizitem Hinweis umsetzen.

@@ -289,6 +289,17 @@ export interface Dokument {
   erstellt_am: string
   freigabestatus: DokumentFreigabestatus
   vorgaenger_id: string | null
+  ordner_id: string | null
+  groesse_bytes: number | null
+}
+
+export interface DokumentOrdner {
+  id: string
+  projekt_id: string
+  parent_id: string | null
+  name: string
+  erstellt_von: string
+  erstellt_am: string
 }
 
 export interface DokumentFreigabe {

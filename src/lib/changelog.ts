@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.6.8',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Dokumente: Projektdokumente können jetzt in Ordnern organisiert werden (beliebig verschachtelbar), und jedes Dokument zeigt seine Dateigröße an.',
+    ],
+  },
+  {
     version: '1.6.7',
     datum: '2026-10-01',
     aenderungen: [

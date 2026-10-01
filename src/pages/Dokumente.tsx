@@ -1,11 +1,18 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Download, FileText, FolderOpen, Trash2 } from 'lucide-react'
+import { Download, FileText, Folder, FolderOpen, Trash2 } from 'lucide-react'
 import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { formatDatum } from '../lib/datum'
-import type { Dokument, DokumentKategorie, Aufgabe } from '../types/database'
+import type { Dokument, DokumentKategorie, DokumentOrdner, Aufgabe } from '../types/database'
+
+function formatGroesse(bytes: number | null): string | null {
+  if (bytes == null) return null
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 const freigabeLabel: Record<Dokument['freigabestatus'], string> = {
   keine_anforderung: 'Keine Freigabe angefordert',
@@ -24,11 +31,13 @@ const freigabeFarbe: Record<Dokument['freigabestatus'], string> = {
 function UploadForm({
   kategorie,
   projektId,
+  ordnerId,
   vorgaenger,
   onDone,
 }: {
   kategorie: DokumentKategorie
   projektId: string
+  ordnerId?: string | null
   vorgaenger?: Dokument
   onDone: () => void
 }) {
@@ -59,6 +68,8 @@ function UploadForm({
       datei_pfad: path,
       erstellt_von: user.id,
       vorgaenger_id: vorgaenger?.id ?? null,
+      ordner_id: vorgaenger?.ordner_id ?? ordnerId ?? null,
+      groesse_bytes: datei.size,
     })
 
     setUploading(false)
@@ -106,6 +117,10 @@ export function Dokumente() {
   const kannEntscheiden = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
   const [dokumente, setDokumente] = useState<Dokument[]>([])
+  const [ordner, setOrdner] = useState<DokumentOrdner[]>([])
+  const [aktuellerOrdnerId, setAktuellerOrdnerId] = useState<string | null>(null)
+  const [ordnerFormOffen, setOrdnerFormOffen] = useState(false)
+  const [neuerOrdnerName, setNeuerOrdnerName] = useState('')
   const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
   const [loading, setLoading] = useState(true)
   const [formOffen, setFormOffen] = useState<DokumentKategorie | null>(null)
@@ -116,14 +131,59 @@ export function Dokumente() {
   const load = async () => {
     if (!projektId) return
     setLoading(true)
-    const [{ data }, { data: aufgabenData }] = await Promise.all([
+    const [{ data }, { data: aufgabenData }, { data: ordnerData }] = await Promise.all([
       supabase.from('dokumente').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
       supabase.from('aufgaben').select('*').eq('projekt_id', projektId).order('titel'),
+      supabase.from('dokument_ordner').select('*').eq('projekt_id', projektId).order('name'),
     ])
     setDokumente(data ?? [])
     setAufgaben(aufgabenData ?? [])
+    setOrdner(ordnerData ?? [])
     setLoading(false)
   }
+
+  const ordnerAnlegen = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!user || !projektId || !neuerOrdnerName.trim()) return
+    setFehler(null)
+    const { error } = await supabase.from('dokument_ordner').insert({
+      projekt_id: projektId,
+      parent_id: aktuellerOrdnerId,
+      name: neuerOrdnerName.trim(),
+      erstellt_von: user.id,
+    })
+    if (error) {
+      setFehler(error.message)
+      return
+    }
+    setNeuerOrdnerName('')
+    setOrdnerFormOffen(false)
+    load()
+  }
+
+  const ordnerLoeschen = async (o: DokumentOrdner) => {
+    if (!window.confirm(`Ordner "${o.name}" wirklich löschen? Enthaltene Unterordner werden mitgelöscht, Dokumente bleiben erhalten und wandern in den übergeordneten Ordner.`)) return
+    setFehler(null)
+    const { error } = await supabase.from('dokument_ordner').delete().eq('id', o.id)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
+    load()
+  }
+
+  // Breadcrumb-Pfad vom aktuellen Ordner zur Wurzel zurueckverfolgen.
+  const ordnerPfad: DokumentOrdner[] = []
+  {
+    let id = aktuellerOrdnerId
+    while (id) {
+      const o = ordner.find((x) => x.id === id)
+      if (!o) break
+      ordnerPfad.unshift(o)
+      id = o.parent_id
+    }
+  }
+  const unterordner = ordner.filter((o) => o.parent_id === aktuellerOrdnerId)
 
   useEffect(() => {
     load()
@@ -202,7 +262,7 @@ export function Dokumente() {
     return kette
   }
 
-  const projektdokumente = aktuelleDokumente.filter((d) => d.kategorie === 'projekt')
+  const projektdokumente = aktuelleDokumente.filter((d) => d.kategorie === 'projekt' && d.ordner_id === aktuellerOrdnerId)
   const aufgabendokumente = aktuelleDokumente.filter((d) => d.kategorie === 'aufgabe')
 
   const DokumentZeile = ({ d }: { d: Dokument }) => {
@@ -219,6 +279,7 @@ export function Dokumente() {
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-text-subtle">
               <span className="truncate">
                 {nameOf(d.erstellt_von)} · {formatDatum(d.erstellt_am)}
+                {formatGroesse(d.groesse_bytes) && <> · {formatGroesse(d.groesse_bytes)}</>}
               </span>
               {d.kategorie === 'aufgabe' && (
                 <span
@@ -344,18 +405,88 @@ export function Dokumente() {
               Projektdokumente
             </h2>
             {kannBearbeiten && (
-              <button
-                onClick={() => setFormOffen((v) => (v === 'projekt' ? null : 'projekt'))}
-                className="text-xs font-medium text-brand"
-              >
-                {formOffen === 'projekt' ? 'Abbrechen' : '+ Projektdokument'}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setOrdnerFormOffen((v) => !v)}
+                  className="text-xs font-medium text-brand"
+                >
+                  {ordnerFormOffen ? 'Abbrechen' : '+ Ordner'}
+                </button>
+                <button
+                  onClick={() => setFormOffen((v) => (v === 'projekt' ? null : 'projekt'))}
+                  className="text-xs font-medium text-brand"
+                >
+                  {formOffen === 'projekt' ? 'Abbrechen' : '+ Projektdokument'}
+                </button>
+              </div>
             )}
           </div>
+
+          <div className="mb-2 flex flex-wrap items-center gap-1 text-xs text-text-muted">
+            <button
+              onClick={() => setAktuellerOrdnerId(null)}
+              className={aktuellerOrdnerId === null ? 'font-medium text-text' : 'hover:text-brand hover:underline'}
+            >
+              Alle Projektdokumente
+            </button>
+            {ordnerPfad.map((o) => (
+              <span key={o.id} className="flex items-center gap-1">
+                <span className="text-text-subtle">/</span>
+                <button
+                  onClick={() => setAktuellerOrdnerId(o.id)}
+                  className={o.id === aktuellerOrdnerId ? 'font-medium text-text' : 'hover:text-brand hover:underline'}
+                >
+                  {o.name}
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {ordnerFormOffen && (
+            <form onSubmit={ordnerAnlegen} className="mb-3 flex gap-2">
+              <input
+                autoFocus
+                value={neuerOrdnerName}
+                onChange={(e) => setNeuerOrdnerName(e.target.value)}
+                placeholder="Ordnername, z. B. Schaltpläne"
+                className="field-input flex-1"
+              />
+              <button type="submit" className="btn-primary">
+                Anlegen
+              </button>
+            </form>
+          )}
+
+          {unterordner.length > 0 && (
+            <ul className="mb-2 space-y-1.5">
+              {unterordner.map((o) => (
+                <li key={o.id} className="card flex items-center gap-2 p-2.5">
+                  <button
+                    onClick={() => setAktuellerOrdnerId(o.id)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    <Folder className="h-4 w-4 flex-shrink-0 text-brand" strokeWidth={2.25} />
+                    <span className="truncate text-sm font-medium text-text">{o.name}</span>
+                  </button>
+                  {kannLoeschen && (
+                    <button
+                      onClick={() => ordnerLoeschen(o)}
+                      aria-label="Ordner löschen"
+                      className="flex-shrink-0 rounded-lg p-1.5 text-text-muted hover:bg-surface-hover hover:text-red-600 dark:hover:text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4" strokeWidth={2.25} />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
           {formOffen === 'projekt' && projektId && (
             <UploadForm
               kategorie="projekt"
               projektId={projektId}
+              ordnerId={aktuellerOrdnerId}
               onDone={() => {
                 setFormOffen(null)
                 load()
@@ -364,7 +495,9 @@ export function Dokumente() {
           )}
           {!loading &&
             (projektdokumente.length === 0 ? (
-              <p className="text-xs text-text-subtle">Keine allgemeinen Projektdokumente.</p>
+              <p className="text-xs text-text-subtle">
+                {unterordner.length > 0 ? 'Keine Dokumente direkt in diesem Ordner.' : 'Keine allgemeinen Projektdokumente.'}
+              </p>
             ) : (
               <ul className="space-y-2">
                 {projektdokumente.map((d) => (

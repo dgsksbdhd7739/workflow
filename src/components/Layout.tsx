@@ -1,6 +1,7 @@
-import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useParams } from 'react-router-dom'
 import {
   Archive,
+  Building2,
   CalendarDays,
   ClipboardList,
   Clock,
@@ -8,13 +9,20 @@ import {
   HardHat,
   HelpCircle,
   Home,
+  Info,
   LayoutDashboard,
   ListChecks,
+  Lock,
   Map as MapIcon,
   MessageCircle,
   MessageSquare,
   Package,
+  Palette,
   Settings,
+  Shield,
+  Tag,
+  User,
+  Users,
   WifiOff,
   type LucideIcon,
 } from 'lucide-react'
@@ -30,10 +38,49 @@ type NavItem = {
   roles?: Rolle[]
   primary?: boolean
   modul?: string
+  children?: NavItem[]
 }
 
-// Nutzer und Materialstamm sind bewusst nicht hier gelistet -- erreichbar
-// nur ueber Einstellungen, damit die Leiste kurz und aufgeraeumt bleibt.
+// Spiegelt die Sections der Einstellungen-Seite als Baum: die ersten fuenf
+// sind Sprungmarken innerhalb derselben Seite (Einstellungen.tsx scrollt bei
+// Hash-Aenderung selbst dorthin), "Verwaltung" buendelt die Unterseiten, die
+// trotz eigener Route (/nutzer, /statusvorlagen, ...) inhaltlich zu diesem
+// Zweig gehoeren -- historisch gewachsen, hier aber als echte Baum-Kinder
+// gefuehrt, damit die Seitenleiste zeigt, dass man sich innerhalb des
+// Einstellungen-Bereichs befindet.
+const einstellungenKinder: NavItem[] = [
+  { to: '/einstellungen#konto', label: 'Konto', icon: User, end: false },
+  { to: '/einstellungen#profil', label: 'Profil & persönliche Einstellungen', icon: User, end: false },
+  { to: '/einstellungen#sicherheit', label: 'Sicherheit', icon: Shield, end: false },
+  { to: '/einstellungen#datenschutz', label: 'Datenschutz & Hinweise', icon: Lock, end: false },
+  { to: '/einstellungen#darstellung', label: 'Darstellung', icon: Palette, end: false },
+  {
+    to: '/einstellungen#verwaltung',
+    label: 'Verwaltung',
+    icon: Settings,
+    end: false,
+    roles: ['admin', 'planer'],
+    children: [
+      { to: '/nutzer', label: 'Nutzer', icon: Users, end: false, roles: ['admin'] },
+      { to: '/statusvorlagen', label: 'Statusvorlagen', icon: Tag, end: false, roles: ['admin', 'planer'] },
+      { to: '/material-stamm', label: 'Materialstamm', icon: Package, end: false, roles: ['admin', 'planer'] },
+      { to: '/ticket-formulare', label: 'Ticket-Formulare', icon: FileText, end: false, roles: ['admin', 'planer'] },
+      {
+        to: '/tagesbericht-vorlagen',
+        label: 'Tagesbericht-Vorlagen',
+        icon: ClipboardList,
+        end: false,
+        roles: ['admin', 'planer'],
+      },
+    ],
+  },
+  { to: '/einstellungen#unternehmen', label: 'Unternehmen', icon: Building2, end: false, roles: ['admin', 'planer'] },
+  { to: '/einstellungen#ueber-workflow', label: 'Über WorkFlow', icon: Info, end: false },
+]
+
+// Nutzer und Materialstamm sind bewusst nicht in der Hauptleiste gelistet,
+// sondern als Kinder von Einstellungen -- so bleibt die Leiste kurz, zeigt
+// aber den Strukturbaum, sobald man in diesem Bereich ist.
 const mainNav: NavItem[] = [
   { to: '/', label: 'Home', icon: Home, end: true },
   {
@@ -52,7 +99,7 @@ const mainNav: NavItem[] = [
   },
   { to: '/archiv', label: 'Archiv', icon: Archive, end: false, roles: ['admin', 'planer'] },
   { to: '/hilfe', label: 'Hilfe', icon: HelpCircle, end: false },
-  { to: '/einstellungen', label: 'Einstellungen', icon: Settings, end: false },
+  { to: '/einstellungen', label: 'Einstellungen', icon: Settings, end: false, children: einstellungenKinder },
 ]
 
 function projektNav(id: string): NavItem[] {
@@ -94,13 +141,77 @@ function passtZurRolle(item: NavItem, role: Rolle | null, gesperrteModule: Set<s
   return rolleOk && modulOk
 }
 
+function gefiltert(items: NavItem[], role: Rolle | null, gesperrteModule: Set<string>): NavItem[] {
+  return items
+    .filter((item) => passtZurRolle(item, role, gesperrteModule))
+    .map((item) => (item.children ? { ...item, children: gefiltert(item.children, role, gesperrteModule) } : item))
+}
+
+function pfadOhneQuery(to: string) {
+  return to.split('?')[0]
+}
+
+// Eigene Aktiv-Erkennung statt NavLinks eingebauter -- die ignoriert bei
+// Sprungmarken (/einstellungen#profil) den Hash und wuerde sonst alle
+// Einstellungen-Unterpunkte gleichzeitig als aktiv markieren.
+function istAktiv(item: NavItem, pathname: string, hash: string): boolean {
+  if (item.to.includes('#')) return `${pathname}${hash}` === item.to
+  const ziel = pfadOhneQuery(item.to)
+  return item.end ? pathname === ziel : pathname === ziel || pathname.startsWith(`${ziel}/`)
+}
+
+// Ist dieser Knoten oder einer seiner Nachfahren Teil des aktuellen Pfades?
+// Steuert, ob seine Unterpunkte ueberhaupt aufgeklappt angezeigt werden --
+// der Baum zeigt also immer genau den Zweig, in dem man sich gerade
+// befindet, statt alle Ebenen dauerhaft auszuklappen.
+function istImAktuellenZweig(item: NavItem, pathname: string, hash: string): boolean {
+  if (istAktiv(item, pathname, hash)) return true
+  return (item.children ?? []).some((kind) => istImAktuellenZweig(kind, pathname, hash))
+}
+
+function NavBaumKnoten({ item, pathname, hash, tiefe }: { item: NavItem; pathname: string; hash: string; tiefe: number }) {
+  const aktiv = istAktiv(item, pathname, hash)
+  const aufgeklappt = istImAktuellenZweig(item, pathname, hash)
+  return (
+    <div>
+      <NavLink
+        to={item.to}
+        end={item.end}
+        className={`flex items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors ${
+          tiefe === 0 ? 'py-2' : 'py-1.5'
+        } ${
+          aktiv
+            ? 'bg-brand-soft text-brand-text shadow-[inset_3px_0_0_0_var(--color-brand)]'
+            : 'text-text-muted hover:bg-surface-hover hover:text-text'
+        }`}
+      >
+        <item.icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+        {item.label}
+      </NavLink>
+      {item.children && item.children.length > 0 && aufgeklappt && (
+        <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
+          {item.children.map((kind) => (
+            <NavBaumKnoten key={kind.to} item={kind} pathname={pathname} hash={hash} tiefe={tiefe + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Layout() {
   const { user, role, gesperrteModule } = useAuth()
   const { id } = useParams()
+  const { pathname, hash } = useLocation()
   const online = useOnlineStatus()
 
-  const navHaupt = mainNav.filter((item) => passtZurRolle(item, role, gesperrteModule))
-  const navProjekt = id ? projektNav(id).filter((item) => passtZurRolle(item, role, gesperrteModule)) : []
+  const navProjekt = id ? gefiltert(projektNav(id), role, gesperrteModule) : []
+  const navBaum = gefiltert(
+    mainNav.map((item) => (item.to === '/' && navProjekt.length > 0 ? { ...item, children: navProjekt } : item)),
+    role,
+    gesperrteModule,
+  )
+  const navHaupt = gefiltert(mainNav, role, gesperrteModule)
   const navUnten = id ? [mainNav[0], ...navProjekt.filter((item) => item.primary)] : navHaupt
 
   return (
@@ -115,42 +226,8 @@ export function Layout() {
           </span>
         </Link>
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3">
-          {navHaupt.map((item) => (
-            <div key={item.to}>
-              <NavLink
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-brand-soft text-brand-text shadow-[inset_3px_0_0_0_var(--color-brand)]'
-                      : 'text-text-muted hover:bg-surface-hover hover:text-text'
-                  }`
-                }
-              >
-                <item.icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                {item.label}
-              </NavLink>
-              {item.to === '/' && navProjekt.length > 0 && (
-                <div className="ml-4 mt-1 space-y-0.5 border-l border-border pl-3">
-                  {navProjekt.map((sub) => (
-                    <NavLink
-                      key={sub.to}
-                      to={sub.to}
-                      end={sub.end}
-                      className={({ isActive }) =>
-                        `flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                          isActive ? 'bg-brand-soft text-brand-text' : 'text-text-muted hover:bg-surface-hover hover:text-text'
-                        }`
-                      }
-                    >
-                      <sub.icon className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                      {sub.label}
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
+          {navBaum.map((item) => (
+            <NavBaumKnoten key={item.to} item={item} pathname={pathname} hash={hash} tiefe={0} />
           ))}
         </nav>
         <div className="border-t border-border p-3">

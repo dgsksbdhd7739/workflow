@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.7.1',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Seitenleiste zeigt jetzt einen vollständigen Struktur-Baum: Einstellungen klappt alle Unterbereiche auf (Konto, Profil, Sicherheit, Datenschutz, Darstellung, Verwaltung mit Nutzer/Statusvorlagen/Materialstamm/Ticket-Formularen/Tagesbericht-Vorlagen, Unternehmen), und ein Projekt zeigt alle seine Bereiche, sobald man sich darin befindet — der aktuelle Punkt ist dabei immer farblich hervorgehoben.',
+    ],
+  },
+  {
     version: '1.7.0',
     datum: '2026-10-01',
     aenderungen: [

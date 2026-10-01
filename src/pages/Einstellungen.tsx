@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { LogOut, Sparkles } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -20,7 +21,18 @@ const rollenLabel: Record<string, string> = {
 export function Einstellungen() {
   const { user, role, signOut, setOnboardingGesehen, produktHinweise, setProduktHinweise } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const { hash } = useLocation()
   const kannVerwalten = role === 'admin' || role === 'planer'
+
+  // Springt beim Aufruf per Sprungmarke (aus dem Einstellungen-Strukturbaum
+  // in der Seitenleiste) zur jeweiligen Section -- React Router scrollt bei
+  // Hash-Links anders als eine klassische Mehrseiten-Navigation nicht von
+  // selbst dorthin.
+  useEffect(() => {
+    if (!hash) return
+    const ziel = document.getElementById(hash.slice(1))
+    ziel?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [hash])
 
   const toggleProduktHinweise = async () => {
     const neuerWert = !produktHinweise
@@ -34,7 +46,7 @@ export function Einstellungen() {
     <div className="page max-w-xl">
       <h1 className="mb-6 text-xl font-semibold text-text">Einstellungen</h1>
 
-      <section className="card mb-4 p-4">
+      <section id="konto" className="card mb-4 p-4 scroll-mt-4">
         <h2 className="mb-3 text-sm font-semibold text-text">Konto</h2>
         <div className="mb-4 space-y-1 text-sm">
           <div className="text-text">{user?.email}</div>
@@ -55,12 +67,12 @@ export function Einstellungen() {
         </div>
       </section>
 
-      <section className="card mb-4 p-4">
+      <section id="profil" className="card mb-4 p-4 scroll-mt-4">
         <h2 className="mb-3 text-sm font-semibold text-text">Profil & persönliche Einstellungen</h2>
         <ProfilForm />
       </section>
 
-      <section className="card mb-4 p-4">
+      <section id="sicherheit" className="card mb-4 p-4 scroll-mt-4">
         <h2 className="mb-3 text-sm font-semibold text-text">Sicherheit</h2>
         <div className="space-y-4">
           <div>
@@ -74,7 +86,7 @@ export function Einstellungen() {
         </div>
       </section>
 
-      <section className="card mb-4 p-4">
+      <section id="datenschutz" className="card mb-4 p-4 scroll-mt-4">
         <h2 className="mb-3 text-sm font-semibold text-text">Datenschutz & Hinweise</h2>
         <p className="mb-3 text-xs text-text-muted">
           WorkFlow speichert nur die Daten, die du selbst im Profil hinterlegst, sowie deine Arbeitsdaten innerhalb deines
@@ -91,7 +103,7 @@ export function Einstellungen() {
         </label>
       </section>
 
-      <section className="card mb-4 p-4">
+      <section id="darstellung" className="card mb-4 p-4 scroll-mt-4">
         <h2 className="mb-3 text-sm font-semibold text-text">Darstellung</h2>
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm text-text-muted">Farbschema</div>
@@ -117,7 +129,7 @@ export function Einstellungen() {
       </section>
 
       {kannVerwalten && (
-        <section className="card mb-4 p-4">
+        <section id="verwaltung" className="card mb-4 p-4 scroll-mt-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Verwaltung</h2>
           {role === 'admin' && (
             <Link
@@ -160,13 +172,13 @@ export function Einstellungen() {
       )}
 
       {kannVerwalten && (
-        <section className="card mb-4 p-4">
+        <section id="unternehmen" className="card mb-4 p-4 scroll-mt-4">
           <h2 className="mb-3 text-sm font-semibold text-text">Unternehmen</h2>
           <UnternehmenForm />
         </section>
       )}
 
-      <section className="card p-4">
+      <section id="ueber-workflow" className="card p-4 scroll-mt-4">
         <div className="mb-3 flex items-baseline justify-between">
           <h2 className="text-sm font-semibold text-text">Über WorkFlow</h2>
           <span className="text-xs text-text-subtle">Version {__APP_VERSION__}</span>

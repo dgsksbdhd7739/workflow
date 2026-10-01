@@ -42,6 +42,9 @@ export default defineConfig({
         // App mit live bearbeiteten, geteilten Daten ist Korrektheit wichtiger
         // als eine Offline-Ansicht veralteter Listen.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // /download/ ist eine statische Seite neben der SPA (APK-Download,
+        // siehe scripts/deploy-vps.mjs) -- nicht auf index.html umleiten.
+        navigateFallbackDenylist: [/^\/download/],
         // Ohne skipWaiting/clientsClaim bleibt ein neuer Service Worker im
         // "waiting"-Zustand haengen, bis WIRKLICH alle Instanzen des alten
         // geschlossen wurden -- in der nativen App reicht dafuer haeufig

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { HardHat } from 'lucide-react'
+import { Capacitor } from '@capacitor/core'
 import { useAuth } from '../contexts/AuthContext'
 import { isSupabaseConfigured } from '../lib/supabase'
 
@@ -76,6 +77,15 @@ export function Login() {
           <Link to="/datenschutz" className="hover:text-brand hover:underline">
             Datenschutzerklärung
           </Link>
+          {!Capacitor.isNativePlatform() && (
+            <>
+              <span>·</span>
+              {/* Statische Seite vom VPS (scripts/deploy-vps.mjs), keine SPA-Route */}
+              <a href="/download/" className="hover:text-brand hover:underline">
+                Android-App
+              </a>
+            </>
+          )}
         </p>
       </div>
     </div>

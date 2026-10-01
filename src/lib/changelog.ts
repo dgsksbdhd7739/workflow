@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.8.2',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Neu: Android-App direkt von der Web-App herunterladen — Link "Android-App" auf der Anmeldeseite (unter /download/).',
+    ],
+  },
+  {
     version: '1.8.1',
     datum: '2026-10-01',
     aenderungen: [

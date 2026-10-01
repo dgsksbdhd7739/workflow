@@ -55,6 +55,15 @@ run('scp', ['-i', keyPath, '-r', `${distDir}/.`, `${user}@${host}:/var/www/app/`
 console.log('Lade Landing-Page hoch ...')
 run('scp', ['-i', keyPath, '-r', `${landingDir}/.`, `${user}@${host}:/var/www/landing/`])
 
+// APK-Download zusaetzlich unter <app-domain>/download/ (solange die
+// Landing-Domain noch nicht auf den VPS zeigt, ist das der einzige Weg zur
+// APK ueber den VPS). Bewusst nicht in public/ der SPA, sonst laege die
+// ~8 MB grosse APK in jedem Live-Update-Zip.
+console.log('Lade APK-Download-Seite hoch ...')
+run('ssh', ['-i', keyPath, `${user}@${host}`, 'mkdir -p /var/www/app/download/assets'])
+run('scp', ['-i', keyPath, path.join(landingDir, 'download.html'), `${user}@${host}:/var/www/app/download/index.html`])
+run('scp', ['-i', keyPath, path.join(landingDir, 'assets', 'workflow.apk'), `${user}@${host}:/var/www/app/download/assets/workflow.apk`])
+
 console.log('Setze Dateirechte ...')
 run('ssh', ['-i', keyPath, `${user}@${host}`, 'chown -R www-data:www-data /var/www/app /var/www/landing'])
 

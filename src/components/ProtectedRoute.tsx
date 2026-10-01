@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export function ProtectedRoute() {
-  const { user, loading, mussPasswortAendern } = useAuth()
+  const { user, loading, mussPasswortAendern, mfaPending } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -15,6 +15,10 @@ export function ProtectedRoute() {
 
   if (!user) {
     return <Navigate to="/login" replace />
+  }
+
+  if (mfaPending && location.pathname !== '/anmeldung-bestaetigen') {
+    return <Navigate to="/anmeldung-bestaetigen" replace />
   }
 
   if (mussPasswortAendern && location.pathname !== '/passwort-aendern') {

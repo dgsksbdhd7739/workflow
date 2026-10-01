@@ -1,11 +1,14 @@
 import { Link } from 'react-router-dom'
 import { LogOut, Sparkles } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../hooks/useTheme'
 import { CHANGELOG } from '../lib/changelog'
 import { formatDatum } from '../lib/datum'
 import { UnternehmenForm } from '../components/UnternehmenForm'
 import { ProfilForm } from '../components/ProfilForm'
+import { ZweiFaktorEinstellungen } from '../components/ZweiFaktorEinstellungen'
+import { AngemeldeteGeraete } from '../components/AngemeldeteGeraete'
 
 const rollenLabel: Record<string, string> = {
   admin: 'Admin',
@@ -15,9 +18,17 @@ const rollenLabel: Record<string, string> = {
 }
 
 export function Einstellungen() {
-  const { user, role, signOut, setOnboardingGesehen } = useAuth()
+  const { user, role, signOut, setOnboardingGesehen, produktHinweise, setProduktHinweise } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const kannVerwalten = role === 'admin' || role === 'planer'
+
+  const toggleProduktHinweise = async () => {
+    const neuerWert = !produktHinweise
+    setProduktHinweise(neuerWert)
+    if (user) {
+      await supabase.from('profiles').update({ produkt_hinweise: neuerWert }).eq('id', user.id)
+    }
+  }
 
   return (
     <div className="page max-w-xl">
@@ -47,6 +58,37 @@ export function Einstellungen() {
       <section className="card mb-4 p-4">
         <h2 className="mb-3 text-sm font-semibold text-text">Profil & persönliche Einstellungen</h2>
         <ProfilForm />
+      </section>
+
+      <section className="card mb-4 p-4">
+        <h2 className="mb-3 text-sm font-semibold text-text">Sicherheit</h2>
+        <div className="space-y-4">
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-subtle">Zwei-Faktor-Authentifizierung</h3>
+            <ZweiFaktorEinstellungen />
+          </div>
+          <div className="border-t border-border pt-4">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-subtle">Angemeldete Geräte</h3>
+            <AngemeldeteGeraete />
+          </div>
+        </div>
+      </section>
+
+      <section className="card mb-4 p-4">
+        <h2 className="mb-3 text-sm font-semibold text-text">Datenschutz & Hinweise</h2>
+        <p className="mb-3 text-xs text-text-muted">
+          WorkFlow speichert nur die Daten, die du selbst im Profil hinterlegst, sowie deine Arbeitsdaten innerhalb deines
+          Unternehmens. Es gibt keine Weitergabe an Dritte und keinen Newsletter.
+        </p>
+        <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
+          <span className="text-text">„Was ist neu"-Hinweise nach Updates automatisch anzeigen</span>
+          <input
+            type="checkbox"
+            checked={produktHinweise}
+            onChange={toggleProduktHinweise}
+            className="h-4 w-4 flex-shrink-0"
+          />
+        </label>
       </section>
 
       <section className="card mb-4 p-4">

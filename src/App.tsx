@@ -21,6 +21,7 @@ import { TicketFormulare } from './pages/TicketFormulare'
 import { TagesberichtVorlagen } from './pages/TagesberichtVorlagen'
 import { Nutzerverwaltung } from './pages/Nutzerverwaltung'
 import { PasswortAendern } from './pages/PasswortAendern'
+import { AnmeldungBestaetigen } from './pages/AnmeldungBestaetigen'
 import { Einstellungen } from './pages/Einstellungen'
 import { Archiv } from './pages/Archiv'
 import { Gruppenchat } from './pages/Gruppenchat'
@@ -38,8 +39,8 @@ function PushBootstrap() {
 }
 
 function ModalGate() {
-  const { user, mussPasswortAendern, onboardingGesehen } = useAuth()
-  if (!user || mussPasswortAendern) return null
+  const { user, mussPasswortAendern, mfaPending, onboardingGesehen } = useAuth()
+  if (!user || mussPasswortAendern || mfaPending) return null
   return onboardingGesehen ? <ChangelogDialog /> : <OnboardingDialog />
 }
 
@@ -54,6 +55,7 @@ function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/passwort-aendern" element={<PasswortAendern />} />
+            <Route path="/anmeldung-bestaetigen" element={<AnmeldungBestaetigen />} />
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/archiv" element={<Archiv />} />

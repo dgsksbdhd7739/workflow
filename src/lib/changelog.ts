@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.7.0',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Neu: Einstellungen → Sicherheit — Zwei-Faktor-Authentifizierung per Authenticator-App aktivierbar, dazu eine Liste der zuletzt angemeldeten Geräte mit der Möglichkeit, sich von allen anderen Geräten gleichzeitig abzumelden.',
+      'Neu: Einstellungen → Datenschutz & Hinweise — Schalter, ob "Was ist neu"-Hinweise nach Updates automatisch angezeigt werden.',
+    ],
+  },
+  {
     version: '1.6.9',
     datum: '2026-10-01',
     aenderungen: [

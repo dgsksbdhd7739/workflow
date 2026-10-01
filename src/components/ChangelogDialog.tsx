@@ -5,14 +5,14 @@ import { holeUngeseheneEintraege, markiereAlsGesehen, type ChangelogEintrag } fr
 import { formatDatum } from '../lib/datum'
 
 export function ChangelogDialog() {
-  const { user } = useAuth()
+  const { user, produktHinweise } = useAuth()
   const [eintraege, setEintraege] = useState<ChangelogEintrag[]>([])
 
   useEffect(() => {
-    if (user) setEintraege(holeUngeseheneEintraege(__APP_VERSION__))
-  }, [user])
+    if (user && produktHinweise) setEintraege(holeUngeseheneEintraege(__APP_VERSION__))
+  }, [user, produktHinweise])
 
-  if (!user || eintraege.length === 0) return null
+  if (!user || !produktHinweise || eintraege.length === 0) return null
 
   const schliessen = () => {
     markiereAlsGesehen(__APP_VERSION__)

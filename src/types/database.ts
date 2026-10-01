@@ -17,6 +17,16 @@ export interface Profile {
   strasse: string | null
   plz: string | null
   stadt: string | null
+  produkt_hinweise: boolean
+}
+
+export interface NutzerSitzung {
+  id: string
+  user_id: string
+  geraet_kennung: string
+  geraet_name: string
+  letzter_zugriff: string
+  erstellt_am: string
 }
 
 export interface Unternehmen {

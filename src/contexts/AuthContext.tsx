@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { geraetKennung, geraetName } from '../lib/geraet'
 import type { Rolle } from '../types/database'
 
 interface AuthContextValue {
@@ -12,7 +13,12 @@ interface AuthContextValue {
   setMussPasswortAendern: (v: boolean) => void
   onboardingGesehen: boolean
   setOnboardingGesehen: (v: boolean) => void
+  produktHinweise: boolean
+  setProduktHinweise: (v: boolean) => void
   gesperrteModule: Set<string>
+  mfaPending: boolean
+  mfaFactorId: string | null
+  bestaetigeMfaCode: (code: string) => Promise<{ error: string | null }>
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
@@ -26,7 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [unternehmenId, setUnternehmenId] = useState<string | null>(null)
   const [mussPasswortAendern, setMussPasswortAendern] = useState(false)
   const [onboardingGesehen, setOnboardingGesehen] = useState(true)
+  const [produktHinweise, setProduktHinweise] = useState(true)
   const [gesperrteModule, setGesperrteModule] = useState<Set<string>>(new Set())
+  const [mfaPending, setMfaPending] = useState(false)
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -49,12 +58,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUnternehmenId(null)
       setMussPasswortAendern(false)
       setOnboardingGesehen(true)
+      setProduktHinweise(true)
       setGesperrteModule(new Set())
+      setMfaPending(false)
+      setMfaFactorId(null)
       return
     }
     supabase
       .from('profiles')
-      .select('role, muss_passwort_aendern, onboarding_gesehen, unternehmen_id')
+      .select('role, muss_passwort_aendern, onboarding_gesehen, unternehmen_id, produkt_hinweise')
       .eq('id', userId)
       .single()
       .then(({ data }) => {
@@ -62,12 +74,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUnternehmenId(data?.unternehmen_id ?? null)
         setMussPasswortAendern(data?.muss_passwort_aendern ?? false)
         setOnboardingGesehen(data?.onboarding_gesehen ?? true)
+        setProduktHinweise(data?.produkt_hinweise ?? true)
       })
     supabase
       .from('nutzer_modul_sperren')
       .select('modul')
       .eq('user_id', userId)
       .then(({ data }) => setGesperrteModule(new Set((data ?? []).map((r) => r.modul))))
+
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) => {
+      if (data && data.nextLevel === 'aal2' && data.currentLevel !== data.nextLevel) {
+        setMfaPending(true)
+        supabase.auth.mfa.listFactors().then(({ data: factorData }) => {
+          setMfaFactorId(factorData?.totp[0]?.id ?? null)
+        })
+      } else {
+        setMfaPending(false)
+        setMfaFactorId(null)
+        // Geraet nur bei vollstaendig abgeschlossener Anmeldung (kein
+        // ausstehender zweiter Faktor) in die Liste eintragen/aktualisieren.
+        supabase
+          .from('nutzer_sitzungen')
+          .upsert(
+            { user_id: userId, geraet_kennung: geraetKennung(), geraet_name: geraetName(), letzter_zugriff: new Date().toISOString() },
+            { onConflict: 'user_id,geraet_kennung' },
+          )
+          .then(() => {})
+      }
+    })
   }, [session?.user.id])
 
   const signIn = async (email: string, password: string) => {
@@ -77,6 +111,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
+  }
+
+  const bestaetigeMfaCode = async (code: string) => {
+    if (!mfaFactorId) return { error: 'Kein zweiter Faktor eingerichtet.' }
+    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: mfaFactorId, code })
+    if (error) return { error: error.message }
+    setMfaPending(false)
+    const userId = session?.user.id
+    if (userId) {
+      await supabase
+        .from('nutzer_sitzungen')
+        .upsert(
+          { user_id: userId, geraet_kennung: geraetKennung(), geraet_name: geraetName(), letzter_zugriff: new Date().toISOString() },
+          { onConflict: 'user_id,geraet_kennung' },
+        )
+    }
+    return { error: null }
   }
 
   return (
@@ -90,7 +141,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMussPasswortAendern,
         onboardingGesehen,
         setOnboardingGesehen,
+        produktHinweise,
+        setProduktHinweise,
         gesperrteModule,
+        mfaPending,
+        mfaFactorId,
+        bestaetigeMfaCode,
         loading,
         signIn,
         signOut,

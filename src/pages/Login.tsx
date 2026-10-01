@@ -68,7 +68,11 @@ export function Login() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-text-subtle">
+        <p className="mt-6 flex justify-center gap-3 text-center text-xs text-text-subtle">
+          <Link to="/impressum" className="hover:text-brand hover:underline">
+            Impressum
+          </Link>
+          <span>·</span>
           <Link to="/datenschutz" className="hover:text-brand hover:underline">
             Datenschutzerklärung
           </Link>

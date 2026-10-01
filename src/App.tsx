@@ -8,6 +8,7 @@ import { OnboardingDialog } from './components/OnboardingDialog'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Datenschutz } from './pages/Datenschutz'
+import { Impressum } from './pages/Impressum'
 import { Dashboard } from './pages/Dashboard'
 import { ProjektDashboard } from './pages/ProjektDashboard'
 import { Aufgaben } from './pages/Aufgaben'
@@ -54,6 +55,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/datenschutz" element={<Datenschutz />} />
+          <Route path="/impressum" element={<Impressum />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/passwort-aendern" element={<PasswortAendern />} />

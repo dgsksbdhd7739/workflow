@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.7.7',
+    datum: '2026-10-01',
+    aenderungen: [
+      'Neu: Impressum unter /impressum, verlinkt von der Anmeldeseite, der Landingpage und gegenseitig mit der Datenschutzerklärung.',
+    ],
+  },
+  {
     version: '1.7.6',
     datum: '2026-10-01',
     aenderungen: [

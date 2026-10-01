@@ -33,9 +33,14 @@ export function Datenschutz() {
             </div>
             Work<span className="brand-text">Flow</span>
           </Link>
-          <Link to="/login" className="text-sm font-medium text-brand hover:underline">
-            Zur Anmeldung
-          </Link>
+          <div className="flex items-center gap-4 text-sm font-medium">
+            <Link to="/impressum" className="text-text-muted hover:text-brand hover:underline">
+              Impressum
+            </Link>
+            <Link to="/login" className="text-brand hover:underline">
+              Zur Anmeldung
+            </Link>
+          </div>
         </div>
       </header>
 

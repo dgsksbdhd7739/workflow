@@ -138,6 +138,16 @@ export interface Plan {
   erstellt_am: string
 }
 
+export interface Gebaeude {
+  id: string
+  projekt_id: string
+  name: string
+  adresse: string | null
+  beschreibung: string | null
+  erstellt_von: string
+  erstellt_am: string
+}
+
 export interface Tagesbericht {
   id: string
   projekt_id: string

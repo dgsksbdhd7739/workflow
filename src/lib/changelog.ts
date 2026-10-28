@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.10.2',
+    datum: '2026-10-28',
+    aenderungen: [
+      'Projekte: Gebäude können jetzt direkt in der Projektübersicht angelegt und angeklickt werden. Die Gebäudeseite führt zu den bestehenden Plänen und Aufgaben; Geschosse und Einheiten folgen als nächster Ausbauschritt.',
+    ],
+  },
+  {
     version: '1.10.1',
     datum: '2026-10-01',
     aenderungen: [

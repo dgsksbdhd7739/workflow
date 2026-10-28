@@ -116,6 +116,7 @@ const mainNav: NavItem[] = [
 function projektNav(id: string): NavItem[] {
   return [
     { to: `/projekte/${id}`, label: 'Übersicht', icon: LayoutDashboard, end: true, primary: true },
+    { to: `/projekte/${id}/gebaeude`, label: 'Gebäude', icon: Building2, end: false, primary: true },
     { to: `/projekte/${id}/plaene`, label: 'Pläne', icon: MapIcon, end: false, primary: true },
     { to: `/projekte/${id}/dokumente`, label: 'Dokumente', icon: FileText, end: false, modul: 'dokumente', paketFunktion: 'dokumente' },
     { to: `/projekte/${id}/aufgaben`, label: 'Aufgaben', icon: ListChecks, end: false, primary: true },

@@ -39,6 +39,7 @@ npx tauri build           # Windows-Desktop, Release-Installer
 - `baustellen` — Projekte (oberste Ebene; Tabellenname historisch, in der UI durchgängig "Projekt" genannt)
 - `maengel` — Aufgaben je Projekt, mit Status/Priorität/Foto/optionaler Plan-Position (Tabellenname historisch, in der UI "Aufgabe" genannt)
 - `plaene` + `plan_markierungen` — hochgeladene Pläne und Pins darauf
+- `gebaeude` — Gebäude je Projekt als Einstieg für die schrittweise Gebäude-/Geschossübersicht; Pläne und Aufgaben bleiben zunächst projektweit
 - `tagesberichte` — Bautagebuch-Einträge je Tag/Projekt
 - `zeiterfassung` — Arbeitszeiten je Mitarbeiter/Projekt
 

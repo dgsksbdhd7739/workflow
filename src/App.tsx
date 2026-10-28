@@ -13,6 +13,7 @@ import { Impressum } from './pages/Impressum'
 import { PlattformAdmin } from './pages/PlattformAdmin'
 import { Dashboard } from './pages/Dashboard'
 import { ProjektDashboard } from './pages/ProjektDashboard'
+import { GebaeudeDetail } from './pages/GebaeudeDetail'
 import { Aufgaben } from './pages/Aufgaben'
 import { Material } from './pages/Material'
 import { Plaene } from './pages/Plaene'
@@ -78,6 +79,8 @@ function App() {
               <Route path="/projekt-chat" element={<PaketRoute funktion="projekt_chat"><ProjektChat /></PaketRoute>} />
               <Route path="/material-stamm" element={<PaketRoute funktion="material"><MaterialStamm /></PaketRoute>} />
               <Route path="/projekte/:id" element={<ProjektDashboard />} />
+              <Route path="/projekte/:id/gebaeude" element={<ProjektDashboard />} />
+              <Route path="/projekte/:id/gebaeude/:gebaeudeId" element={<GebaeudeDetail />} />
               <Route path="/projekte/:id/aufgaben" element={<Aufgaben />} />
               <Route path="/projekte/:id/material" element={<PaketRoute funktion="material"><Material /></PaketRoute>} />
               <Route path="/projekte/:id/plaene" element={<Plaene />} />

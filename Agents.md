@@ -17,6 +17,7 @@ Version/Änderungshistorie stehen im in-App-Changelog ([src/lib/changelog.ts](sr
 ### Architektur-Vorgaben
 - Multi-Tenant über `unternehmen_id` + Row Level Security; siehe `docs/firma-erstellen.md` für Firmen-Provisionierung.
 - DB-Terminologie folgt der UI: Tabellen/Spalten heißen `projekte`/`projekt_id` bzw. `aufgaben`/`aufgabe_id` (siehe Migration `0035_projekt_aufgabe_umbenennung.sql`).
+- Gebäude werden als `gebaeude` mit erforderlichem `projekt_id` geführt. Zugriff für Lesen über `kunde_hat_zugriff(projekt_id)`, Schreiben durch Admin/Planer über `projekt_im_eigenen_unternehmen(projekt_id)`; neue geschachtelte Gebäudedaten müssen dieselbe Projekt-/Unternehmensgrenze durchsetzen.
 
 ## Dokumentationsprinzip
 

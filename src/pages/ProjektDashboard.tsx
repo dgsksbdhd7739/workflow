@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   CalendarDays,
   CalendarPlus,
+  Building2,
   ClipboardList,
   FileText,
   History,
@@ -11,6 +12,9 @@ import {
   MapPin,
   Clock as ClockIcon,
   Package,
+  Plus,
+  Trash2,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -20,7 +24,7 @@ import { ProjektForm } from '../components/ProjektForm'
 import { SignedImage } from '../components/SignedImage'
 import { formatProjektAdresse, kartenUrl } from '../lib/adresse'
 import { formatDatum } from '../lib/datum'
-import type { Projekt, Aufgabe, Rolle, Tagesbericht, Termin } from '../types/database'
+import type { Projekt, Aufgabe, Gebaeude, Rolle, Tagesbericht, Termin } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
 
@@ -74,7 +78,7 @@ function relativeZeit(iso: string): string {
 
 export function ProjektDashboard() {
   const { id: projektId } = useParams<{ id: string }>()
-  const { role } = useAuth()
+  const { role, user } = useAuth()
   const kannZeitSehen = role !== 'kunde'
   const kannBearbeiten = role === 'admin' || role === 'planer'
   const { nameOf } = useProfiles()
@@ -86,6 +90,13 @@ export function ProjektDashboard() {
   const [gestempelteMinuten, setGestempelteMinuten] = useState(0)
   const [letzterBericht, setLetzterBericht] = useState<Tagesbericht | null>(null)
   const [aktivitaeten, setAktivitaeten] = useState<AktivitaetsEintrag[]>([])
+  const [gebaeude, setGebaeude] = useState<Gebaeude[]>([])
+  const [gebaeudeFehler, setGebaeudeFehler] = useState<string | null>(null)
+  const [gebaeudeFormularOffen, setGebaeudeFormularOffen] = useState(false)
+  const [gebaeudeName, setGebaeudeName] = useState('')
+  const [gebaeudeAdresse, setGebaeudeAdresse] = useState('')
+  const [gebaeudeBeschreibung, setGebaeudeBeschreibung] = useState('')
+  const [gebaeudeSpeichert, setGebaeudeSpeichert] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -115,7 +126,14 @@ export function ProjektDashboard() {
         .eq('projekt_id', projektId)
         .order('erstellt_am', { ascending: false })
         .limit(8),
-    ]).then(([projektRes, offeneRes, hochRes, termineRes, zeitenRes, berichteRes, aufgabenActRes, termineActRes]) => {
+      supabase.from('gebaeude').select('*').eq('projekt_id', projektId).order('erstellt_am'),
+    ]).then(([projektRes, offeneRes, hochRes, termineRes, zeitenRes, berichteRes, aufgabenActRes, termineActRes, gebaeudeRes]) => {
+      if (gebaeudeRes.error) {
+        setGebaeudeFehler('Gebäude konnten nicht geladen werden. Prüfe, ob die Gebäudemigration bereits angewendet wurde.')
+      } else {
+        setGebaeude((gebaeudeRes.data ?? []) as Gebaeude[])
+        setGebaeudeFehler(null)
+      }
       setProjekt(projektRes.data)
       setOffeneAufgaben(offeneRes.count ?? 0)
       setHochPrioAufgaben(hochRes.count ?? 0)
@@ -170,6 +188,44 @@ export function ProjektDashboard() {
     }
     const { error } = await supabase.from('projekte').update({ archiviert: naechsterWert }).eq('id', projekt.id)
     if (!error) setProjekt({ ...projekt, archiviert: naechsterWert })
+  }
+
+  const handleGebaeudeAnlegen = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!projektId || !user || !gebaeudeName.trim()) return
+    setGebaeudeSpeichert(true)
+    setGebaeudeFehler(null)
+    const { data, error } = await supabase
+      .from('gebaeude')
+      .insert({
+        projekt_id: projektId,
+        name: gebaeudeName.trim(),
+        adresse: gebaeudeAdresse.trim() || null,
+        beschreibung: gebaeudeBeschreibung.trim() || null,
+        erstellt_von: user.id,
+      })
+      .select('*')
+      .single()
+    if (error) {
+      setGebaeudeFehler('Gebäude konnte nicht gespeichert werden. Prüfe deine Berechtigung und die Datenbankmigration.')
+    } else {
+      setGebaeude((vorherige) => [...vorherige, data as Gebaeude])
+      setGebaeudeName('')
+      setGebaeudeAdresse('')
+      setGebaeudeBeschreibung('')
+      setGebaeudeFormularOffen(false)
+    }
+    setGebaeudeSpeichert(false)
+  }
+
+  const handleGebaeudeLoeschen = async (eintrag: Gebaeude) => {
+    if (!window.confirm(`Gebäude „${eintrag.name}“ wirklich löschen?`)) return
+    const { error } = await supabase.from('gebaeude').delete().eq('id', eintrag.id).eq('projekt_id', projektId)
+    if (error) {
+      setGebaeudeFehler('Gebäude konnte nicht gelöscht werden. Bitte prüfe deine Berechtigung.')
+      return
+    }
+    setGebaeude((vorherige) => vorherige.filter((g) => g.id !== eintrag.id))
   }
 
   if (loading) return <p className="p-6 text-sm text-text-muted">Lädt…</p>
@@ -302,6 +358,82 @@ export function ProjektDashboard() {
           </ul>
         </div>
       )}
+
+      <section id="gebaeude" className="mb-6 scroll-mt-20">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-text">Gebäude</h2>
+            <p className="mt-0.5 text-xs text-text-muted">Gebäude im Projekt öffnen und verwalten</p>
+          </div>
+          {kannBearbeiten && !gebaeudeFormularOffen && (
+            <button type="button" className="btn-primary" onClick={() => setGebaeudeFormularOffen(true)}>
+              <Plus className="h-4 w-4" /> Gebäude anlegen
+            </button>
+          )}
+        </div>
+
+        {gebaeudeFehler && <p className="banner-error mb-3">{gebaeudeFehler}</p>}
+
+        {gebaeudeFormularOffen && (
+          <form onSubmit={handleGebaeudeAnlegen} className="card mb-3 space-y-3 p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-text">Neues Gebäude</h3>
+              <button type="button" className="btn-ghost !p-1" aria-label="Formular schließen" onClick={() => setGebaeudeFormularOffen(false)}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <label className="block">
+              <span className="field-label">Gebäudename *</span>
+              <input autoFocus required maxLength={120} className="field-input" placeholder="z. B. Haus A" value={gebaeudeName} onChange={(e) => setGebaeudeName(e.target.value)} />
+            </label>
+            <label className="block">
+              <span className="field-label">Adresse (optional)</span>
+              <input maxLength={240} className="field-input" placeholder="Straße und Hausnummer" value={gebaeudeAdresse} onChange={(e) => setGebaeudeAdresse(e.target.value)} />
+            </label>
+            <label className="block">
+              <span className="field-label">Beschreibung (optional)</span>
+              <textarea maxLength={1000} rows={2} className="field-input resize-y" placeholder="Kurze interne Beschreibung" value={gebaeudeBeschreibung} onChange={(e) => setGebaeudeBeschreibung(e.target.value)} />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setGebaeudeFormularOffen(false)}>Abbrechen</button>
+              <button type="submit" className="btn-primary" disabled={gebaeudeSpeichert || !gebaeudeName.trim()}>
+                {gebaeudeSpeichert ? 'Speichert…' : 'Gebäude speichern'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {gebaeude.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {gebaeude.map((eintrag) => (
+              <div key={eintrag.id} className="card group relative overflow-hidden">
+                <Link to={`/projekte/${projektId}/gebaeude/${eintrag.id}`} className="block p-4 pr-14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand">
+                  <div className="mb-3 flex h-28 items-center justify-center rounded-lg bg-gradient-to-br from-brand-soft via-surface to-surface-hover">
+                    <Building2 className="h-16 w-16 text-brand transition-transform group-hover:scale-105" strokeWidth={1.4} aria-hidden="true" />
+                  </div>
+                  <h3 className="font-semibold text-text">{eintrag.name}</h3>
+                  {eintrag.adresse && <p className="mt-1 truncate text-sm text-text-muted">{eintrag.adresse}</p>}
+                  {eintrag.beschreibung && <p className="mt-1 line-clamp-2 text-xs text-text-subtle">{eintrag.beschreibung}</p>}
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand">Gebäude öffnen <span aria-hidden="true">→</span></span>
+                </Link>
+                {kannBearbeiten && (
+                  <button type="button" className="btn-ghost absolute right-2 top-2 !p-2 text-text-subtle hover:text-red-600" aria-label={`Gebäude ${eintrag.name} löschen`} onClick={() => void handleGebaeudeLoeschen(eintrag)}>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          !gebaeudeFehler && (
+            <div className="card flex flex-col items-center px-5 py-8 text-center">
+              <Building2 className="mb-2 h-9 w-9 text-text-subtle" strokeWidth={1.5} aria-hidden="true" />
+              <p className="text-sm font-medium text-text">Noch keine Gebäude angelegt</p>
+              <p className="mt-1 max-w-md text-xs text-text-muted">Lege zum Start ein Gebäude an. Es kann anschließend geöffnet und mit den vorhandenen Projektplänen und Aufgaben genutzt werden.</p>
+            </div>
+          )
+        )}
+      </section>
 
       {letzterBericht && (
         <div className="card mb-6 p-4">

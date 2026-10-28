@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { PaketRoute } from './components/PaketSperre'
 import { initPushNotifications } from './lib/push'
+import { isLokaleDemoAktiviert } from './lib/supabase'
 import { ChangelogDialog } from './components/ChangelogDialog'
 import { OnboardingDialog } from './components/OnboardingDialog'
 import { Layout } from './components/Layout'
@@ -35,6 +36,7 @@ import { ProjektChat } from './pages/ProjektChat'
 import { Dokumente } from './pages/Dokumente'
 import { MaterialStamm } from './pages/MaterialStamm'
 import { Hilfe } from './pages/Hilfe'
+import { LokaleDemo } from './pages/LokaleDemo'
 
 function PushBootstrap() {
   const { user } = useAuth()
@@ -51,6 +53,16 @@ function ModalGate() {
 }
 
 function App() {
+  if (isLokaleDemoAktiviert) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="*" element={<LokaleDemo />} />
+        </Routes>
+      </BrowserRouter>
+    )
+  }
+
   return (
     <BrowserRouter>
       <AuthProvider>

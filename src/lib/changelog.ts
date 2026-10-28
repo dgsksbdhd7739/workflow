@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '1.10.3',
+    datum: '2026-10-28',
+    aenderungen: [
+      'Die App startet ohne Supabase-Verbindung direkt in einer lokalen Gebäude-Demo. Beispieldaten können auf diesem Gerät ergänzt werden; sie werden nicht synchronisiert und sind keine echten Projektdaten.',
+    ],
+  },
+  {
     version: '1.10.2',
     datum: '2026-10-28',
     aenderungen: [

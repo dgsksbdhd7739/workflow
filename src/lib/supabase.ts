@@ -4,6 +4,9 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
+// Expliziter lokaler Demo-Schalter erlaubt den Start ohne Netzwerk/Auth auch,
+// wenn lokale Supabase-Zugangsdaten vorhanden, das Projekt aber pausiert ist.
+export const isLokaleDemoAktiviert = import.meta.env.VITE_LOKALE_DEMO === 'true' || !isSupabaseConfigured
 
 export const supabase = createClient(
   supabaseUrl ?? 'https://placeholder.supabase.co',

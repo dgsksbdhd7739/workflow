@@ -18,6 +18,7 @@ Version/Änderungshistorie stehen im in-App-Changelog ([src/lib/changelog.ts](sr
 - Multi-Tenant über `unternehmen_id` + Row Level Security; siehe `docs/firma-erstellen.md` für Firmen-Provisionierung.
 - DB-Terminologie folgt der UI: Tabellen/Spalten heißen `projekte`/`projekt_id` bzw. `aufgaben`/`aufgabe_id` (siehe Migration `0035_projekt_aufgabe_umbenennung.sql`).
 - Gebäude werden als `gebaeude` mit erforderlichem `projekt_id` geführt. Zugriff für Lesen über `kunde_hat_zugriff(projekt_id)`, Schreiben durch Admin/Planer über `projekt_im_eigenen_unternehmen(projekt_id)`; neue geschachtelte Gebäudedaten müssen dieselbe Projekt-/Unternehmensgrenze durchsetzen.
+- Wenn Supabase nicht verfügbar/konfiguriert ist, startet die App direkt in `LokaleDemo` ohne AuthProvider und zeigt ausschließlich Beispieldaten aus lokalem Gerätespeicher. Dieser Modus ist eine Entwicklungs-/Demooberfläche, kein Auth-Bypass und kein Ersatz für echte Nutzerdaten oder Synchronisierung; bei aktivem Supabase bleibt der normale geschützte App-Fluss unverändert.
 
 ## Dokumentationsprinzip
 

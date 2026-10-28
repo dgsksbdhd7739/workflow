@@ -17,6 +17,10 @@ cp .env.example .env   # Werte aus Supabase-Dashboard eintragen
 npm run dev             # Web, http://localhost:5173
 ```
 
+### Lokale Demo ohne Supabase
+
+Wenn Supabase nicht konfiguriert ist, startet WorkFlow automatisch direkt in einer lokalen Gebäude-Demo ohne Anmeldung. Sind Supabase-Werte in `.env` vorhanden, lässt sich die Verbindung für einen lokalen Build ausdrücklich abschalten, indem `VITE_LOKALE_DEMO=true` gesetzt wird. Die Demo zeigt ausschließlich Beispieldaten; Änderungen werden im lokalen Browser-/App-Speicher abgelegt und nicht mit anderen Geräten synchronisiert. Die lokale Demo ist kein Ersatz für Authentifizierung oder die echte, mandantengetrennte Projektdatenbank.
+
 ## Datenbank-Migrationen
 
 Schema liegt in `supabase/migrations/`. Anwenden auf das verlinkte Supabase-Projekt:

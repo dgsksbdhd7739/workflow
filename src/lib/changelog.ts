@@ -11,6 +11,13 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.2.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'Plattform-Verwaltung: neue Seite „Serverzustand“ mit Auslastung von Prozessor, Arbeitsspeicher und Festplatte, Verlaufskurven (24 Stunden / 7 Tage), Netzwerk, Status der Dienste, letzter Sicherung, Zertifikat und Speicherbedarf der App.',
+    ],
+  },
+  {
     version: '2.1.0',
     datum: '2026-10-29',
     aenderungen: [

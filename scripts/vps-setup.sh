@@ -171,9 +171,18 @@ cat > /usr/local/sbin/workflow-backup <<'EOF'
 set -euo pipefail
 ziel=/var/backups/workflow
 stempel=$(date +%Y-%m-%d_%H%M)
+# Ergebnis fuer die Seite Serverzustand (liest das Backend, daher 644).
+status=/var/lib/workflow/sicherung.json
+melden() {
+  printf '{"zeit":"%s","ok":%s,"db_bytes":%s,"dateien_bytes":%s}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "${2:-null}" "${3:-null}" > "$status.neu"
+  chmod 644 "$status.neu" && mv "$status.neu" "$status"
+}
+trap 'melden false' ERR
 sudo -u postgres pg_dump -Fc -d workflow > "$ziel/db_$stempel.dump"
 tar -czf "$ziel/dateien_$stempel.tar.gz" -C /var/lib/workflow dateien
 find "$ziel" -type f -mtime +14 -delete
+melden true "$(stat -c %s "$ziel/db_$stempel.dump")" "$(stat -c %s "$ziel/dateien_$stempel.tar.gz")"
 EOF
 chmod 700 /usr/local/sbin/workflow-backup
 

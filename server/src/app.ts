@@ -6,6 +6,8 @@ import type { Datenbank } from './datenbank.ts'
 import type { Konfiguration } from './konfiguration.ts'
 import { AnfrageFehler } from './anfrage.ts'
 import { authRouten } from './auth/routen.ts'
+import { Messung, serverFehler } from './betrieb/messung.ts'
+import { betriebRouten } from './betrieb/routen.ts'
 import { datenRouten } from './daten/routen.ts'
 import { ladeSchema } from './daten/schema.ts'
 import { dateiRouten } from './dateien/routen.ts'
@@ -46,6 +48,7 @@ export async function baueApp(db: Datenbank, konf: Konfiguration) {
         : (fehler as Error).message
       return antwort.status(status).send({ error: meldung })
     }
+    serverFehler.vermerken()
     req.log.error(fehler)
     return antwort.status(500).send({ error: 'Interner Fehler. Bitte später erneut versuchen.' })
   })
@@ -67,6 +70,14 @@ export async function baueApp(db: Datenbank, konf: Konfiguration) {
   dateiRouten(app, db, konf)
   funktionsRouten(app, db, konf)
   liveRouten(app, db, konf, lauscher)
+  betriebRouten(app, db, konf)
+
+  // Verlaufswerte fuer die Seite Serverzustand; in Tests nicht im Hintergrund.
+  if (process.env.NODE_ENV !== 'test') {
+    const messung = new Messung(db, app.log, konf.dateienVerzeichnis)
+    messung.starten()
+    app.addHook('onClose', () => messung.beenden())
+  }
 
   return app
 }

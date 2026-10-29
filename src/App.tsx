@@ -12,6 +12,7 @@ import { Login } from './pages/Login'
 import { Datenschutz } from './pages/Datenschutz'
 import { Impressum } from './pages/Impressum'
 import { PlattformAdmin } from './pages/PlattformAdmin'
+import { Serverzustand } from './pages/Serverzustand'
 import { Dashboard } from './pages/Dashboard'
 import { ProjektDashboard } from './pages/ProjektDashboard'
 import { GebaeudeDetail } from './pages/GebaeudeDetail'
@@ -88,6 +89,7 @@ function App() {
               <Route path="/tagesbericht-vorlagen" element={<PaketRoute funktion="vorlagen"><TagesberichtVorlagen /></PaketRoute>} />
               <Route path="/nutzer" element={<Nutzerverwaltung />} />
               <Route path="/plattform-admin" element={<PlattformAdmin />} />
+              <Route path="/plattform-admin/server" element={<Serverzustand />} />
               <Route path="/team-chat" element={<Gruppenchat />} />
               <Route path="/projekt-chat" element={<PaketRoute funktion="projekt_chat"><ProjektChat /></PaketRoute>} />
               <Route path="/material-stamm" element={<PaketRoute funktion="material"><MaterialStamm /></PaketRoute>} />

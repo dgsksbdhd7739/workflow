@@ -3,6 +3,8 @@
 // heissen bewusst wie vorher, damit die Aufrufstellen unveraendert bleiben;
 // ausgefuehrt wird alles serverseitig unter den RLS-Policies des Nutzers.
 
+import type { Serverzustand } from './serverzustand'
+
 // Leer = gleicher Host (Web-App auf dem VPS). Android/Tauri brauchen die volle
 // Adresse, weil sie von capacitor://localhost bzw. tauri://localhost laufen.
 export const API_BASIS = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -468,6 +470,12 @@ export const backend = {
   /** Serverfunktionen (frueher Supabase Edge Functions), z. B. create-user. */
   async funktion<T = any>(name: string, body: object): Promise<{ data: T | null; error: BackendFehler | null }> {
     const { daten, fehler } = await anfrage<T>(`/api/funktionen/${encodeURIComponent(name)}`, { body })
+    return { data: daten, error: fehler }
+  },
+
+  /** Zustand des Servers fuer die Plattform-Verwaltung (nur Plattform-Admins). */
+  async serverzustand(zeitraum: '24h' | '7d'): Promise<{ data: Serverzustand | null; error: BackendFehler | null }> {
+    const { daten, fehler } = await anfrage<Serverzustand>(`/api/betrieb/serverzustand?zeitraum=${zeitraum}`, { methode: 'GET' })
     return { data: daten, error: fehler }
   },
 

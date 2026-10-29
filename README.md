@@ -33,7 +33,7 @@ npm test              # Tests gegen workflow_test (TEST_DATABASE_URL in server/.
 
 Kernidee: Die Zugriffsregeln stecken als **Row Level Security** in Postgres. Das Backend führt jede Anfrage in einer Transaktion als Rolle `authenticated` mit den Claims des angemeldeten Nutzers aus (`request.jwt.claims`, gelesen von `auth.uid()`), dadurch trennen die Policies die Firmen — nicht der Anwendungscode. Die Daten-Schnittstelle (`/api/daten/:tabelle`) gibt nur Tabellen mit aktivem RLS frei, prüft Tabellen-/Spaltennamen gegen das Schema und übergibt Werte nur als Parameter.
 
-Weitere Endpunkte: `/api/auth/*` (Anmeldung, 2FA, Sitzungen), `/api/rpc/:name` (Freigabeliste), `/api/dateien/*` (Upload, signierte Links, Löschen — berechtigt über die Policies auf `storage.objects`), `/api/funktionen/*` (Nutzer/Firmen verwalten), `/api/live` (WebSocket für die Chats).
+Weitere Endpunkte: `/api/auth/*` (Anmeldung, 2FA, Sitzungen), `/api/rpc/:name` (Freigabeliste), `/api/dateien/*` (Upload, signierte Links, Löschen — berechtigt über die Policies auf `storage.objects`), `/api/funktionen/*` (Nutzer/Firmen verwalten), `/api/live` (WebSocket für die Chats), `/api/betrieb/serverzustand` (Serverauslastung und Verlauf für die Plattform-Verwaltung; Messwerte jede Minute in `betrieb.messwerte`).
 
 Prüfung mit echten Daten: `server/scripts/mandanten-pruefung.ts` simuliert jeden Nutzer gegen eine Kopie der Produktivdatenbank und meldet fremd sichtbare Zeilen.
 

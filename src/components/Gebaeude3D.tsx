@@ -222,7 +222,7 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
               </mesh>
             )}
             {!ausgewaehlt && (
-              <Schild3D position={[breite / 2 + schildHoehe * 1.6, h / 2, tiefe / 2]} titel={g.name} hoehe={schildHoehe * 0.85} onClick={() => onGeschoss(g.id)} />
+              <Schild3D position={[breite / 2 + schildHoehe * 1.6, h / 2, tiefe / 2]} titel={g.name} hoehe={Math.min(schildHoehe * 0.85, h * 0.85)} onClick={() => onGeschoss(g.id)} />
             )}
           </group>
         )

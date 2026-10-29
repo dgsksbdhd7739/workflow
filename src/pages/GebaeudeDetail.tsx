@@ -184,8 +184,9 @@ export function GebaeudeDetail() {
   const gesamt = auswertung.gesamt
   const geschosseAbsteigend = [...geschosse].sort((a, b) => b.ebene - a.ebene)
 
+  // Volle Breite statt .page (max-w-3xl), damit die 3D-Ansicht Platz hat
   return (
-    <div className="page">
+    <div className="mx-auto max-w-7xl px-4 py-6">
       <Link to={`/projekte/${projektId}`} className="mb-4 inline-flex items-center gap-2 text-sm text-text-muted hover:text-brand">
         <ArrowLeft className="h-4 w-4" /> Zurück zum Projekt
       </Link>
@@ -228,7 +229,7 @@ export function GebaeudeDetail() {
       {aktionsFehler && <p className="banner-error mb-4">{aktionsFehler}</p>}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <section className="card relative h-[60vh] min-h-[22rem] overflow-hidden">
+        <section className="card relative h-[75vh] min-h-[28rem] overflow-hidden">
           <Suspense fallback={<p className="p-6 text-sm text-text-muted">3D-Ansicht wird geladen…</p>}>
             <Gebaeude3D
               gebaeude={gebaeude}

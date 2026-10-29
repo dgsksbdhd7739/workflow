@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { AlertTriangle, CalendarClock, LayoutGrid, List, Map as MapIcon, Search } from 'lucide-react'
+import { AlertTriangle, Building2, CalendarClock, LayoutGrid, List, Map as MapIcon, Search, X } from 'lucide-react'
+import { BaustellenUebersicht3D } from '../components/BaustellenUebersicht3D'
 import { backend, uploadFile } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
@@ -18,6 +19,9 @@ import type {
   AufgabePrioritaet,
   AufgabeStatus,
   AufgabenFilter,
+  Einheit,
+  Gebaeude,
+  Geschoss,
   StatusVorlageWert,
 } from '../types/database'
 
@@ -208,6 +212,17 @@ export function Aufgaben() {
   const [gespeicherteFilter, setGespeicherteFilter] = useState<AufgabenFilter[]>([])
   const [neuerFilterName, setNeuerFilterName] = useState('')
   const [filterSpeichernOffen, setFilterSpeichernOffen] = useState(false)
+  // 3D-Ansicht der Gebaeude: Klick auf ein Gebaeude filtert die Aufgaben
+  const [gebaeude, setGebaeude] = useState<Gebaeude[]>([])
+  const [bereiche, setBereiche] = useState<{ geschosse: Geschoss[]; einheiten: Einheit[] }>({ geschosse: [], einheiten: [] })
+  const [gebaeudeFilter, setGebaeudeFilter] = useState<string | null>(null)
+  const [zeige3D, setZeige3D] = useState(() => {
+    try {
+      return localStorage.getItem('workflow.aufgaben3d') !== 'aus'
+    } catch {
+      return true
+    }
+  })
 
   const [titel, setTitel] = useState('')
   const [beschreibung, setBeschreibung] = useState('')
@@ -219,12 +234,17 @@ export function Aufgaben() {
   const load = async () => {
     if (!projektId) return
     setLoading(true)
-    const [{ data }, { data: projektData }] = await Promise.all([
+    const [{ data }, { data: projektData }, { data: gebaeudeData }, { data: geschosseData }, { data: einheitenData }] = await Promise.all([
       backend.from('aufgaben').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
       backend.from('projekte').select('*').eq('id', projektId).single(),
+      backend.from('gebaeude').select('*').eq('projekt_id', projektId).order('erstellt_am'),
+      backend.from('geschosse').select('*').eq('projekt_id', projektId),
+      backend.from('einheiten').select('*').eq('projekt_id', projektId),
     ])
     setAufgaben(data ?? [])
     setProjekt(projektData)
+    setGebaeude((gebaeudeData ?? []) as Gebaeude[])
+    setBereiche({ geschosse: (geschosseData ?? []) as Geschoss[], einheiten: (einheitenData ?? []) as Einheit[] })
 
     // Fuer den PDF-Export (Fortschritt, Material, Kommentare je Aufgabe).
     const aufgabeIds = (data ?? []).map((m) => m.id)
@@ -388,12 +408,36 @@ export function Aufgaben() {
     load()
   }
 
+  // Aufgaben des gewaehlten Gebaeudes: direkt, ueber ein Geschoss oder eine Einheit zugeordnet
+  const imGebaeude = (() => {
+    if (!gebaeudeFilter) return aufgaben
+    const geschossIds = new Set(bereiche.geschosse.filter((g) => g.gebaeude_id === gebaeudeFilter).map((g) => g.id))
+    const einheitIds = new Set(bereiche.einheiten.filter((e) => geschossIds.has(e.geschoss_id)).map((e) => e.id))
+    return aufgaben.filter(
+      (m) =>
+        m.gebaeude_id === gebaeudeFilter ||
+        (m.geschoss_id != null && geschossIds.has(m.geschoss_id)) ||
+        (m.einheit_id != null && einheitIds.has(m.einheit_id)),
+    )
+  })()
+  const gefiltertesGebaeude = gebaeude.find((g) => g.id === gebaeudeFilter) ?? null
+  const umschalten3D = () => {
+    setZeige3D((v) => {
+      try {
+        localStorage.setItem('workflow.aufgaben3d', v ? 'aus' : 'an')
+      } catch {
+        // ohne Speicher bleibt die Einstellung nur bis zum Neuladen
+      }
+      return !v
+    })
+  }
+
   const nachStatus =
     filterStatus === 'alle'
-      ? aufgaben
+      ? imGebaeude
       : filterStatus === 'ueberfaellig'
-        ? aufgaben.filter(istUeberfaellig)
-        : aufgaben.filter((m) => m.status === filterStatus)
+        ? imGebaeude.filter(istUeberfaellig)
+        : imGebaeude.filter((m) => m.status === filterStatus)
 
   const sucheNormalisiert = suche.trim().toLowerCase()
   const gefiltert = sucheNormalisiert
@@ -453,6 +497,37 @@ export function Aufgaben() {
       </div>
 
       {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}
+
+      {gebaeude.length > 0 && projektId && (
+        <div className="mb-4">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <button type="button" onClick={umschalten3D} className="btn-ghost px-2 py-1 text-xs">
+              <Building2 className="h-3.5 w-3.5" /> {zeige3D ? '3D-Ansicht ausblenden' : '3D-Ansicht einblenden'}
+            </button>
+            {gefiltertesGebaeude && (
+              <>
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-medium text-brand-text">
+                  Gebäude: {gefiltertesGebaeude.name}
+                  <button type="button" onClick={() => setGebaeudeFilter(null)} aria-label="Gebäudefilter entfernen" className="ml-0.5">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+                <Link to={`/projekte/${projektId}/gebaeude/${gefiltertesGebaeude.id}`} className="text-xs font-medium text-brand">
+                  Gebäude öffnen →
+                </Link>
+              </>
+            )}
+          </div>
+          {zeige3D && (
+            <BaustellenUebersicht3D
+              projektId={projektId}
+              gebaeude={gebaeude}
+              onGebaeude={(id) => setGebaeudeFilter((bisher) => (bisher === id ? null : id))}
+              hinweis="Gebäude anklicken: Aufgaben filtern"
+            />
+          )}
+        </div>
+      )}
 
       {kannLoeschen && ausgewaehlt.size > 0 && (
         <div className="card mb-4 flex flex-wrap items-center gap-3 p-3">

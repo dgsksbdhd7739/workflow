@@ -96,7 +96,7 @@ export default function Baustelle3D({ gebaeude, geschosse, auswertung, onOeffnen
   const schildHoehe = Math.max(ausdehnung / 12, 2.5)
 
   return (
-    <Canvas frameloop="demand" dpr={[1, 2]} camera={{ position: [ausdehnung * 0.8, ausdehnung * 0.7, ausdehnung * 0.9], fov: 40 }}>
+    <Canvas key={Math.round(ausdehnung)} frameloop="demand" dpr={[1, 2]} camera={{ position: [ausdehnung * 0.75, ausdehnung * 0.65, ausdehnung * 0.85], fov: 40 }}>
       <ambientLight intensity={0.75} />
       <directionalLight position={[40, 60, 25]} intensity={1.1} />
       <directionalLight position={[-30, 25, -40]} intensity={0.3} />

@@ -11,6 +11,15 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.4.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'Aufgaben: Oben zeigt eine 3D-Ansicht die Gebäude des Projekts. Ein Klick auf ein Gebäude zeigt nur noch dessen Aufgaben (auch die von Etagen und Wohnungen/Zimmern); die Ansicht lässt sich ausblenden.',
+      'Gebäude- und Baustellenansicht sind deutlich größer, die Gebäudeseite nutzt die volle Breite.',
+      'Neue Android-App 2.3.0 zum Herunterladen.',
+    ],
+  },
+  {
     version: '2.3.0',
     datum: '2026-10-29',
     aenderungen: [

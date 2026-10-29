@@ -8,10 +8,21 @@ import type { Aufgabe, Einheit, Gebaeude, Geschoss, Termin } from '../types/data
 const Baustelle3D = lazy(() => import('./Baustelle3D'))
 
 /**
- * 3D-Baustellenansicht fuer das Projekt-Dashboard. Laedt Geschosse,
- * Einheiten, Aufgaben und Termine selbst, damit das Dashboard schlank bleibt.
+ * 3D-Baustellenansicht fuer Projekt-Dashboard und Aufgabenseite. Laedt
+ * Geschosse, Einheiten, Aufgaben und Termine selbst, damit die Seiten schlank
+ * bleiben. Ohne onGebaeude oeffnet ein Klick das Gebaeude.
  */
-export function BaustellenUebersicht3D({ projektId, gebaeude }: { projektId: string; gebaeude: Gebaeude[] }) {
+export function BaustellenUebersicht3D({
+  projektId,
+  gebaeude,
+  onGebaeude,
+  hinweis,
+}: {
+  projektId: string
+  gebaeude: Gebaeude[]
+  onGebaeude?: (id: string) => void
+  hinweis?: string
+}) {
   const navigate = useNavigate()
   const [geschosse, setGeschosse] = useState<Geschoss[]>([])
   const [einheiten, setEinheiten] = useState<Einheit[]>([])
@@ -48,15 +59,18 @@ export function BaustellenUebersicht3D({ projektId, gebaeude }: { projektId: str
   }, [gebaeude, geschosse, einheiten, aufgaben, termine])
 
   return (
-    <div className="card relative mb-3 h-80 overflow-hidden sm:h-96">
+    <div className="card relative mb-3 h-[26rem] overflow-hidden sm:h-[34rem] lg:h-[40rem]">
       <Suspense fallback={<p className="p-6 text-sm text-text-muted">3D-Ansicht wird geladen…</p>}>
         <Baustelle3D
           gebaeude={gebaeude}
           geschosse={geschosse}
           auswertung={auswertung}
-          onOeffnen={(id) => navigate(`/projekte/${projektId}/gebaeude/${id}`)}
+          onOeffnen={onGebaeude ?? ((id) => navigate(`/projekte/${projektId}/gebaeude/${id}`))}
         />
       </Suspense>
+      {hinweis && (
+        <p className="pointer-events-none absolute right-3 top-3 rounded bg-surface/90 px-2 py-1 text-[11px] text-text-subtle shadow-sm">{hinweis}</p>
+      )}
       <div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap gap-x-3 gap-y-1 rounded-lg bg-surface/90 px-2.5 py-1.5 text-[11px] text-text-muted shadow-sm">
         {(Object.keys(STATUS_TEXT) as BereichStatus[]).map((s) => (
           <span key={s} className="flex items-center gap-1">

@@ -61,7 +61,7 @@ location ~ ^/assets/.+\.mjs$ {
 location = /workflow.apk {
     alias /var/www/app/download/assets/workflow.apk;
     default_type application/vnd.android.package-archive;
-    add_header Content-Disposition 'attachment; filename="WorkFlow-v1.5.0.apk"';
+    add_header Content-Disposition 'attachment; filename="WorkFlow-v2.3.0.apk"';
 }
 
 # Backend (server/, systemd-Dienst workflow-server). Uploads bis 100 MB wie im Backend.

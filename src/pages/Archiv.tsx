@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { SignedImage } from '../components/SignedImage'
 import { ProjektLoeschenDialog } from '../components/ProjektLoeschenDialog'
@@ -17,7 +17,7 @@ export function Archiv() {
 
   const load = async () => {
     setLoading(true)
-    const { data } = await supabase.from('projekte').select('*').eq('archiviert', true).order('name')
+    const { data } = await backend.from('projekte').select('*').eq('archiviert', true).order('name')
     setProjekte(data ?? [])
     setLoading(false)
   }
@@ -30,7 +30,7 @@ export function Archiv() {
   const reaktivieren = async (id: string) => {
     setFehler(null)
     setProjekte((prev) => prev.filter((b) => b.id !== id))
-    const { error } = await supabase.from('projekte').update({ archiviert: false }).eq('id', id)
+    const { error } = await backend.from('projekte').update({ archiviert: false }).eq('id', id)
     if (error) {
       // z. B. Projektlimit im Starter-Paket (Trigger aus Migration 0059)
       setFehler(error.message)

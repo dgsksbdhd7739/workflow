@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getSignedUrl } from '../lib/supabase'
+import { getSignedUrl } from '../lib/backend'
 
 export function SignedImage({
   bucket,

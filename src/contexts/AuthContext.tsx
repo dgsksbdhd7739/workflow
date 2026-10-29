@@ -1,30 +1,28 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { backend, type Sitzung } from '../lib/backend'
 import { geraetKennung, geraetName, sitzungIdAusToken } from '../lib/geraet'
 import { FIRMENDATEN_PFLICHT, firmendatenVollstaendig, type FirmendatenPflicht } from '../lib/firmendaten'
 import { paketErlaubt, type Paket, type PaketFunktion } from '../lib/pakete'
+import type { Rolle } from '../types/database'
 
 // Dieses Geraet in nutzer_sitzungen eintragen/aktualisieren, inkl. der
 // Auth-Sitzungs-ID, damit nur wirklich angemeldete Geraete angezeigt werden.
 async function geraetEintragen(userId: string) {
-  const { data } = await supabase.auth.getSession()
-  await supabase.from('nutzer_sitzungen').upsert(
+  await backend.from('nutzer_sitzungen').upsert(
     {
       user_id: userId,
       geraet_kennung: geraetKennung(),
       geraet_name: geraetName(),
-      sitzung_id: sitzungIdAusToken(data.session?.access_token),
+      sitzung_id: sitzungIdAusToken(backend.auth.sitzung()?.access_token),
       letzter_zugriff: new Date().toISOString(),
     },
     { onConflict: 'user_id,geraet_kennung' },
   )
 }
-import type { Rolle } from '../types/database'
 
 interface AuthContextValue {
-  user: User | null
-  session: Session | null
+  user: Sitzung['user'] | null
+  session: Sitzung | null
   role: Rolle | null
   unternehmenId: string | null
   mussPasswortAendern: boolean
@@ -41,8 +39,9 @@ interface AuthContextValue {
   // Firmen-Admin muss nach der Erstanmeldung zuerst die Firmendaten (inkl. Logo) pflegen.
   firmendatenFehlen: boolean
   pruefeFirmendaten: () => Promise<void>
+  // Passwort war korrekt, der Code aus der Authenticator-App steht noch aus
+  // (bis dahin gibt es keine Sitzung, siehe /anmeldung-bestaetigen).
   mfaPending: boolean
-  mfaFactorId: string | null
   bestaetigeMfaCode: (code: string) => Promise<{ error: string | null }>
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
@@ -52,7 +51,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null)
+  const [session, setSession] = useState<Sitzung | null>(() => backend.auth.sitzung())
   const [role, setRole] = useState<Rolle | null>(null)
   const [unternehmenId, setUnternehmenId] = useState<string | null>(null)
   const [mussPasswortAendern, setMussPasswortAendern] = useState(false)
@@ -63,21 +62,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firmendatenFehlen, setFirmendatenFehlen] = useState(false)
   const [paket, setPaket] = useState<Paket | null>(null)
   const [mfaPending, setMfaPending] = useState(false)
-  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Die Sitzung liegt lokal vor (kein Netzwerk noetig); laeuft sie serverseitig
+  // nicht mehr, meldet die erste Anfrage ab und der Beobachter setzt sie auf null.
+  const loading = false
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-    })
-
-    return () => listener.subscription.unsubscribe()
-  }, [])
+  useEffect(() => backend.auth.beiAenderung((_ereignis, neu) => setSession(neu)), [])
 
   // Nur Firmen-Admins (nicht der Plattform-Admin) muessen die Firmendaten pflegen.
   const pruefeFirmendatenFuer = async (rolle: Rolle | null, plattformAdmin: boolean, firmaId: string | null) => {
@@ -85,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFirmendatenFehlen(false)
       return
     }
-    const { data } = await supabase
+    const { data } = await backend
       .from('unternehmen')
       .select(FIRMENDATEN_PFLICHT.join(', '))
       .eq('id', firmaId)
@@ -107,19 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIstPlattformAdmin(false)
       setFirmendatenFehlen(false)
       setPaket(null)
-      setMfaPending(false)
-      setMfaFactorId(null)
       return
     }
     // Profil und Plattform-Admin-Status gemeinsam laden, damit die
     // Firmendaten-Pruefung den Plattform-Admin sicher ausnehmen kann.
     Promise.all([
-      supabase
+      backend
         .from('profiles')
         .select('role, muss_passwort_aendern, onboarding_gesehen, unternehmen_id, produkt_hinweise')
         .eq('id', userId)
         .single(),
-      supabase.from('plattform_admins').select('user_id').eq('user_id', userId).maybeSingle(),
+      backend.from('plattform_admins').select('user_id').eq('user_id', userId).maybeSingle(),
     ]).then(([{ data }, { data: plattformAdmin }]) => {
       setRole(data?.role ?? null)
       setUnternehmenId(data?.unternehmen_id ?? null)
@@ -129,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIstPlattformAdmin(!!plattformAdmin)
       pruefeFirmendatenFuer(data?.role ?? null, !!plattformAdmin, data?.unternehmen_id ?? null)
       if (data?.unternehmen_id) {
-        supabase
+        backend
           .from('unternehmen')
           .select('paket')
           .eq('id', data.unternehmen_id)
@@ -137,49 +124,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .then(({ data: firma }) => setPaket((firma?.paket as Paket | undefined) ?? null))
       }
     })
-    supabase
+    backend
       .from('nutzer_modul_sperren')
       .select('modul')
       .eq('user_id', userId)
       .then(({ data }) => setGesperrteModule(new Set((data ?? []).map((r) => r.modul))))
 
-    supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(({ data }) => {
-      if (data && data.nextLevel === 'aal2' && data.currentLevel !== data.nextLevel) {
-        setMfaPending(true)
-        supabase.auth.mfa.listFactors().then(({ data: factorData }) => {
-          setMfaFactorId(factorData?.totp[0]?.id ?? null)
-        })
-      } else {
-        setMfaPending(false)
-        setMfaFactorId(null)
-        // Geraet nur bei vollstaendig abgeschlossener Anmeldung (kein
-        // ausstehender zweiter Faktor) in die Liste eintragen/aktualisieren.
-        geraetEintragen(userId)
-      }
-    })
+    // Eine Sitzung gibt es erst nach vollstaendiger Anmeldung (ggf. inkl.
+    // zweitem Faktor) -- das Geraet kann also direkt eingetragen werden.
+    geraetEintragen(userId)
   }, [session?.user.id])
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error, mfaErforderlich } = await backend.auth.anmelden(email, password)
+    setMfaPending(mfaErforderlich)
     return { error: error?.message ?? null }
   }
 
   const signOut = async () => {
+    setMfaPending(false)
+    backend.auth.mfaAbbrechen()
     // Eigenen Geraete-Eintrag entfernen, solange die Sitzung noch gilt (RLS).
     const userId = session?.user.id
-    if (userId) await supabase.from('nutzer_sitzungen').delete().eq('user_id', userId).eq('geraet_kennung', geraetKennung())
-    await supabase.auth.signOut()
+    if (userId) await backend.from('nutzer_sitzungen').delete().eq('user_id', userId).eq('geraet_kennung', geraetKennung())
+    await backend.auth.abmelden()
   }
 
   const bestaetigeMfaCode = async (code: string) => {
-    if (!mfaFactorId) return { error: 'Kein zweiter Faktor eingerichtet.' }
-    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: mfaFactorId, code })
+    const { error } = await backend.auth.mfaBestaetigen(code)
     if (error) return { error: error.message }
     setMfaPending(false)
-    const userId = session?.user.id
-    if (userId) {
-      await geraetEintragen(userId)
-    }
     return { error: null }
   }
 
@@ -203,7 +177,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firmendatenFehlen,
         pruefeFirmendaten,
         mfaPending,
-        mfaFactorId,
         bestaetigeMfaCode,
         loading,
         signIn,

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDatum } from '../lib/datum'
 import type { Termin, TerminStatus } from '../types/database'
@@ -47,7 +47,7 @@ export function Termine() {
   const load = async () => {
     if (!projektId) return
     setLoading(true)
-    const { data } = await supabase
+    const { data } = await backend
       .from('termine')
       .select('*')
       .eq('projekt_id', projektId)
@@ -66,7 +66,7 @@ export function Termine() {
     if (!user || !projektId) return
     setSaving(true)
     setFehler(null)
-    const { error } = await supabase.from('termine').insert({
+    const { error } = await backend.from('termine').insert({
       projekt_id: projektId,
       titel,
       start_datum: startDatum,
@@ -90,7 +90,7 @@ export function Termine() {
   const updateStatus = async (id: string, status: TerminStatus) => {
     setFehler(null)
     setTermine((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)))
-    const { error } = await supabase.from('termine').update({ status }).eq('id', id)
+    const { error } = await backend.from('termine').update({ status }).eq('id', id)
     if (error) {
       setFehler(error.message)
       load()

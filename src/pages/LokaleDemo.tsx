@@ -88,7 +88,7 @@ export function LokaleDemo() {
         </header>
 
         <aside className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-          <strong>Demo-Modus – keine Verbindung zu Supabase.</strong> Es werden ausschließlich Beispieldaten verwendet. Änderungen werden nur in diesem Browser bzw. auf diesem Gerät gespeichert und nicht synchronisiert.
+          <strong>Demo-Modus – keine Verbindung zum Server.</strong> Es werden ausschließlich Beispieldaten verwendet. Änderungen werden nur in diesem Browser bzw. auf diesem Gerät gespeichert und nicht synchronisiert.
         </aside>
 
         {speicherHinweis && <p className="banner-error mb-4">{speicherHinweis}</p>}

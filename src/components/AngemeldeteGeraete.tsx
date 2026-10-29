@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { geraetKennung } from '../lib/geraet'
 import { formatDatum } from '../lib/datum'
@@ -17,7 +17,7 @@ export function AngemeldeteGeraete() {
     if (!user) return
     setLoading(true)
     // Nur Geraete mit noch gueltiger Auth-Sitzung, raeumt veraltete Eintraege auf (Migration 0056).
-    const { data } = await supabase.rpc('meine_aktiven_geraete')
+    const { data } = await backend.rpc('meine_aktiven_geraete')
     setSitzungen(data ?? [])
     setLoading(false)
   }
@@ -32,13 +32,13 @@ export function AngemeldeteGeraete() {
     if (!window.confirm('Auf allen anderen Geräten abmelden? Dort muss danach erneut eingeloggt werden.')) return
     setFehler(null)
     setAbmeldend(true)
-    const { error } = await supabase.auth.signOut({ scope: 'others' })
+    const { error } = await backend.auth.abmelden('andere')
     if (error) {
       setAbmeldend(false)
       setFehler(error.message)
       return
     }
-    await supabase.from('nutzer_sitzungen').delete().eq('user_id', user.id).neq('geraet_kennung', diesesGeraet)
+    await backend.from('nutzer_sitzungen').delete().eq('user_id', user.id).neq('geraet_kennung', diesesGeraet)
     setAbmeldend(false)
     laden()
   }

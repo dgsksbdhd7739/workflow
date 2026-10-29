@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ClipboardList, HardHat, ListChecks, MapIcon, MessageSquare, X, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 
 interface Schritt {
   titel: string
@@ -44,7 +44,7 @@ export function OnboardingDialog() {
   const abschliessen = async () => {
     setOnboardingGesehen(true)
     if (user) {
-      await supabase.from('profiles').update({ onboarding_gesehen: true }).eq('id', user.id)
+      await backend.from('profiles').update({ onboarding_gesehen: true }).eq('id', user.id)
     }
   }
 

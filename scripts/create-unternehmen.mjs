@@ -31,16 +31,18 @@ const envVars = Object.fromEntries(
     }),
 )
 
-const supabaseUrl = envVars.VITE_SUPABASE_URL
+// Adresse des Backends; PROVISION_SECRET muss zum gleichnamigen Wert in
+// /etc/workflow/server.env auf dem Server passen.
+const apiUrl = (envVars.VITE_API_URL || 'https://217-154-200-72.sslip.io').replace(/\/$/, '')
 const provisionSecret = envVars.PROVISION_SECRET
-if (!supabaseUrl || !provisionSecret) {
-  console.error('VITE_SUPABASE_URL oder PROVISION_SECRET fehlt in .env')
+if (!provisionSecret) {
+  console.error('PROVISION_SECRET fehlt in .env')
   process.exit(1)
 }
 
 const adminPassword = randomBytes(9).toString('base64url')
 
-const res = await fetch(`${supabaseUrl}/functions/v1/create-unternehmen`, {
+const res = await fetch(`${apiUrl}/api/funktionen/create-unternehmen`, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',

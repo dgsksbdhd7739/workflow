@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase, funktionsFehler } from '../lib/supabase'
+import { backend, funktionsFehler } from '../lib/backend'
 import { PaketHinweis } from '../components/PaketSperre'
 import { useAuth } from '../contexts/AuthContext'
 import type { Projekt, Profile, Rolle } from '../types/database'
@@ -8,7 +8,7 @@ function useMaxNutzer(unternehmenId: string | null) {
   const [maxNutzer, setMaxNutzer] = useState<number | null>(null)
   useEffect(() => {
     if (!unternehmenId) return
-    supabase
+    backend
       .from('unternehmen')
       .select('max_nutzer')
       .eq('id', unternehmenId)
@@ -61,10 +61,10 @@ export function Nutzerverwaltung() {
     setLoading(true)
     const [{ data: profileData }, { data: projekteData }, { data: zuweisungenData }, { data: sperrenData }] =
       await Promise.all([
-        supabase.from('profiles').select('*').order('full_name'),
-        supabase.from('projekte').select('*').order('name'),
-        supabase.from('projekt_kunden').select('user_id, projekt_id'),
-        supabase.from('nutzer_modul_sperren').select('user_id, modul'),
+        backend.from('profiles').select('*').order('full_name'),
+        backend.from('projekte').select('*').order('name'),
+        backend.from('projekt_kunden').select('user_id, projekt_id'),
+        backend.from('nutzer_modul_sperren').select('user_id, modul'),
       ])
     setProfile(profileData ?? [])
     setProjekte(projekteData ?? [])
@@ -94,7 +94,7 @@ export function Nutzerverwaltung() {
   const updateRolle = async (profileId: string, neueRolle: Rolle) => {
     setFehler(null)
     setProfile((prev) => prev.map((p) => (p.id === profileId ? { ...p, role: neueRolle } : p)))
-    const { error } = await supabase.from('profiles').update({ role: neueRolle }).eq('id', profileId)
+    const { error } = await backend.from('profiles').update({ role: neueRolle }).eq('id', profileId)
     if (error) {
       setFehler(error.message)
       load()
@@ -105,12 +105,10 @@ export function Nutzerverwaltung() {
     e.preventDefault()
     setAnlegen(true)
     setFehler(null)
-    const { data, error } = await supabase.functions.invoke('create-user', {
-      body: { email: neuEmail, password: neuPasswort, full_name: neuName, role: neuRolle },
-    })
+    const { error } = await backend.funktion('create-user', { email: neuEmail, password: neuPasswort, full_name: neuName, role: neuRolle })
     setAnlegen(false)
-    if (error || data?.error) {
-      setFehler((await funktionsFehler(error, data)) ?? 'Nutzer konnte nicht angelegt werden.')
+    if (error) {
+      setFehler(funktionsFehler(error) ?? 'Nutzer konnte nicht angelegt werden.')
       return
     }
     setNeuEmail('')
@@ -125,12 +123,10 @@ export function Nutzerverwaltung() {
     e.preventDefault()
     setFehler(null)
     setAktionLaeuft(profileId)
-    const { data, error } = await supabase.functions.invoke('reset-user-password', {
-      body: { user_id: profileId, password: neuesPasswort },
-    })
+    const { error } = await backend.funktion('reset-user-password', { user_id: profileId, password: neuesPasswort })
     setAktionLaeuft(null)
-    if (error || data?.error) {
-      setFehler((await funktionsFehler(error, data)) ?? 'Passwort konnte nicht zurückgesetzt werden.')
+    if (error) {
+      setFehler(funktionsFehler(error) ?? 'Passwort konnte nicht zurückgesetzt werden.')
       return
     }
     setPwResetOffen(null)
@@ -146,12 +142,10 @@ export function Nutzerverwaltung() {
       return
     }
     setAktionLaeuft(profileId)
-    const { data, error } = await supabase.functions.invoke('set-user-active', {
-      body: { user_id: profileId, aktiv: aktivSetzen },
-    })
+    const { error } = await backend.funktion('set-user-active', { user_id: profileId, aktiv: aktivSetzen })
     setAktionLaeuft(null)
-    if (error || data?.error) {
-      setFehler((await funktionsFehler(error, data)) ?? 'Status konnte nicht geändert werden.')
+    if (error) {
+      setFehler(funktionsFehler(error) ?? 'Status konnte nicht geändert werden.')
       return
     }
     load()
@@ -161,12 +155,10 @@ export function Nutzerverwaltung() {
     setFehler(null)
     if (!window.confirm('Nutzer wirklich unwiderruflich löschen?')) return
     setAktionLaeuft(profileId)
-    const { data, error } = await supabase.functions.invoke('delete-user', {
-      body: { user_id: profileId },
-    })
+    const { error } = await backend.funktion('delete-user', { user_id: profileId })
     setAktionLaeuft(null)
-    if (error || data?.error) {
-      setFehler((await funktionsFehler(error, data)) ?? 'Nutzer konnte nicht gelöscht werden.')
+    if (error) {
+      setFehler(funktionsFehler(error) ?? 'Nutzer konnte nicht gelöscht werden.')
       return
     }
     load()
@@ -182,8 +174,8 @@ export function Nutzerverwaltung() {
       return next
     })
     const { error } = hatZugriff
-      ? await supabase.from('projekt_kunden').delete().eq('user_id', userId).eq('projekt_id', projektId)
-      : await supabase.from('projekt_kunden').insert({ user_id: userId, projekt_id: projektId })
+      ? await backend.from('projekt_kunden').delete().eq('user_id', userId).eq('projekt_id', projektId)
+      : await backend.from('projekt_kunden').insert({ user_id: userId, projekt_id: projektId })
     if (error) {
       setFehler(error.message)
       load()
@@ -200,8 +192,8 @@ export function Nutzerverwaltung() {
       return next
     })
     const { error } = gesperrt
-      ? await supabase.from('nutzer_modul_sperren').delete().eq('user_id', userId).eq('modul', modul)
-      : await supabase.from('nutzer_modul_sperren').insert({ user_id: userId, modul, gesperrt_von: user?.id })
+      ? await backend.from('nutzer_modul_sperren').delete().eq('user_id', userId).eq('modul', modul)
+      : await backend.from('nutzer_modul_sperren').insert({ user_id: userId, modul, gesperrt_von: user?.id })
     if (error) {
       setFehler(error.message)
       load()

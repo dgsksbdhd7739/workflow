@@ -12,9 +12,10 @@ import { HardHat } from 'lucide-react'
 // Subprozessor, neue Datenkategorie, neue App-Berechtigung) muss dieser Text
 // aktualisiert werden, sonst stimmt er nicht mehr mit der tatsaechlichen
 // Verarbeitung ueberein. Stand der Pruefung (Oktober 2026):
-// - Supabase-Projekt in eu-central-1 (Frankfurt)
-// - Live-Updates laden aus dem eigenen Supabase-Speicher (Capgo nur als
-//   Open-Source-Plugin, kein Capgo-Clouddienst)
+// - Datenbank, Anmeldung, Dateien und Backend auf dem eigenen STRATO-VPS in
+//   Deutschland (seit Version 2.0.0, vorher Supabase/Frankfurt)
+// - Live-Updates laden vom eigenen VPS (Capgo nur als Open-Source-Plugin,
+//   kein Capgo-Clouddienst)
 // - keine iOS-App, Push nur Android/FCM und nur fuer den Team-Chat
 // - Android-Manifest: nur INTERNET; Mitteilungen fragt das Push-Plugin ab,
 //   Fotos/Dateien kommen ueber die System-Dateiauswahl
@@ -252,8 +253,8 @@ export function Datenschutz() {
         <Abschnitt titel="8. Zwei-Faktor-Authentifizierung (2FA/TOTP)">
           <p>
             Sie können Ihr Konto optional mit einem zeitbasierten Einmalcode (TOTP) aus einer gängigen Authenticator-App
-            absichern. Dabei wird ein geheimer Schlüssel für Ihr Konto erzeugt und beim Anmeldedienst unseres
-            Dienstleisters Supabase (siehe Abschnitt 11) gespeichert.
+            absichern. Dabei wird ein geheimer Schlüssel für Ihr Konto erzeugt und in der Benutzerverwaltung auf unserem
+            eigenen Server (siehe Abschnitt 11) gespeichert.
           </p>
           <p>
             <strong>Rechtsgrundlage:</strong> Die Aktivierung erfolgt freiwillig zur Erhöhung Ihrer Kontosicherheit
@@ -301,14 +302,11 @@ export function Datenschutz() {
           </p>
           <Liste>
             <li>
-              <strong>Supabase, Inc.</strong> (970 Toa Payoh North #07-04, Singapur): Datenbank, Benutzeranmeldung und
-              Dateispeicher (Dokumente, Fotos, Pläne, Berichte) sowie Bereitstellung der App-Updates. Die Daten werden in
-              Rechenzentren von Amazon Web Services (AWS) in <strong>Frankfurt am Main, Deutschland</strong>, gespeichert.
-              Supabase ist damit der zentrale Dienstleister für nahezu alle in dieser Erklärung genannten Daten.
-            </li>
-            <li>
-              <strong>STRATO AG</strong> (Pascalstraße 10, 10587 Berlin, Deutschland): Serverbetrieb und Bereitstellung
-              der Web-App (app.workflow-app.de).
+              <strong>STRATO AG</strong> (Pascalstraße 10, 10587 Berlin, Deutschland): Betrieb unseres eigenen Servers in
+              einem Rechenzentrum in <strong>Deutschland</strong>. Auf diesem Server betreiben wir selbst die Datenbank,
+              die Benutzeranmeldung, den Dateispeicher (Dokumente, Fotos, Pläne, Berichte), die Web-App
+              (app.workflow-app.de) und die Bereitstellung der App-Updates. STRATO ist damit der zentrale Dienstleister
+              für nahezu alle in dieser Erklärung genannten Daten.
             </li>
             <li>
               <strong>Vercel Inc.</strong> (340 S Lemon Ave #4133, Walnut, CA 91789, USA): Hosting der Landingpage
@@ -321,7 +319,7 @@ export function Datenschutz() {
             </li>
           </Liste>
           <p>
-            Programm-Updates der mobilen App werden aus unserem eigenen Speicher bei Supabase geladen; dafür wird kein
+            Programm-Updates der mobilen App werden von unserem eigenen Server geladen; dafür wird kein
             weiterer externer Update-Dienst eingesetzt. Eine Weitergabe an sonstige Dritte, insbesondere zu Werbezwecken,
             findet nicht statt.
           </p>
@@ -340,8 +338,7 @@ export function Datenschutz() {
             </li>
             <li>
               die von der EU-Kommission genehmigten <strong>Standardvertragsklauseln</strong> gemäß Art. 46 Abs. 2 lit. c
-              DSGVO, soweit ein Dienstleister nicht unter das DPF fällt oder in einem anderen Drittstaat ansässig ist (wie
-              Supabase, Inc. in Singapur; die Datenspeicherung erfolgt dabei in Frankfurt am Main).
+              DSGVO, soweit ein Dienstleister nicht unter das DPF fällt oder in einem anderen Drittstaat ansässig ist.
             </li>
           </Liste>
         </Abschnitt>

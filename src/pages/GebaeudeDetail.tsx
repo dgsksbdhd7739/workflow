@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, ClipboardList, Map as MapIcon, MapPin, Building2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import type { Gebaeude, Projekt } from '../types/database'
 
 export function GebaeudeDetail() {
@@ -17,8 +17,8 @@ export function GebaeudeDetail() {
     if (!projektId || !gebaeudeId) return
     let aktiv = true
     Promise.all([
-      supabase.from('gebaeude').select('*').eq('id', gebaeudeId).eq('projekt_id', projektId).maybeSingle(),
-      supabase.from('projekte').select('*').eq('id', projektId).maybeSingle(),
+      backend.from('gebaeude').select('*').eq('id', gebaeudeId).eq('projekt_id', projektId).maybeSingle(),
+      backend.from('projekte').select('*').eq('id', projektId).maybeSingle(),
     ]).then(([gebaeudeRes, projektRes]) => {
       if (!aktiv) return
       if (gebaeudeRes.error || projektRes.error) {

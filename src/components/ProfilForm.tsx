@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import type { Profile } from '../types/database'
 
@@ -25,7 +25,7 @@ export function ProfilForm() {
 
   useEffect(() => {
     if (!user) return
-    supabase
+    backend
       .from('profiles')
       .select('*')
       .eq('id', user.id)
@@ -49,7 +49,7 @@ export function ProfilForm() {
     setSaving(true)
     setFehler(null)
     setGespeichert(false)
-    const { error } = await supabase
+    const { error } = await backend
       .from('profiles')
       .update({
         full_name: fullName.trim() || user.email || '',
@@ -74,7 +74,7 @@ export function ProfilForm() {
     setEmailSaving(true)
     setEmailFehler(null)
     setEmailGesendet(false)
-    const { error } = await supabase.auth.updateUser({ email: neueEmail.trim() })
+    const { error } = await backend.auth.emailAendern(neueEmail.trim())
     setEmailSaving(false)
     if (error) {
       setEmailFehler(error.message)
@@ -144,7 +144,7 @@ export function ProfilForm() {
         {emailFehler && <p className="banner-error mt-2">Fehler: {emailFehler}</p>}
         {emailGesendet && (
           <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
-            Bestätigungslinks an die alte und neue Adresse gesendet — die Änderung gilt erst nach Bestätigung.
+            E-Mail-Adresse geändert — ab sofort mit der neuen Adresse anmelden.
           </p>
         )}
       </div>

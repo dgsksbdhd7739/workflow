@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import type { StatusVorlage, StatusVorlageWert } from '../types/database'
 
@@ -21,7 +21,7 @@ export function StatusVorlagen() {
 
   const loadVorlagen = async () => {
     setLoading(true)
-    const { data } = await supabase.from('statusvorlagen').select('*').order('erstellt_am')
+    const { data } = await backend.from('statusvorlagen').select('*').order('erstellt_am')
     setVorlagen(data ?? [])
     setLoading(false)
   }
@@ -31,7 +31,7 @@ export function StatusVorlagen() {
   }, [])
 
   const loadWerte = async (vorlageId: string) => {
-    const { data } = await supabase
+    const { data } = await backend
       .from('statusvorlage_werte')
       .select('*')
       .eq('statusvorlage_id', vorlageId)
@@ -48,7 +48,7 @@ export function StatusVorlagen() {
     e.preventDefault()
     if (!user || !unternehmenId || !neueVorlageName.trim()) return
     setFehler(null)
-    const { data, error } = await supabase
+    const { data, error } = await backend
       .from('statusvorlagen')
       .insert({ name: neueVorlageName.trim(), erstellt_von: user.id, unternehmen_id: unternehmenId })
       .select()
@@ -68,7 +68,7 @@ export function StatusVorlagen() {
     setFehler(null)
     if (ausgewaehlteVorlage === id) setAusgewaehlteVorlage(null)
     setVorlagen((prev) => prev.filter((v) => v.id !== id))
-    const { error } = await supabase.from('statusvorlagen').delete().eq('id', id)
+    const { error } = await backend.from('statusvorlagen').delete().eq('id', id)
     if (error) {
       setFehler(error.message)
       loadVorlagen()
@@ -80,7 +80,7 @@ export function StatusVorlagen() {
     if (!ausgewaehlteVorlage || !neuerWertTitel.trim()) return
     setFehler(null)
     const reihenfolge = werte.length > 0 ? Math.max(...werte.map((w) => w.reihenfolge)) + 1 : 1
-    const { error } = await supabase.from('statusvorlage_werte').insert({
+    const { error } = await backend.from('statusvorlage_werte').insert({
       statusvorlage_id: ausgewaehlteVorlage,
       titel: neuerWertTitel.trim(),
       farbe: neuerWertFarbe,
@@ -108,8 +108,8 @@ export function StatusVorlagen() {
       return next
     })
     const [r1, r2] = await Promise.all([
-      supabase.from('statusvorlage_werte').update({ reihenfolge: b.reihenfolge }).eq('id', a.id),
-      supabase.from('statusvorlage_werte').update({ reihenfolge: a.reihenfolge }).eq('id', b.id),
+      backend.from('statusvorlage_werte').update({ reihenfolge: b.reihenfolge }).eq('id', a.id),
+      backend.from('statusvorlage_werte').update({ reihenfolge: a.reihenfolge }).eq('id', b.id),
     ])
     if (r1.error || r2.error) {
       setFehler((r1.error ?? r2.error)!.message)
@@ -121,8 +121,8 @@ export function StatusVorlagen() {
     if (!ausgewaehlteVorlage) return
     setFehler(null)
     setWerte((prev) => prev.map((w) => ({ ...w, ist_standard: w.id === wertId })))
-    const r1 = await supabase.from('statusvorlage_werte').update({ ist_standard: false }).eq('statusvorlage_id', ausgewaehlteVorlage)
-    const r2 = await supabase.from('statusvorlage_werte').update({ ist_standard: true }).eq('id', wertId)
+    const r1 = await backend.from('statusvorlage_werte').update({ ist_standard: false }).eq('statusvorlage_id', ausgewaehlteVorlage)
+    const r2 = await backend.from('statusvorlage_werte').update({ ist_standard: true }).eq('id', wertId)
     if (r1.error || r2.error) {
       setFehler((r1.error ?? r2.error)!.message)
       loadWerte(ausgewaehlteVorlage)
@@ -134,7 +134,7 @@ export function StatusVorlagen() {
     if (!window.confirm('Diesen Statuswert wirklich löschen?')) return
     setFehler(null)
     setWerte((prev) => prev.filter((w) => w.id !== wertId))
-    const { error } = await supabase.from('statusvorlage_werte').delete().eq('id', wertId)
+    const { error } = await backend.from('statusvorlage_werte').delete().eq('id', wertId)
     if (error) {
       setFehler(error.message)
       loadWerte(ausgewaehlteVorlage)

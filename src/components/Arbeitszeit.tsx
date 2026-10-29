@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
-import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
+import { backend, getSignedUrl, uploadFile } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { SignedImage } from './SignedImage'
 import { formatDatum } from '../lib/datum'
@@ -39,7 +39,7 @@ export function Arbeitszeit({ aufgabe, onChange }: { aufgabe: Aufgabe; onChange?
 
   const load = async () => {
     setLoading(true)
-    const { data } = await supabase
+    const { data } = await backend
       .from('zeiterfassung')
       .select('*')
       .eq('aufgabe_id', aufgabe.id)
@@ -67,7 +67,7 @@ export function Arbeitszeit({ aufgabe, onChange }: { aufgabe: Aufgabe; onChange?
     setFehler(null)
     setSaving(true)
     const jetztDate = new Date()
-    const { error } = await supabase.from('zeiterfassung').insert({
+    const { error } = await backend.from('zeiterfassung').insert({
       projekt_id: aufgabe.projekt_id,
       user_id: user.id,
       aufgabe_id: aufgabe.id,
@@ -97,7 +97,7 @@ export function Arbeitszeit({ aufgabe, onChange }: { aufgabe: Aufgabe; onChange?
       return
     }
 
-    const { error } = await supabase
+    const { error } = await backend
       .from('zeiterfassung')
       .update({ end_zeit: new Date().toTimeString().slice(0, 8), foto_pfad: path })
       .eq('id', eintragId)

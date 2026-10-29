@@ -17,7 +17,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { ProjektForm } from '../components/ProjektForm'
@@ -103,30 +103,30 @@ export function ProjektDashboard() {
     if (!projektId) return
     setLoading(true)
     Promise.all([
-      supabase.from('projekte').select('*').eq('id', projektId).single(),
-      supabase.from('aufgaben').select('*', { count: 'exact', head: true }).eq('projekt_id', projektId).neq('status', 'erledigt'),
-      supabase
+      backend.from('projekte').select('*').eq('id', projektId).single(),
+      backend.from('aufgaben').select('*', { count: 'exact', head: true }).eq('projekt_id', projektId).neq('status', 'erledigt'),
+      backend
         .from('aufgaben')
         .select('*', { count: 'exact', head: true })
         .eq('projekt_id', projektId)
         .neq('status', 'erledigt')
         .eq('prioritaet', 'hoch'),
-      supabase.from('termine').select('*').eq('projekt_id', projektId).order('start_datum'),
-      supabase.from('zeiterfassung').select('start_zeit, end_zeit, pause_minuten').eq('projekt_id', projektId),
-      supabase.from('tagesberichte').select('*').eq('projekt_id', projektId).order('datum', { ascending: false }).limit(8),
-      supabase
+      backend.from('termine').select('*').eq('projekt_id', projektId).order('start_datum'),
+      backend.from('zeiterfassung').select('start_zeit, end_zeit, pause_minuten').eq('projekt_id', projektId),
+      backend.from('tagesberichte').select('*').eq('projekt_id', projektId).order('datum', { ascending: false }).limit(8),
+      backend
         .from('aufgaben')
         .select('id, titel, status, erstellt_am')
         .eq('projekt_id', projektId)
         .order('erstellt_am', { ascending: false })
         .limit(8),
-      supabase
+      backend
         .from('termine')
         .select('id, titel, erstellt_am')
         .eq('projekt_id', projektId)
         .order('erstellt_am', { ascending: false })
         .limit(8),
-      supabase.from('gebaeude').select('*').eq('projekt_id', projektId).order('erstellt_am'),
+      backend.from('gebaeude').select('*').eq('projekt_id', projektId).order('erstellt_am'),
     ]).then(([projektRes, offeneRes, hochRes, termineRes, zeitenRes, berichteRes, aufgabenActRes, termineActRes, gebaeudeRes]) => {
       if (gebaeudeRes.error) {
         setGebaeudeFehler('Gebäude konnten nicht geladen werden. Prüfe, ob die Gebäudemigration bereits angewendet wurde.')
@@ -186,7 +186,7 @@ export function ProjektDashboard() {
     ) {
       return
     }
-    const { error } = await supabase.from('projekte').update({ archiviert: naechsterWert }).eq('id', projekt.id)
+    const { error } = await backend.from('projekte').update({ archiviert: naechsterWert }).eq('id', projekt.id)
     if (!error) setProjekt({ ...projekt, archiviert: naechsterWert })
   }
 
@@ -195,7 +195,7 @@ export function ProjektDashboard() {
     if (!projektId || !user || !gebaeudeName.trim()) return
     setGebaeudeSpeichert(true)
     setGebaeudeFehler(null)
-    const { data, error } = await supabase
+    const { data, error } = await backend
       .from('gebaeude')
       .insert({
         projekt_id: projektId,
@@ -220,7 +220,7 @@ export function ProjektDashboard() {
 
   const handleGebaeudeLoeschen = async (eintrag: Gebaeude) => {
     if (!window.confirm(`Gebäude „${eintrag.name}“ wirklich löschen?`)) return
-    const { error } = await supabase.from('gebaeude').delete().eq('id', eintrag.id).eq('projekt_id', projektId)
+    const { error } = await backend.from('gebaeude').delete().eq('id', eintrag.id).eq('projekt_id', projektId)
     if (error) {
       setGebaeudeFehler('Gebäude konnte nicht gelöscht werden. Bitte prüfe deine Berechtigung.')
       return

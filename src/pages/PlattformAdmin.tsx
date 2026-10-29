@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase, funktionsFehler } from '../lib/supabase'
+import { backend, funktionsFehler } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { UnternehmenForm } from '../components/UnternehmenForm'
 import { formatDatum } from '../lib/datum'
@@ -39,7 +39,7 @@ export function PlattformAdmin() {
 
   const load = async () => {
     setLoading(true)
-    const { data, error } = await supabase.rpc('plattform_unternehmen_uebersicht')
+    const { data, error } = await backend.rpc('plattform_unternehmen_uebersicht')
     if (!error) setFirmen(data ?? [])
     setLoading(false)
   }
@@ -53,18 +53,16 @@ export function PlattformAdmin() {
     setAnlegen(true)
     setFehler(null)
     setAngelegtesPasswort(null)
-    const { data, error } = await supabase.functions.invoke('create-unternehmen', {
-      body: {
-        firmenname: firmenname.trim(),
-        admin_email: adminEmail.trim(),
-        admin_name: adminName.trim(),
-        paket,
-        max_nutzer: maxNutzer.trim() || null,
-      },
+    const { data, error } = await backend.funktion('create-unternehmen', {
+      firmenname: firmenname.trim(),
+      admin_email: adminEmail.trim(),
+      admin_name: adminName.trim(),
+      paket,
+      max_nutzer: maxNutzer.trim() || null,
     })
     setAnlegen(false)
-    if (error || data?.error) {
-      setFehler((await funktionsFehler(error, data)) ?? 'Firma konnte nicht angelegt werden.')
+    if (error) {
+      setFehler(funktionsFehler(error) ?? 'Firma konnte nicht angelegt werden.')
       return
     }
     setAngelegtesPasswort({ email: adminEmail.trim(), passwort: data.admin_password })
@@ -95,7 +93,7 @@ export function PlattformAdmin() {
       return
     }
     setLimitSpeichert(true)
-    const { error } = await supabase.from('unternehmen').update({ paket: paketEingabe, max_nutzer: neuerWert }).eq('id', firmaId)
+    const { error } = await backend.from('unternehmen').update({ paket: paketEingabe, max_nutzer: neuerWert }).eq('id', firmaId)
     setLimitSpeichert(false)
     if (error) {
       setFehler(error.message)

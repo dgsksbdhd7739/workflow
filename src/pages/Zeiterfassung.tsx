@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { formatDatum } from '../lib/datum'
@@ -29,7 +29,7 @@ export function Zeiterfassung() {
   const load = async () => {
     if (!projektId) return
     setLoading(true)
-    const { data } = await supabase
+    const { data } = await backend
       .from('zeiterfassung')
       .select('*')
       .eq('projekt_id', projektId)
@@ -67,7 +67,7 @@ export function Zeiterfassung() {
       pause_minuten: Number(pauseMinuten) || 0,
       taetigkeit: taetigkeit || null,
     }))
-    const { error } = await supabase.from('zeiterfassung').insert(eintraege)
+    const { error } = await backend.from('zeiterfassung').insert(eintraege)
     setSaving(false)
     if (error) {
       setFehler(error.message)

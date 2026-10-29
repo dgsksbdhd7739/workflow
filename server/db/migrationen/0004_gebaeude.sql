@@ -1,3 +1,4 @@
+-- Gebäudestammdaten je Projekt (Stand Supabase-Migration 0060).
 -- Gebäudestammdaten je Projekt als erster Schritt zur interaktiven
 -- Baustellenübersicht. Geschosse und Einheiten werden später separat ergänzt.
 create table public.gebaeude (
@@ -45,3 +46,22 @@ create policy "gebaeude: admin und planer loeschen"
     public.current_role() in ('admin', 'planer')
     and public.projekt_im_eigenen_unternehmen(projekt_id)
   );
+
+-- Uebernommen aus supabase/migrations/0060_gebaeude.sql (wurde dort nie
+-- eingespielt, weil das Supabase-Projekt bereits pausiert war). Supabase gab
+-- neuen Tabellen ueber Default Privileges automatisch Rechte; hier explizit:
+grant all on public.gebaeude to authenticated, service_role;
+
+-- Damit kuenftige Migrationen (als postgres ausgefuehrt) dasselbe Verhalten
+-- haben wie unter Supabase. Der Zugriff wird weiterhin von RLS begrenzt; die
+-- Daten-API gibt ohnehin nur Tabellen mit aktivem RLS frei.
+alter default privileges for role postgres in schema public
+  grant all on tables to authenticated, service_role;
+alter default privileges for role postgres in schema public
+  grant all on sequences to authenticated, service_role;
+alter default privileges for role postgres in schema public
+  grant execute on functions to authenticated, service_role;
+
+insert into private.schema_migrationen (name)
+values ('0004_gebaeude.sql')
+on conflict do nothing;

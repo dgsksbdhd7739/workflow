@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable'
 import { Capacitor } from '@capacitor/core'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
-import { getSignedUrl, supabase } from './supabase'
+import { getSignedUrl, backend } from './backend'
 import { formatKundenAdresse, formatProjektAdresse, formatUnternehmenAdresse } from './adresse'
 import { formatDatum } from './datum'
 import { tagesberichtName, tagesberichtNummern } from './tagesberichtName'
@@ -216,7 +216,7 @@ function eintragMinuten(z: Zeiterfassung) {
 // Ermittelt das Unternehmen des aktuell eingeloggten Nutzers (RLS liefert
 // automatisch nur die eigene Zeile), fuer Firmenlogo/-daten im PDF-Kopf.
 async function holeUnternehmen(): Promise<Unternehmen | null> {
-  const { data } = await supabase.from('unternehmen').select('*').limit(1).maybeSingle()
+  const { data } = await backend.from('unternehmen').select('*').limit(1).maybeSingle()
   return data ?? null
 }
 
@@ -462,14 +462,14 @@ function neueFortschrittCache(): FortschrittCache {
 async function ermittleVorlageId(m: Aufgabe, cache: FortschrittCache): Promise<string | null> {
   if (m.plan_id) {
     if (!cache.planZuVorlage.has(m.plan_id)) {
-      const { data } = await supabase.from('plaene').select('statusvorlage_id').eq('id', m.plan_id).single()
+      const { data } = await backend.from('plaene').select('statusvorlage_id').eq('id', m.plan_id).single()
       cache.planZuVorlage.set(m.plan_id, data?.statusvorlage_id ?? null)
     }
     const vorlageId = cache.planZuVorlage.get(m.plan_id) ?? null
     if (vorlageId) return vorlageId
   }
   if (cache.standardVorlageId === undefined) {
-    const { data } = await supabase.from('statusvorlagen').select('id').eq('ist_standard', true).limit(1).maybeSingle()
+    const { data } = await backend.from('statusvorlagen').select('id').eq('ist_standard', true).limit(1).maybeSingle()
     cache.standardVorlageId = data?.id ?? null
   }
   return cache.standardVorlageId ?? null
@@ -485,7 +485,7 @@ async function holeFortschrittfelder(m: Aufgabe, cache: FortschrittCache): Promi
   const vorlageId = await ermittleVorlageId(m, cache)
   if (!vorlageId) return []
   if (!cache.werteProVorlage.has(vorlageId)) {
-    const { data } = await supabase
+    const { data } = await backend
       .from('statusvorlage_werte')
       .select('*')
       .eq('statusvorlage_id', vorlageId)

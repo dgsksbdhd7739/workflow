@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, HelpCircle, Building2 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { ProjektForm } from '../components/ProjektForm'
 import { ProjektStatusKarte, type ProjektKartenStats } from '../components/ProjektStatusKarte'
@@ -37,22 +37,22 @@ export function Dashboard() {
     if (!user) return
     setLoading(true)
     const [{ data: projekteData }, { data: favoritenData }] = await Promise.all([
-      supabase.from('projekte').select('*').eq('archiviert', false).order('created_at', { ascending: false }),
-      supabase.from('favoriten').select('projekt_id').eq('user_id', user.id),
+      backend.from('projekte').select('*').eq('archiviert', false).order('created_at', { ascending: false }),
+      backend.from('favoriten').select('projekt_id').eq('user_id', user.id),
     ])
     setProjekte(projekteData ?? [])
     setFavoritenIds(new Set((favoritenData ?? []).map((f) => f.projekt_id)))
 
     const ids = (projekteData ?? []).map((b) => b.id)
     if (ids.length > 0) {
-      const { data: heutigeBerichteData } = await supabase
+      const { data: heutigeBerichteData } = await backend
         .from('tagesberichte')
         .select('projekt_id')
         .eq('datum', heute())
         .in('projekt_id', ids)
       setHeutigeBerichte(new Set((heutigeBerichteData ?? []).map((b) => b.projekt_id)))
 
-      const { data: aufgabenFuerStats } = await supabase.from('aufgaben').select('id, projekt_id, status').in('projekt_id', ids)
+      const { data: aufgabenFuerStats } = await backend.from('aufgaben').select('id, projekt_id, status').in('projekt_id', ids)
       const aufgabeProjektMap = Object.fromEntries((aufgabenFuerStats ?? []).map((a) => [a.id, a.projekt_id]))
       const aufgabeIdsFuerStats = (aufgabenFuerStats ?? []).map((a) => a.id)
 
@@ -67,7 +67,7 @@ export function Dashboard() {
       }
 
       if (aufgabeIdsFuerStats.length > 0) {
-        const { data: ticketsFuerStats } = await supabase
+        const { data: ticketsFuerStats } = await backend
           .from('aufgabe_tickets')
           .select('aufgabe_id, status, erledigen_bis, nachfrist')
           .eq('status', 'offen')
@@ -91,11 +91,11 @@ export function Dashboard() {
     if (kannUebersichtSehen) {
       if (ids.length > 0) {
         const namenMap = Object.fromEntries((projekteData ?? []).map((b) => [b.id, b.name]))
-        const { data: aufgabenData } = await supabase.from('aufgaben').select('id, titel, projekt_id').in('projekt_id', ids)
+        const { data: aufgabenData } = await backend.from('aufgaben').select('id, titel, projekt_id').in('projekt_id', ids)
         const aufgabenMap = Object.fromEntries((aufgabenData ?? []).map((a) => [a.id, a]))
         const aufgabeIds = (aufgabenData ?? []).map((a) => a.id)
         if (aufgabeIds.length > 0) {
-          const { data: ticketsData } = await supabase
+          const { data: ticketsData } = await backend
             .from('aufgabe_tickets')
             .select('*')
             .in('aufgabe_id', aufgabeIds)
@@ -139,9 +139,9 @@ export function Dashboard() {
       return next
     })
     if (istFavorit) {
-      await supabase.from('favoriten').delete().eq('user_id', user.id).eq('projekt_id', projektId)
+      await backend.from('favoriten').delete().eq('user_id', user.id).eq('projekt_id', projektId)
     } else {
-      await supabase.from('favoriten').insert({ user_id: user.id, projekt_id: projektId })
+      await backend.from('favoriten').insert({ user_id: user.id, projekt_id: projektId })
     }
   }
 

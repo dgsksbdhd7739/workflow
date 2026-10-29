@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 
 export function PasswortAendern() {
@@ -23,14 +23,14 @@ export function PasswortAendern() {
       return
     }
     setSpeichert(true)
-    const { error } = await supabase.auth.updateUser({ password: neuesPasswort })
+    const { error } = await backend.auth.passwortAendern(neuesPasswort)
     if (error) {
       setSpeichert(false)
       setFehler(error.message)
       return
     }
     if (user) {
-      await supabase.from('profiles').update({ muss_passwort_aendern: false }).eq('id', user.id)
+      await backend.from('profiles').update({ muss_passwort_aendern: false }).eq('id', user.id)
     }
     setSpeichert(false)
     setMussPasswortAendern(false)

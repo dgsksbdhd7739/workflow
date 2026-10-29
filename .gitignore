@@ -17,8 +17,6 @@ dist-ssr
 .env.*
 !.env.example
 
-# Supabase CLI local cache
-supabase/.temp/
 
 # Rust build output
 src-tauri/target/

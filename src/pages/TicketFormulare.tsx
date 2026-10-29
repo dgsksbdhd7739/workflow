@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import type { TicketFormular, TicketFormularFeld, TicketFormularFeldtyp } from '../types/database'
 
@@ -29,7 +29,7 @@ export function TicketFormulare() {
 
   const loadFormulare = async () => {
     setLoading(true)
-    const { data } = await supabase.from('ticket_formulare').select('*').order('erstellt_am')
+    const { data } = await backend.from('ticket_formulare').select('*').order('erstellt_am')
     setFormulare(data ?? [])
     setLoading(false)
   }
@@ -39,7 +39,7 @@ export function TicketFormulare() {
   }, [])
 
   const loadFelder = async (formularId: string) => {
-    const { data } = await supabase
+    const { data } = await backend
       .from('ticket_formular_felder')
       .select('*')
       .eq('formular_id', formularId)
@@ -56,7 +56,7 @@ export function TicketFormulare() {
     e.preventDefault()
     if (!user || !unternehmenId || !neuerFormularName.trim()) return
     setFehler(null)
-    const { data, error } = await supabase
+    const { data, error } = await backend
       .from('ticket_formulare')
       .insert({ name: neuerFormularName.trim(), erstellt_von: user.id, unternehmen_id: unternehmenId })
       .select()
@@ -76,7 +76,7 @@ export function TicketFormulare() {
     setFehler(null)
     if (ausgewaehltesFormular === id) setAusgewaehltesFormular(null)
     setFormulare((prev) => prev.filter((v) => v.id !== id))
-    const { error } = await supabase.from('ticket_formulare').delete().eq('id', id)
+    const { error } = await backend.from('ticket_formulare').delete().eq('id', id)
     if (error) {
       setFehler(error.message)
       loadFormulare()
@@ -86,8 +86,8 @@ export function TicketFormulare() {
   const setStandardFormular = async (id: string) => {
     setFehler(null)
     setFormulare((prev) => prev.map((v) => ({ ...v, ist_standard: v.id === id })))
-    const r1 = await supabase.from('ticket_formulare').update({ ist_standard: false }).eq('unternehmen_id', unternehmenId)
-    const r2 = await supabase.from('ticket_formulare').update({ ist_standard: true }).eq('id', id)
+    const r1 = await backend.from('ticket_formulare').update({ ist_standard: false }).eq('unternehmen_id', unternehmenId)
+    const r2 = await backend.from('ticket_formulare').update({ ist_standard: true }).eq('id', id)
     if (r1.error || r2.error) {
       setFehler((r1.error ?? r2.error)!.message)
       loadFormulare()
@@ -106,7 +106,7 @@ export function TicketFormulare() {
             .map((o) => o.trim())
             .filter(Boolean)
         : null
-    const { error } = await supabase.from('ticket_formular_felder').insert({
+    const { error } = await backend.from('ticket_formular_felder').insert({
       formular_id: ausgewaehltesFormular,
       titel: neuesFeldTitel.trim(),
       feldtyp: neuesFeldTyp,
@@ -138,8 +138,8 @@ export function TicketFormulare() {
       return next
     })
     const [r1, r2] = await Promise.all([
-      supabase.from('ticket_formular_felder').update({ reihenfolge: b.reihenfolge }).eq('id', a.id),
-      supabase.from('ticket_formular_felder').update({ reihenfolge: a.reihenfolge }).eq('id', b.id),
+      backend.from('ticket_formular_felder').update({ reihenfolge: b.reihenfolge }).eq('id', a.id),
+      backend.from('ticket_formular_felder').update({ reihenfolge: a.reihenfolge }).eq('id', b.id),
     ])
     if (r1.error || r2.error) {
       setFehler((r1.error ?? r2.error)!.message)
@@ -152,7 +152,7 @@ export function TicketFormulare() {
     if (!window.confirm('Dieses Feld wirklich löschen?')) return
     setFehler(null)
     setFelder((prev) => prev.filter((f) => f.id !== feldId))
-    const { error } = await supabase.from('ticket_formular_felder').delete().eq('id', feldId)
+    const { error } = await backend.from('ticket_formular_felder').delete().eq('id', feldId)
     if (error) {
       setFehler(error.message)
       loadFelder(ausgewaehltesFormular)

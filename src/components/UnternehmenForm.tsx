@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
+import { backend, getSignedUrl, uploadFile } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { komprimiereBild } from '../lib/bildKompression'
 import type { Unternehmen } from '../types/database'
@@ -34,7 +34,7 @@ export function UnternehmenForm({
 
   useEffect(() => {
     if (!unternehmenId) return
-    supabase
+    backend
       .from('unternehmen')
       .select('*')
       .eq('id', unternehmenId)
@@ -87,7 +87,7 @@ export function UnternehmenForm({
       logo_pfad = path
     }
 
-    const { data: aktualisiert, error } = await supabase
+    const { data: aktualisiert, error } = await backend
       .from('unternehmen')
       .update({
         name: name.trim() || 'Mein Unternehmen',

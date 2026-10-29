@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type MouseEvent, type TouchEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, List, MapPin, MousePointer2, Search, X } from 'lucide-react'
-import { supabase, getSignedUrl } from '../lib/supabase'
+import { backend, getSignedUrl } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { AufgabeDetails } from '../components/AufgabeDetails'
 import { Arbeitszeit } from '../components/Arbeitszeit'
@@ -234,13 +234,13 @@ export function PlanDetail() {
   const load = async () => {
     if (!planId) return
     const [{ data: planData }, { data: pinsData }] = await Promise.all([
-      supabase.from('plaene').select('*').eq('id', planId).single(),
-      supabase.from('aufgaben').select('*').eq('plan_id', planId).order('erstellt_am'),
+      backend.from('plaene').select('*').eq('id', planId).single(),
+      backend.from('aufgaben').select('*').eq('plan_id', planId).order('erstellt_am'),
     ])
     setPlan(planData)
     setPins(pinsData ?? [])
     if (planData?.statusvorlage_id) {
-      const { data: werteData } = await supabase
+      const { data: werteData } = await backend
         .from('statusvorlage_werte')
         .select('*')
         .eq('statusvorlage_id', planData.statusvorlage_id)
@@ -544,7 +544,7 @@ export function PlanDetail() {
         erstellt_von: user.id,
       }
     })
-    const { error } = await supabase.from('aufgaben').insert(eintraege)
+    const { error } = await backend.from('aufgaben').insert(eintraege)
     setUebernehmeLaeuft(false)
     if (error) {
       setFehler(error.message)
@@ -721,7 +721,7 @@ export function PlanDetail() {
       pendingPos.ankerX !== undefined &&
       pendingPos.ankerY !== undefined &&
       (pendingPos.ankerX !== pendingPos.x || pendingPos.ankerY !== pendingPos.y)
-    const { error } = await supabase.from('aufgaben').insert({
+    const { error } = await backend.from('aufgaben').insert({
       projekt_id: projektId,
       titel,
       beschreibung: beschreibung || null,
@@ -751,7 +751,7 @@ export function PlanDetail() {
     if (!selectedPin) return
     setSaving(true)
     setFehler(null)
-    const { error } = await supabase
+    const { error } = await backend
       .from('aufgaben')
       .update({
         status: editStatus,
@@ -772,7 +772,7 @@ export function PlanDetail() {
     if (!window.confirm('Markierung wirklich vom Plan entfernen? Die Aufgabe bleibt in der Aufgaben-Liste erhalten.')) return
     setSaving(true)
     setFehler(null)
-    const { error } = await supabase
+    const { error } = await backend
       .from('aufgaben')
       .update({ plan_id: null, position_x: null, position_y: null, label_x: null, label_y: null })
       .eq('id', selectedPin.id)
@@ -790,7 +790,7 @@ export function PlanDetail() {
     if (!window.confirm('Aufgabe wirklich endgültig löschen? Das kann nicht rückgängig gemacht werden.')) return
     setSaving(true)
     setFehler(null)
-    const { error } = await supabase.from('aufgaben').delete().eq('id', selectedPin.id)
+    const { error } = await backend.from('aufgaben').delete().eq('id', selectedPin.id)
     setSaving(false)
     if (error) {
       setFehler(error.message)

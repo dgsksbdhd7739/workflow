@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
-import { supabase } from './supabase'
+import { backend } from './backend'
 
 let initialisiert = false
 
@@ -34,7 +34,7 @@ export async function initPushNotifications(userId: string) {
     // (Token) am JS-Listener vorbeilaufen (beobachtete Race Condition).
     await Promise.all([
       PushNotifications.addListener('registration', (token) => {
-        supabase
+        backend
           .from('push_tokens')
           .upsert({ user_id: userId, token: token.value, plattform: Capacitor.getPlatform() }, { onConflict: 'user_id,token' })
           .then(({ error }) => {

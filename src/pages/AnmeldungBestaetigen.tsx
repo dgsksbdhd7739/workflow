@@ -1,13 +1,16 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export function AnmeldungBestaetigen() {
-  const { bestaetigeMfaCode, signOut } = useAuth()
+  const { user, mfaPending, bestaetigeMfaCode, signOut } = useAuth()
   const navigate = useNavigate()
   const [code, setCode] = useState('')
   const [fehler, setFehler] = useState<string | null>(null)
   const [pruefend, setPruefend] = useState(false)
+
+  if (user) return <Navigate to="/" replace />
+  if (!mfaPending) return <Navigate to="/login" replace />
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()

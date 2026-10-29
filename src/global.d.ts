@@ -1,8 +1,8 @@
 declare const __APP_VERSION__: string
 
 interface ImportMetaEnv {
-	readonly VITE_SUPABASE_URL?: string
-	readonly VITE_SUPABASE_ANON_KEY?: string
+	// Adresse des WorkFlow-Backends (server/); leer = gleicher Host wie die Web-App.
+	readonly VITE_API_URL?: string
 	readonly VITE_LOKALE_DEMO?: string
 }
 

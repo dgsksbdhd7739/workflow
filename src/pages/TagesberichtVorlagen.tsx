@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
-import { supabase, uploadFile } from '../lib/supabase'
+import { backend, uploadFile } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import type { TagesberichtVorlage } from '../types/database'
 
@@ -18,7 +18,7 @@ export function TagesberichtVorlagen() {
 
   const loadVorlagen = async () => {
     setLoading(true)
-    const { data } = await supabase.from('tagesbericht_vorlagen').select('*').order('erstellt_am')
+    const { data } = await backend.from('tagesbericht_vorlagen').select('*').order('erstellt_am')
     setVorlagen(data ?? [])
     setLoading(false)
   }
@@ -42,7 +42,7 @@ export function TagesberichtVorlagen() {
       }
       pdf_datei_pfad = path
     }
-    const { error } = await supabase.from('tagesbericht_vorlagen').insert({
+    const { error } = await backend.from('tagesbericht_vorlagen').insert({
       name: neueVorlageName.trim(),
       erstellt_von: user.id,
       unternehmen_id: unternehmenId,
@@ -63,7 +63,7 @@ export function TagesberichtVorlagen() {
     if (!window.confirm('Diese Vorlage wirklich löschen? Bereits erstellte Tagesberichte bleiben erhalten.')) return
     setFehler(null)
     setVorlagen((prev) => prev.filter((v) => v.id !== id))
-    const { error } = await supabase.from('tagesbericht_vorlagen').delete().eq('id', id)
+    const { error } = await backend.from('tagesbericht_vorlagen').delete().eq('id', id)
     if (error) {
       setFehler(error.message)
       loadVorlagen()
@@ -73,8 +73,8 @@ export function TagesberichtVorlagen() {
   const setStandard = async (id: string) => {
     setFehler(null)
     setVorlagen((prev) => prev.map((v) => ({ ...v, ist_standard: v.id === id })))
-    const r1 = await supabase.from('tagesbericht_vorlagen').update({ ist_standard: false }).eq('unternehmen_id', unternehmenId)
-    const r2 = await supabase.from('tagesbericht_vorlagen').update({ ist_standard: true }).eq('id', id)
+    const r1 = await backend.from('tagesbericht_vorlagen').update({ ist_standard: false }).eq('unternehmen_id', unternehmenId)
+    const r2 = await backend.from('tagesbericht_vorlagen').update({ ist_standard: true }).eq('id', id)
     if (r1.error || r2.error) {
       setFehler((r1.error ?? r2.error)!.message)
       loadVorlagen()
@@ -93,7 +93,7 @@ export function TagesberichtVorlagen() {
       setFehler(error)
       return
     }
-    const { error: updateError } = await supabase
+    const { error: updateError } = await backend
       .from('tagesbericht_vorlagen')
       .update({ pdf_datei_pfad: path })
       .eq('id', vorlage.id)

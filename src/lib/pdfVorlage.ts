@@ -1,5 +1,5 @@
 import { PDFDocument, PDFTextField, PDFCheckBox } from 'pdf-lib'
-import { getSignedUrl } from './supabase'
+import { getSignedUrl } from './backend'
 import { formatDatum } from './datum'
 import type { Projekt, Tagesbericht, TagesberichtTuer } from '../types/database'
 

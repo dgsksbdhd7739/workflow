@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { MessageCircle, Send, Trash2 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import type { Projekt, ProjektChatNachricht } from '../types/database'
@@ -46,7 +46,7 @@ export function ProjektChat() {
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    supabase
+    backend
       .from('projekte')
       .select('*')
       .eq('archiviert', false)
@@ -69,7 +69,7 @@ export function ProjektChat() {
       return
     }
     setLoading(true)
-    supabase
+    backend
       .from('projekt_chat_nachrichten')
       .select('*')
       .eq('projekt_id', projektId)
@@ -80,29 +80,14 @@ export function ProjektChat() {
         setLoading(false)
       })
 
-    const channel = supabase
-      .channel(`projekt-chat-${projektId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'projekt_chat_nachrichten', filter: `projekt_id=eq.${projektId}` },
-        (payload) => {
-          setNachrichten((prev) =>
-            prev.some((n) => n.id === payload.new.id) ? prev : [...prev, payload.new as ProjektChatNachricht],
-          )
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'projekt_chat_nachrichten', filter: `projekt_id=eq.${projektId}` },
-        (payload) => {
-          setNachrichten((prev) => prev.filter((n) => n.id !== payload.old.id))
-        },
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    return backend.live.abonnieren('projekt_chat_nachrichten', projektId, {
+      beiNeu: (neu: ProjektChatNachricht) => {
+        setNachrichten((prev) => (prev.some((n) => n.id === neu.id) ? prev : [...prev, neu]))
+      },
+      beiLoeschen: (alt) => {
+        setNachrichten((prev) => prev.filter((n) => n.id !== alt.id))
+      },
+    })
   }, [projektId])
 
   useEffect(() => {
@@ -116,7 +101,7 @@ export function ProjektChat() {
     setSenden(true)
     setFehler(null)
     setText('')
-    const { data, error } = await supabase
+    const { data, error } = await backend
       .from('projekt_chat_nachrichten')
       .insert({ projekt_id: projektId, user_id: user.id, text: inhalt })
       .select()
@@ -132,7 +117,7 @@ export function ProjektChat() {
 
   const handleLoeschen = async (id: string) => {
     setNachrichten((prev) => prev.filter((n) => n.id !== id))
-    const { error } = await supabase.from('projekt_chat_nachrichten').delete().eq('id', id)
+    const { error } = await backend.from('projekt_chat_nachrichten').delete().eq('id', id)
     if (error) setFehler(error.message)
   }
 

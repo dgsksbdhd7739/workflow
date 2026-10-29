@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { CalendarDays, Search, Trash2, X } from 'lucide-react'
-import { supabase, getSignedUrl } from '../lib/supabase'
+import { backend, getSignedUrl } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { SignedImage } from '../components/SignedImage'
@@ -95,11 +95,11 @@ export function Tagesberichte() {
     setLoading(true)
     const [{ data }, { data: projektData }, { data: zeitenData }, { data: aufgabenData }, { data: werteData }] =
       await Promise.all([
-        supabase.from('tagesberichte').select('*').eq('projekt_id', projektId).order('datum', { ascending: false }),
-        supabase.from('projekte').select('*').eq('id', projektId).single(),
-        supabase.from('zeiterfassung').select('*').eq('projekt_id', projektId).order('start_zeit'),
-        supabase.from('aufgaben').select('*').eq('projekt_id', projektId),
-        supabase.from('statusvorlage_werte').select('*'),
+        backend.from('tagesberichte').select('*').eq('projekt_id', projektId).order('datum', { ascending: false }),
+        backend.from('projekte').select('*').eq('id', projektId).single(),
+        backend.from('zeiterfassung').select('*').eq('projekt_id', projektId).order('start_zeit'),
+        backend.from('aufgaben').select('*').eq('projekt_id', projektId),
+        backend.from('statusvorlage_werte').select('*'),
       ])
     setBerichte(data ?? [])
     setProjekt(projektData)
@@ -112,8 +112,8 @@ export function Tagesberichte() {
     const aufgabeIds = (aufgabenData ?? []).map((m) => m.id)
     if (aufgabeIds.length > 0) {
       const [{ data: materialData }, { data: kommentareData }] = await Promise.all([
-        supabase.from('aufgabe_material').select('*').in('aufgabe_id', aufgabeIds),
-        supabase.from('aufgabe_kommentare').select('*').in('aufgabe_id', aufgabeIds),
+        backend.from('aufgabe_material').select('*').in('aufgabe_id', aufgabeIds),
+        backend.from('aufgabe_kommentare').select('*').in('aufgabe_id', aufgabeIds),
       ])
       setMaterial(materialData ?? [])
       setKommentare(kommentareData ?? [])
@@ -124,7 +124,7 @@ export function Tagesberichte() {
 
     const berichtIds = (data ?? []).map((b) => b.id)
     if (berichtIds.length > 0) {
-      const { data: tuerenData } = await supabase
+      const { data: tuerenData } = await backend
         .from('tagesbericht_tueren')
         .select('*')
         .in('tagesbericht_id', berichtIds)
@@ -146,7 +146,7 @@ export function Tagesberichte() {
       stand: standVonAufgabe(m, werteMap),
       reihenfolge: i,
     }))
-    await supabase.from('tagesbericht_tueren').insert(zeilen)
+    await backend.from('tagesbericht_tueren').insert(zeilen)
   }
 
   useEffect(() => {
@@ -156,7 +156,7 @@ export function Tagesberichte() {
 
   useEffect(() => {
     if (!unternehmenId) return
-    supabase
+    backend
       .from('tagesbericht_vorlagen')
       .select('*')
       .eq('unternehmen_id', unternehmenId)
@@ -169,7 +169,7 @@ export function Tagesberichte() {
     if (!user || !projektId) return
     setSaving(true)
     setFehler(null)
-    const { data: neuerBericht, error } = await supabase
+    const { data: neuerBericht, error } = await backend
       .from('tagesberichte')
       .insert({
         projekt_id: projektId,
@@ -229,7 +229,7 @@ export function Tagesberichte() {
 
     const technikerAnzahl = new Set(zeitenHeute.map((z) => z.user_id)).size
 
-    const { data: neuerBericht, error } = await supabase
+    const { data: neuerBericht, error } = await backend
       .from('tagesberichte')
       .insert({
         projekt_id: projektId,
@@ -325,7 +325,7 @@ export function Tagesberichte() {
     if (!window.confirm('Tagesbericht wirklich endgültig löschen? Das kann nicht rückgängig gemacht werden.')) return
     setLoeschendId(b.id)
     setFehler(null)
-    const { error } = await supabase.from('tagesberichte').delete().eq('id', b.id)
+    const { error } = await backend.from('tagesberichte').delete().eq('id', b.id)
     setLoeschendId(null)
     if (error) {
       setFehler(error.message)

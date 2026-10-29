@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { LogOut, Sparkles } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../hooks/useTheme'
 import { CHANGELOG } from '../lib/changelog'
@@ -76,7 +76,7 @@ export function Einstellungen() {
     const neuerWert = !produktHinweise
     setProduktHinweise(neuerWert)
     if (user) {
-      await supabase.from('profiles').update({ produkt_hinweise: neuerWert }).eq('id', user.id)
+      await backend.from('profiles').update({ produkt_hinweise: neuerWert }).eq('id', user.id)
     }
   }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Trash2 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import type { MaterialStamm as MaterialStammTyp } from '../types/database'
 
@@ -19,7 +19,7 @@ export function MaterialStamm() {
   const load = async () => {
     if (!unternehmenId) return
     setLoading(true)
-    const { data } = await supabase
+    const { data } = await backend
       .from('material_stamm')
       .select('*')
       .eq('unternehmen_id', unternehmenId)
@@ -38,7 +38,7 @@ export function MaterialStamm() {
     if (!user || !unternehmenId || !neueBezeichnung.trim()) return
     setSaving(true)
     setFehler(null)
-    const { error } = await supabase.from('material_stamm').insert({
+    const { error } = await backend.from('material_stamm').insert({
       unternehmen_id: unternehmenId,
       bezeichnung: neueBezeichnung.trim(),
       einheit: neueEinheit.trim() || null,
@@ -61,7 +61,7 @@ export function MaterialStamm() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Diesen Materialstamm-Eintrag wirklich löschen?')) return
     setMaterial((prev) => prev.filter((m) => m.id !== id))
-    const { error } = await supabase.from('material_stamm').delete().eq('id', id)
+    const { error } = await backend.from('material_stamm').delete().eq('id', id)
     if (error) {
       setFehler(error.message)
       load()

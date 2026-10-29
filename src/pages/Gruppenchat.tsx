@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { MessageSquare, Send, Trash2 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import type { ChatNachricht } from '../types/database'
@@ -42,7 +42,7 @@ export function Gruppenchat() {
   useEffect(() => {
     if (!unternehmenId) return
     setLoading(true)
-    supabase
+    backend
       .from('chat_nachrichten')
       .select('*')
       .eq('unternehmen_id', unternehmenId)
@@ -53,27 +53,14 @@ export function Gruppenchat() {
         setLoading(false)
       })
 
-    const channel = supabase
-      .channel(`chat-${unternehmenId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_nachrichten', filter: `unternehmen_id=eq.${unternehmenId}` },
-        (payload) => {
-          setNachrichten((prev) => (prev.some((n) => n.id === payload.new.id) ? prev : [...prev, payload.new as ChatNachricht]))
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'chat_nachrichten', filter: `unternehmen_id=eq.${unternehmenId}` },
-        (payload) => {
-          setNachrichten((prev) => prev.filter((n) => n.id !== payload.old.id))
-        },
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    return backend.live.abonnieren('chat_nachrichten', unternehmenId, {
+      beiNeu: (neu: ChatNachricht) => {
+        setNachrichten((prev) => (prev.some((n) => n.id === neu.id) ? prev : [...prev, neu]))
+      },
+      beiLoeschen: (alt) => {
+        setNachrichten((prev) => prev.filter((n) => n.id !== alt.id))
+      },
+    })
   }, [unternehmenId])
 
   useEffect(() => {
@@ -87,7 +74,7 @@ export function Gruppenchat() {
     setSenden(true)
     setFehler(null)
     setText('')
-    const { data, error } = await supabase
+    const { data, error } = await backend
       .from('chat_nachrichten')
       .insert({ unternehmen_id: unternehmenId, user_id: user.id, text: inhalt })
       .select()
@@ -105,7 +92,7 @@ export function Gruppenchat() {
 
   const handleLoeschen = async (id: string) => {
     setNachrichten((prev) => prev.filter((n) => n.id !== id))
-    const { error } = await supabase.from('chat_nachrichten').delete().eq('id', id)
+    const { error } = await backend.from('chat_nachrichten').delete().eq('id', id)
     if (error) setFehler(error.message)
   }
 

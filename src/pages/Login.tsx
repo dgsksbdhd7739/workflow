@@ -3,16 +3,16 @@ import { Navigate, Link } from 'react-router-dom'
 import { HardHat } from 'lucide-react'
 import { Capacitor } from '@capacitor/core'
 import { useAuth } from '../contexts/AuthContext'
-import { isSupabaseConfigured } from '../lib/supabase'
 
 export function Login() {
-  const { user, signIn } = useAuth()
+  const { user, mfaPending, signIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   if (user) return <Navigate to="/" replace />
+  if (mfaPending) return <Navigate to="/anmeldung-bestaetigen" replace />
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -33,12 +33,6 @@ export function Login() {
           Work<span className="brand-text">Flow</span>
         </h1>
         <p className="mb-6 text-sm text-text-muted">Anmelden, um fortzufahren</p>
-
-        {!isSupabaseConfigured && (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
-            Supabase ist noch nicht konfiguriert (.env fehlt). Anmeldung funktioniert erst danach.
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

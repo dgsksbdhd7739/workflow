@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AlertTriangle, CalendarClock, LayoutGrid, List, Map as MapIcon, Search } from 'lucide-react'
-import { supabase, uploadFile } from '../lib/supabase'
+import { backend, uploadFile } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { AufgabeDetails } from '../components/AufgabeDetails'
@@ -218,8 +218,8 @@ export function Aufgaben() {
     if (!projektId) return
     setLoading(true)
     const [{ data }, { data: projektData }] = await Promise.all([
-      supabase.from('aufgaben').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
-      supabase.from('projekte').select('*').eq('id', projektId).single(),
+      backend.from('aufgaben').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
+      backend.from('projekte').select('*').eq('id', projektId).single(),
     ])
     setAufgaben(data ?? [])
     setProjekt(projektData)
@@ -228,8 +228,8 @@ export function Aufgaben() {
     const aufgabeIds = (data ?? []).map((m) => m.id)
     if (aufgabeIds.length > 0) {
       const [{ data: materialData }, { data: kommentareData }] = await Promise.all([
-        supabase.from('aufgabe_material').select('*').in('aufgabe_id', aufgabeIds),
-        supabase.from('aufgabe_kommentare').select('*').in('aufgabe_id', aufgabeIds),
+        backend.from('aufgabe_material').select('*').in('aufgabe_id', aufgabeIds),
+        backend.from('aufgabe_kommentare').select('*').in('aufgabe_id', aufgabeIds),
       ])
       setMaterial(materialData ?? [])
       setKommentare(kommentareData ?? [])
@@ -244,7 +244,7 @@ export function Aufgaben() {
   useEffect(() => {
     load()
     setAusgewaehlt(new Set())
-    supabase
+    backend
       .from('statusvorlage_werte')
       .select('*')
       .then(({ data }) => {
@@ -253,7 +253,7 @@ export function Aufgaben() {
         setWerteMap(map)
       })
     if (projektId && user) {
-      supabase
+      backend
         .from('aufgaben_filter')
         .select('*')
         .eq('projekt_id', projektId)
@@ -266,7 +266,7 @@ export function Aufgaben() {
   const filterSpeichern = async (e: FormEvent) => {
     e.preventDefault()
     if (!user || !projektId || !neuerFilterName.trim()) return
-    const { data, error } = await supabase
+    const { data, error } = await backend
       .from('aufgaben_filter')
       .insert({
         user_id: user.id,
@@ -292,7 +292,7 @@ export function Aufgaben() {
 
   const filterLoeschen = async (f: AufgabenFilter) => {
     setGespeicherteFilter((prev) => prev.filter((x) => x.id !== f.id))
-    const { error } = await supabase.from('aufgaben_filter').delete().eq('id', f.id)
+    const { error } = await backend.from('aufgaben_filter').delete().eq('id', f.id)
     if (error) setFehler(error.message)
   }
 
@@ -314,7 +314,7 @@ export function Aufgaben() {
       foto_pfad = path
     }
 
-    const { error } = await supabase.from('aufgaben').insert({
+    const { error } = await backend.from('aufgaben').insert({
       projekt_id: projektId,
       titel,
       beschreibung: beschreibung || null,
@@ -343,7 +343,7 @@ export function Aufgaben() {
   const updateStatus = async (aufgabeId: string, status: AufgabeStatus) => {
     setFehler(null)
     setAufgaben((prev) => prev.map((m) => (m.id === aufgabeId ? { ...m, status } : m)))
-    const { error } = await supabase.from('aufgaben').update({ status }).eq('id', aufgabeId)
+    const { error } = await backend.from('aufgaben').update({ status }).eq('id', aufgabeId)
     if (error) {
       setFehler(error.message)
       load()
@@ -353,7 +353,7 @@ export function Aufgaben() {
   const handleDelete = async (m: Aufgabe) => {
     if (!window.confirm(`"${m.titel}" wirklich endgültig löschen? Das kann nicht rückgängig gemacht werden.`)) return
     setFehler(null)
-    const { error } = await supabase.from('aufgaben').delete().eq('id', m.id)
+    const { error } = await backend.from('aufgaben').delete().eq('id', m.id)
     if (error) {
       setFehler(error.message)
       return
@@ -377,7 +377,7 @@ export function Aufgaben() {
       return
     }
     setFehler(null)
-    const { error } = await supabase.from('aufgaben').delete().in('id', ids)
+    const { error } = await backend.from('aufgaben').delete().in('id', ids)
     if (error) {
       setFehler(error.message)
       return

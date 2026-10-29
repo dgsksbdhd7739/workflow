@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import { exportMaterialPdf } from '../lib/pdf'
 import { useAuth } from '../contexts/AuthContext'
 import type { Projekt, AufgabeMaterial } from '../types/database'
@@ -21,8 +21,8 @@ export function Material() {
     if (!projektId) return
     setLoading(true)
     const [{ data: projektData }, { data: aufgabenData }] = await Promise.all([
-      supabase.from('projekte').select('*').eq('id', projektId).single(),
-      supabase.from('aufgaben').select('id, titel, plan_id').eq('projekt_id', projektId),
+      backend.from('projekte').select('*').eq('id', projektId).single(),
+      backend.from('aufgaben').select('id, titel, plan_id').eq('projekt_id', projektId),
     ])
     setProjekt(projektData)
     const aufgabeIds = (aufgabenData ?? []).map((m) => m.id)
@@ -35,7 +35,7 @@ export function Material() {
       return
     }
 
-    const { data: materialData } = await supabase
+    const { data: materialData } = await backend
       .from('aufgabe_material')
       .select('*')
       .in('aufgabe_id', aufgabeIds)

@@ -4,13 +4,16 @@
 // Neustarten der App durch den Nutzer: findet initLiveUpdate() eine neuere
 // Version, wird sie geladen und aktiviert, BEVOR die alte Oberflaeche
 // jemals sichtbar wird (CapacitorUpdater.set() ersetzt danach ohnehin den
-// kompletten JS-Kontext). Manifest + Bundle-Zip liegen im oeffentlichen
-// Supabase-Storage-Bucket "app-updates" (siehe Migration 0024 und
-// scripts/publish-update.mjs).
+// kompletten JS-Kontext). Manifest + Bundle-Zip liegen auf dem eigenen VPS
+// unter /updates/ (abgelegt von scripts/publish-update.mjs, ausgeliefert von
+// Nginx).
 import { Capacitor } from '@capacitor/core'
 import { CapacitorUpdater } from '@capgo/capacitor-updater'
+import { API_BASIS } from './backend'
 
-const MANIFEST_URL = 'https://hcujlcihieskekyukisc.supabase.co/storage/v1/object/public/app-updates/latest.json'
+// Native Builds haben immer VITE_API_URL (sonst koennten sie den Server gar
+// nicht erreichen); der Fallback ist die bisherige Adresse des VPS.
+const MANIFEST_URL = `${API_BASIS || 'https://217-154-200-72.sslip.io'}/updates/latest.json`
 // Obergrenze, damit ein langsames/fehlendes Netz den Start nicht blockiert
 // (App bleibt offline-faehig und startet dann einfach mit dem Bundle, das
 // schon auf dem Geraet liegt).

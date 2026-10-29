@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 
 export function ZweiFaktorEinstellungen() {
   const [loading, setLoading] = useState(true)
@@ -12,8 +12,8 @@ export function ZweiFaktorEinstellungen() {
 
   const laden = async () => {
     setLoading(true)
-    const { data } = await supabase.auth.mfa.listFactors()
-    setAktiverFaktor(data?.totp.find((f) => f.status === 'verified') ?? null)
+    const { data } = await backend.auth.nutzer()
+    setAktiverFaktor(data?.faktoren.find((f) => f.status === 'verified') ?? null)
     setLoading(false)
   }
 
@@ -24,22 +24,12 @@ export function ZweiFaktorEinstellungen() {
   const starteEinrichtung = async () => {
     setFehler(null)
     setArbeitet(true)
-    // Abgebrochene Einrichtungen (App geschlossen vor dem Bestaetigen)
-    // hinterlassen unbestaetigte Faktoren; Supabase lehnt dann jeden neuen
-    // Faktor mit gleichem (leerem) Namen ab ("factor ... already exists").
-    const { data: vorhandene } = await supabase.auth.mfa.listFactors()
-    for (const f of vorhandene?.all ?? []) {
-      if (f.factor_type === 'totp' && f.status !== 'verified') {
-        await supabase.auth.mfa.unenroll({ factorId: f.id })
-      }
-    }
-    const { data, error } = await supabase.auth.mfa.enroll({
-      factorType: 'totp',
-      friendlyName: `Authenticator ${new Date().toISOString()}`,
-    })
+    // Abgebrochene Einrichtungen (App vor dem Bestaetigen geschlossen) raeumt
+    // der Server beim Anlegen eines neuen Faktors selbst auf.
+    const { data, error } = await backend.auth.faktorEinrichten()
     setArbeitet(false)
-    if (error) {
-      setFehler(error.message)
+    if (error || !data) {
+      setFehler(error?.message ?? 'Einrichtung fehlgeschlagen.')
       return
     }
     setNeuerFaktor({ id: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret })
@@ -51,7 +41,7 @@ export function ZweiFaktorEinstellungen() {
     if (!neuerFaktor) return
     setFehler(null)
     setArbeitet(true)
-    const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: neuerFaktor.id, code: code.trim() })
+    const { error } = await backend.auth.faktorBestaetigen(neuerFaktor.id, code.trim())
     setArbeitet(false)
     if (error) {
       setFehler(error.message)
@@ -64,7 +54,7 @@ export function ZweiFaktorEinstellungen() {
   }
 
   const abbrechenEinrichtung = async () => {
-    if (neuerFaktor) await supabase.auth.mfa.unenroll({ factorId: neuerFaktor.id })
+    if (neuerFaktor) await backend.auth.faktorEntfernen(neuerFaktor.id)
     setEinrichtungOffen(false)
     setNeuerFaktor(null)
     setCode('')
@@ -76,7 +66,7 @@ export function ZweiFaktorEinstellungen() {
     if (!window.confirm('Zwei-Faktor-Authentifizierung wirklich deaktivieren?')) return
     setFehler(null)
     setArbeitet(true)
-    const { error } = await supabase.auth.mfa.unenroll({ factorId: aktiverFaktor.id })
+    const { error } = await backend.auth.faktorEntfernen(aktiverFaktor.id)
     setArbeitet(false)
     if (error) {
       setFehler(error.message)

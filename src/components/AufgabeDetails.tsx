@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { FileText, Trash2, X } from 'lucide-react'
-import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
+import { backend, getSignedUrl, uploadFile, dateienLoeschen } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { SignedImage } from './SignedImage'
@@ -114,11 +114,11 @@ export function AufgabeDetails({
   const load = async () => {
     setLoading(true)
     const [{ data: aufgabeData }, { data: kommentareData }, { data: ticketsData }, { data: materialData }, { data: dokumenteData }] = await Promise.all([
-      supabase.from('aufgaben').select('*').eq('id', aufgabeId).single(),
-      supabase.from('aufgabe_kommentare').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am'),
-      supabase.from('aufgabe_tickets').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am', { ascending: false }),
-      supabase.from('aufgabe_material').select('*').eq('aufgabe_id', aufgabeId).order('reihenfolge'),
-      supabase.from('dokumente').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am', { ascending: false }),
+      backend.from('aufgaben').select('*').eq('id', aufgabeId).single(),
+      backend.from('aufgabe_kommentare').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am'),
+      backend.from('aufgabe_tickets').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am', { ascending: false }),
+      backend.from('aufgabe_material').select('*').eq('aufgabe_id', aufgabeId).order('reihenfolge'),
+      backend.from('dokumente').select('*').eq('aufgabe_id', aufgabeId).order('erstellt_am', { ascending: false }),
     ])
     setAufgabe(aufgabeData)
     setKommentare(kommentareData ?? [])
@@ -128,7 +128,7 @@ export function AufgabeDetails({
 
     const ticketIds = (ticketsData ?? []).map((t) => t.id)
     if (ticketIds.length > 0) {
-      const { data: ticketFotosData } = await supabase
+      const { data: ticketFotosData } = await backend
         .from('aufgabe_ticket_fotos')
         .select('*')
         .in('ticket_id', ticketIds)
@@ -139,7 +139,7 @@ export function AufgabeDetails({
       }
       setTicketFotos(gruppiert)
 
-      const { data: empfaengerData } = await supabase
+      const { data: empfaengerData } = await backend
         .from('aufgabe_ticket_empfaenger')
         .select('*')
         .in('ticket_id', ticketIds)
@@ -150,7 +150,7 @@ export function AufgabeDetails({
       }
       setTicketEmpfaenger(empfaengerGruppiert)
 
-      const { data: feldwerteData } = await supabase
+      const { data: feldwerteData } = await backend
         .from('aufgabe_ticket_feldwerte')
         .select('*')
         .in('ticket_id', ticketIds)
@@ -166,7 +166,7 @@ export function AufgabeDetails({
     }
 
     if (aufgabeData?.projekt_id) {
-      const { data: freieDokumenteData } = await supabase
+      const { data: freieDokumenteData } = await backend
         .from('dokumente')
         .select('*')
         .eq('projekt_id', aufgabeData.projekt_id)
@@ -179,7 +179,7 @@ export function AufgabeDetails({
     if (!werteProp) {
       let ermitteltId: string | null = null
       if (aufgabeData?.plan_id) {
-        const { data: planData } = await supabase
+        const { data: planData } = await backend
           .from('plaene')
           .select('statusvorlage_id')
           .eq('id', aufgabeData.plan_id)
@@ -187,7 +187,7 @@ export function AufgabeDetails({
         ermitteltId = planData?.statusvorlage_id ?? null
       }
       if (!ermitteltId) {
-        const { data: standardVorlage } = await supabase
+        const { data: standardVorlage } = await backend
           .from('statusvorlagen')
           .select('id')
           .eq('ist_standard', true)
@@ -197,7 +197,7 @@ export function AufgabeDetails({
       }
       setVorlageIdLokal(ermitteltId)
       if (ermitteltId) {
-        const { data: werteData } = await supabase
+        const { data: werteData } = await backend
           .from('statusvorlage_werte')
           .select('*')
           .eq('statusvorlage_id', ermitteltId)
@@ -218,7 +218,7 @@ export function AufgabeDetails({
 
   useEffect(() => {
     if (!kannMaterialDefinieren || !unternehmenId) return
-    supabase
+    backend
       .from('material_stamm')
       .select('*')
       .eq('unternehmen_id', unternehmenId)
@@ -229,7 +229,7 @@ export function AufgabeDetails({
 
   useEffect(() => {
     if (!kannTicketErstellen || !unternehmenId) return
-    supabase
+    backend
       .from('ticket_formulare')
       .select('*')
       .eq('unternehmen_id', unternehmenId)
@@ -240,7 +240,7 @@ export function AufgabeDetails({
         setTicketFormularId(standard?.id ?? '')
         const formularIds = (formulare ?? []).map((f) => f.id)
         if (formularIds.length === 0) return
-        const { data: felder } = await supabase
+        const { data: felder } = await backend
           .from('ticket_formular_felder')
           .select('*')
           .in('formular_id', formularIds)
@@ -259,7 +259,7 @@ export function AufgabeDetails({
 
     if (aufgabe.status_wert_id === wert.id) {
       setAufgabe((prev) => (prev ? { ...prev, status_wert_id: null, abnahme_nummer: null } : prev))
-      const { error } = await supabase
+      const { error } = await backend
         .from('aufgaben')
         .update({ status_wert_id: null, abnahme_nummer: null })
         .eq('id', aufgabeId)
@@ -279,7 +279,7 @@ export function AufgabeDetails({
     }
 
     setAufgabe((prev) => (prev ? { ...prev, status_wert_id: wert.id, abnahme_nummer: null } : prev))
-    const { error } = await supabase
+    const { error } = await backend
       .from('aufgaben')
       .update({ status_wert_id: wert.id, abnahme_nummer: null })
       .eq('id', aufgabeId)
@@ -297,7 +297,7 @@ export function AufgabeDetails({
     setFehler(null)
     const wertId = abnahmeFormFuerWert
     const nummer = abnahmeNummerEingabe.trim()
-    const { error } = await supabase
+    const { error } = await backend
       .from('aufgaben')
       .update({ status_wert_id: wertId, abnahme_nummer: nummer })
       .eq('id', aufgabeId)
@@ -317,7 +317,7 @@ export function AufgabeDetails({
     setFortschrittSaving(true)
     setFehler(null)
     const reihenfolge = werte.length > 0 ? Math.max(...werte.map((w) => w.reihenfolge)) + 1 : 1
-    const { error } = await supabase.from('statusvorlage_werte').insert({
+    const { error } = await backend.from('statusvorlage_werte').insert({
       statusvorlage_id: vorlageId,
       titel: neuerFortschrittTitel.trim(),
       farbe: neuerFortschrittFarbe,
@@ -341,7 +341,7 @@ export function AufgabeDetails({
     setMaterialSaving(true)
     setFehler(null)
     const reihenfolge = material.length > 0 ? Math.max(...material.map((m) => m.reihenfolge)) + 1 : 1
-    const { error } = await supabase.from('aufgabe_material').insert({
+    const { error } = await backend.from('aufgabe_material').insert({
       aufgabe_id: aufgabeId,
       material_stamm_id: stammEintrag.id,
       bezeichnung: stammEintrag.bezeichnung,
@@ -364,7 +364,7 @@ export function AufgabeDetails({
   const toggleMaterialErledigt = async (materialId: string, erledigt: boolean) => {
     setFehler(null)
     setMaterial((prev) => prev.map((m) => (m.id === materialId ? { ...m, erledigt } : m)))
-    const { error } = await supabase.from('aufgabe_material').update({ erledigt }).eq('id', materialId)
+    const { error } = await backend.from('aufgabe_material').update({ erledigt }).eq('id', materialId)
     if (error) {
       setFehler(error.message)
       load()
@@ -375,7 +375,7 @@ export function AufgabeDetails({
     if (!window.confirm('Diesen Materialposten wirklich löschen?')) return
     setFehler(null)
     setMaterial((prev) => prev.filter((m) => m.id !== materialId))
-    const { error } = await supabase.from('aufgabe_material').delete().eq('id', materialId)
+    const { error } = await backend.from('aufgabe_material').delete().eq('id', materialId)
     if (error) {
       setFehler(error.message)
       load()
@@ -387,7 +387,7 @@ export function AufgabeDetails({
     if (!auswahlDokId) return
     setZuordnenSaving(true)
     setFehler(null)
-    const { error } = await supabase.from('dokumente').update({ aufgabe_id: aufgabeId }).eq('id', auswahlDokId)
+    const { error } = await backend.from('dokumente').update({ aufgabe_id: aufgabeId }).eq('id', auswahlDokId)
     setZuordnenSaving(false)
     if (error) {
       setFehler(error.message)
@@ -401,7 +401,7 @@ export function AufgabeDetails({
   const handleDokumentEntfernen = async (d: Dokument) => {
     setFehler(null)
     setDokumente((prev) => prev.filter((x) => x.id !== d.id))
-    const { error } = await supabase.from('dokumente').update({ aufgabe_id: null }).eq('id', d.id)
+    const { error } = await backend.from('dokumente').update({ aufgabe_id: null }).eq('id', d.id)
     if (error) setFehler(error.message)
     load()
   }
@@ -416,13 +416,13 @@ export function AufgabeDetails({
     if (!window.confirm(`"${d.name}" wirklich löschen?`)) return
     setFehler(null)
     setDokumente((prev) => prev.filter((x) => x.id !== d.id))
-    const { error } = await supabase.from('dokumente').delete().eq('id', d.id)
+    const { error } = await backend.from('dokumente').delete().eq('id', d.id)
     if (error) {
       setFehler(error.message)
       load()
       return
     }
-    await supabase.storage.from('dokumente').remove([d.datei_pfad])
+    await dateienLoeschen('dokumente', [d.datei_pfad])
   }
 
   const handleKommentarSenden = async (e: FormEvent) => {
@@ -443,7 +443,7 @@ export function AufgabeDetails({
       foto_pfad = path
     }
 
-    const { error } = await supabase.from('aufgabe_kommentare').insert({
+    const { error } = await backend.from('aufgabe_kommentare').insert({
       aufgabe_id: aufgabeId,
       text: kommentarText.trim() || null,
       foto_pfad,
@@ -475,7 +475,7 @@ export function AufgabeDetails({
     }
     setTicketSaving(true)
     setFehler(null)
-    const { data: neuesTicket, error } = await supabase
+    const { data: neuesTicket, error } = await backend
       .from('aufgabe_tickets')
       .insert({
         aufgabe_id: aufgabeId,
@@ -496,7 +496,7 @@ export function AufgabeDetails({
       .filter((feld) => (ticketFeldEingaben[feld.id] ?? '').trim())
       .map((feld) => ({ ticket_id: neuesTicket.id, feld_id: feld.id, wert: ticketFeldEingaben[feld.id].trim() }))
     if (feldwerteZeilen.length > 0) {
-      const { error: feldwerteError } = await supabase.from('aufgabe_ticket_feldwerte').insert(feldwerteZeilen)
+      const { error: feldwerteError } = await backend.from('aufgabe_ticket_feldwerte').insert(feldwerteZeilen)
       if (feldwerteError) setFehler(feldwerteError.message)
     }
     setTicketSaving(false)
@@ -511,7 +511,7 @@ export function AufgabeDetails({
     setFehler(null)
     const ist_gesperrt = !ticket.ist_gesperrt
     setTickets((prev) => prev.map((t) => (t.id === ticket.id ? { ...t, ist_gesperrt } : t)))
-    const { error } = await supabase.from('aufgabe_tickets').update({ ist_gesperrt }).eq('id', ticket.id)
+    const { error } = await backend.from('aufgabe_tickets').update({ ist_gesperrt }).eq('id', ticket.id)
     if (error) {
       setFehler(error.message)
       load()
@@ -521,7 +521,7 @@ export function AufgabeDetails({
   const addEmpfaenger = async (ticket: AufgabeTicket, userId: string) => {
     if (!user || !userId) return
     setFehler(null)
-    const { error } = await supabase
+    const { error } = await backend
       .from('aufgabe_ticket_empfaenger')
       .insert({ ticket_id: ticket.id, user_id: userId, hinzugefuegt_von: user.id })
     if (error) {
@@ -539,7 +539,7 @@ export function AufgabeDetails({
       ...prev,
       [empfaenger.ticket_id]: (prev[empfaenger.ticket_id] ?? []).filter((e) => e.id !== empfaenger.id),
     }))
-    const { error } = await supabase.from('aufgabe_ticket_empfaenger').delete().eq('id', empfaenger.id)
+    const { error } = await backend.from('aufgabe_ticket_empfaenger').delete().eq('id', empfaenger.id)
     if (error) {
       setFehler(error.message)
       load()
@@ -554,7 +554,7 @@ export function AufgabeDetails({
       ? { status: 'erledigt' as const, erledigt_von: user.id, erledigt_am: new Date().toISOString() }
       : { status: 'offen' as const, erledigt_von: null, erledigt_am: null }
     setTickets((prev) => prev.map((t) => (t.id === ticket.id ? { ...t, ...updates } : t)))
-    const { error } = await supabase.from('aufgabe_tickets').update(updates).eq('id', ticket.id)
+    const { error } = await backend.from('aufgabe_tickets').update(updates).eq('id', ticket.id)
     if (error) {
       setFehler(error.message)
       load()
@@ -574,7 +574,7 @@ export function AufgabeDetails({
         setBestaetigungSaving(false)
         return
       }
-      const { error: fotoError } = await supabase
+      const { error: fotoError } = await backend
         .from('aufgabe_ticket_fotos')
         .insert({ ticket_id: ticket.id, foto_pfad: path, erstellt_von: user.id })
       if (fotoError) {
@@ -584,7 +584,7 @@ export function AufgabeDetails({
       }
     }
 
-    const { error } = await supabase
+    const { error } = await backend
       .from('aufgabe_tickets')
       .update({
         status: 'erledigt',

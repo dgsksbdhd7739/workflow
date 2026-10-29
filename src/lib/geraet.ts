@@ -2,7 +2,7 @@ const KENNUNG_KEY = 'workflow_geraet_kennung'
 
 // Zufaellige, pro Browser einmalig erzeugte Kennung, um "dieses Geraet" in
 // der Liste angemeldeter Geraete wiederzuerkennen -- es gibt dafuer keine
-// Supabase-eigene Geraete-ID.
+// vom Backend vergebene Geraete-ID.
 export function geraetKennung(): string {
   try {
     let kennung = localStorage.getItem(KENNUNG_KEY)
@@ -38,9 +38,9 @@ export function geraetName(): string {
   return `${browser} auf ${betriebssystem}`
 }
 
-// Supabase-Sitzungs-ID (Claim "session_id") aus dem Access-Token -- damit
+// Sitzungs-ID (Claim "session_id") aus dem Access-Token -- damit
 // lassen sich Eintraege in nutzer_sitzungen mit den echten, noch aktiven
-// Auth-Sitzungen abgleichen (siehe meine_aktiven_geraete(), Migration 0056).
+// Auth-Sitzungen (auth.sitzungen) abgleichen (siehe meine_aktiven_geraete()).
 export function sitzungIdAusToken(accessToken: string | undefined): string | null {
   if (!accessToken) return null
   try {

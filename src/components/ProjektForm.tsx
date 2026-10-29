@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
+import { backend, getSignedUrl, uploadFile } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { komprimiereBild } from '../lib/bildKompression'
@@ -87,7 +87,7 @@ export function ProjektForm({
     let saved: Projekt | null = null
 
     if (projekt) {
-      const { data, error } = await supabase
+      const { data, error } = await backend
         .from('projekte')
         .update(payload)
         .eq('id', projekt.id)
@@ -100,7 +100,7 @@ export function ProjektForm({
       }
       saved = data
     } else {
-      const { data, error } = await supabase
+      const { data, error } = await backend
         .from('projekte')
         .insert({ ...payload, created_by: user.id, unternehmen_id: unternehmenId })
         .select()
@@ -119,13 +119,13 @@ export function ProjektForm({
     }
 
     if (logoEntfernen) {
-      await supabase.from('projekte').update({ logo_pfad: null }).eq('id', saved.id)
+      await backend.from('projekte').update({ logo_pfad: null }).eq('id', saved.id)
       saved.logo_pfad = null
     } else if (logoDatei) {
       const logoKomprimiert = await komprimiereBild(logoDatei, { maxBreiteHoehe: 800 })
       const { path, error: uploadError } = await uploadFile('projekt-logos', saved.id, logoKomprimiert)
       if (!uploadError) {
-        await supabase.from('projekte').update({ logo_pfad: path }).eq('id', saved.id)
+        await backend.from('projekte').update({ logo_pfad: path }).eq('id', saved.id)
         saved.logo_pfad = path
       }
     }

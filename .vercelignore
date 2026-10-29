@@ -1,6 +1,6 @@
 android
 src-tauri
-supabase
+server
 landing
 scripts
 node_modules

@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { PaketRoute } from './components/PaketSperre'
 import { initPushNotifications } from './lib/push'
-import { isLokaleDemoAktiviert } from './lib/supabase'
+import { isLokaleDemoAktiviert } from './lib/backend'
 import { ChangelogDialog } from './components/ChangelogDialog'
 import { OnboardingDialog } from './components/OnboardingDialog'
 import { Layout } from './components/Layout'
@@ -70,12 +70,13 @@ function App() {
         <ModalGate />
         <Routes>
           <Route path="/login" element={<Login />} />
+          {/* Zweiter Faktor: vor der Sitzung, daher ausserhalb von ProtectedRoute. */}
+          <Route path="/anmeldung-bestaetigen" element={<AnmeldungBestaetigen />} />
           <Route path="/datenschutz" element={<Datenschutz />} />
           <Route path="/impressum" element={<Impressum />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/passwort-aendern" element={<PasswortAendern />} />
-            <Route path="/anmeldung-bestaetigen" element={<AnmeldungBestaetigen />} />
             <Route path="/firmendaten-einrichten" element={<FirmendatenEinrichten />} />
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />

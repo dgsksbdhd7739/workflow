@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Search, X } from 'lucide-react'
-import { supabase, uploadFile } from '../lib/supabase'
+import { backend, uploadFile, dateienLoeschen } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { SignedImage } from '../components/SignedImage'
 import { PdfThumbnail } from '../components/PdfThumbnail'
@@ -53,9 +53,9 @@ export function Plaene() {
     if (!projektId) return
     setLoading(true)
     const [{ data }, { data: markierungenData }, { data: werteData }] = await Promise.all([
-      supabase.from('plaene').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
-      supabase.from('aufgaben').select('*').eq('projekt_id', projektId).not('plan_id', 'is', null),
-      supabase.from('statusvorlage_werte').select('*'),
+      backend.from('plaene').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
+      backend.from('aufgaben').select('*').eq('projekt_id', projektId).not('plan_id', 'is', null),
+      backend.from('statusvorlage_werte').select('*'),
     ])
     setPlaene(data ?? [])
     setMarkierungen(markierungenData ?? [])
@@ -100,13 +100,13 @@ export function Plaene() {
     // Neue Plaene bekommen automatisch die projektweite Standard-Fortschrittsvorlage
     // (Montage, Verdrahtung FSA/DTA/RMZ, Inbetriebnahme, Abnahme), damit Admin/Planer
     // sie nicht jedes Mal manuell zuweisen muessen.
-    const { data: standardVorlage } = await supabase
+    const { data: standardVorlage } = await backend
       .from('statusvorlagen')
       .select('id')
       .eq('ist_standard', true)
       .limit(1)
       .maybeSingle()
-    const { error } = await supabase.from('plaene').insert({
+    const { error } = await backend.from('plaene').insert({
       projekt_id: projektId,
       name: dateiname,
       datei_pfad: path,
@@ -128,12 +128,12 @@ export function Plaene() {
       return
     }
     setFehler(null)
-    const { error } = await supabase.from('plaene').delete().eq('id', p.id)
+    const { error } = await backend.from('plaene').delete().eq('id', p.id)
     if (error) {
       setFehler(error.message)
       return
     }
-    await supabase.storage.from('plaene').remove([p.datei_pfad])
+    await dateienLoeschen('plaene', [p.datei_pfad])
     load()
   }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { backend } from '../lib/backend'
 import type { Projekt } from '../types/database'
 
 export function ProjektLoeschenDialog({
@@ -21,7 +21,7 @@ export function ProjektLoeschenDialog({
     if (!stimmtUeberein) return
     setLoescht(true)
     setFehler(null)
-    const { error } = await supabase.from('projekte').delete().eq('id', projekt.id)
+    const { error } = await backend.from('projekte').delete().eq('id', projekt.id)
     setLoescht(false)
     if (error) {
       setFehler(error.message)

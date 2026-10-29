@@ -32,7 +32,7 @@ export default defineConfig({
       },
       workbox: {
         // App-Shell (JS/CSS/HTML) wird vorab gecacht, damit die App auch
-        // ohne Netz sofort startet. Supabase-Leseanfragen werden bewusst NICHT
+        // ohne Netz sofort startet. API-Leseanfragen werden bewusst NICHT
         // gecacht: Sowohl "stale-while-revalidate" als auch "network-first"
         // mit Timeout wurden ausprobiert und haben beide dazu gefuehrt, dass
         // frisch geschriebene Daten (ein gerade hochgeladener Plan, eine
@@ -44,7 +44,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // /download/ ist eine statische Seite neben der SPA (APK-Download,
         // siehe scripts/deploy-vps.mjs) -- nicht auf index.html umleiten.
-        navigateFallbackDenylist: [/^\/download/],
+        // Ebenso das Backend (/api, u. a. Datei-Links, die in iframes/neuen
+        // Tabs geoeffnet werden) und die Live-Update-Dateien (/updates).
+        navigateFallbackDenylist: [/^\/download/, /^\/api\//, /^\/updates\//],
         // Ohne skipWaiting/clientsClaim bleibt ein neuer Service Worker im
         // "waiting"-Zustand haengen, bis WIRKLICH alle Instanzen des alten
         // geschlossen wurden -- in der nativen App reicht dafuer haeufig

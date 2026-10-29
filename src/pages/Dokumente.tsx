@@ -1,7 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Download, FileText, Folder, FolderOpen, Trash2 } from 'lucide-react'
-import { supabase, getSignedUrl, uploadFile } from '../lib/supabase'
+import { backend, getSignedUrl, uploadFile, dateienLoeschen } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { formatDatum } from '../lib/datum'
@@ -60,7 +60,7 @@ function UploadForm({
       return
     }
 
-    const { error } = await supabase.from('dokumente').insert({
+    const { error } = await backend.from('dokumente').insert({
       projekt_id: projektId,
       aufgabe_id: vorgaenger?.aufgabe_id ?? null,
       kategorie,
@@ -132,9 +132,9 @@ export function Dokumente() {
     if (!projektId) return
     setLoading(true)
     const [{ data }, { data: aufgabenData }, { data: ordnerData }] = await Promise.all([
-      supabase.from('dokumente').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
-      supabase.from('aufgaben').select('*').eq('projekt_id', projektId).order('titel'),
-      supabase.from('dokument_ordner').select('*').eq('projekt_id', projektId).order('name'),
+      backend.from('dokumente').select('*').eq('projekt_id', projektId).order('erstellt_am', { ascending: false }),
+      backend.from('aufgaben').select('*').eq('projekt_id', projektId).order('titel'),
+      backend.from('dokument_ordner').select('*').eq('projekt_id', projektId).order('name'),
     ])
     setDokumente(data ?? [])
     setAufgaben(aufgabenData ?? [])
@@ -146,7 +146,7 @@ export function Dokumente() {
     e.preventDefault()
     if (!user || !projektId || !neuerOrdnerName.trim()) return
     setFehler(null)
-    const { error } = await supabase.from('dokument_ordner').insert({
+    const { error } = await backend.from('dokument_ordner').insert({
       projekt_id: projektId,
       parent_id: aktuellerOrdnerId,
       name: neuerOrdnerName.trim(),
@@ -164,7 +164,7 @@ export function Dokumente() {
   const ordnerLoeschen = async (o: DokumentOrdner) => {
     if (!window.confirm(`Ordner "${o.name}" wirklich löschen? Enthaltene Unterordner werden mitgelöscht, Dokumente bleiben erhalten und wandern in den übergeordneten Ordner.`)) return
     setFehler(null)
-    const { error } = await supabase.from('dokument_ordner').delete().eq('id', o.id)
+    const { error } = await backend.from('dokument_ordner').delete().eq('id', o.id)
     if (error) {
       setFehler(error.message)
       return
@@ -199,26 +199,26 @@ export function Dokumente() {
   const handleDelete = async (d: Dokument) => {
     if (!window.confirm(`"${d.name}" wirklich löschen?`)) return
     setFehler(null)
-    const { error } = await supabase.from('dokumente').delete().eq('id', d.id)
+    const { error } = await backend.from('dokumente').delete().eq('id', d.id)
     if (error) {
       setFehler(error.message)
       return
     }
-    await supabase.storage.from('dokumente').remove([d.datei_pfad])
+    await dateienLoeschen('dokumente', [d.datei_pfad])
     load()
   }
 
   const anfordernFreigabe = async (d: Dokument) => {
     if (!user) return
     setFehler(null)
-    const { error: freigabeError } = await supabase
+    const { error: freigabeError } = await backend
       .from('dokument_freigaben')
       .insert({ dokument_id: d.id, status: 'angefordert', angefordert_von: user.id })
     if (freigabeError) {
       setFehler(freigabeError.message)
       return
     }
-    const { error } = await supabase.from('dokumente').update({ freigabestatus: 'angefordert' }).eq('id', d.id)
+    const { error } = await backend.from('dokumente').update({ freigabestatus: 'angefordert' }).eq('id', d.id)
     if (error) setFehler(error.message)
     load()
   }
@@ -226,7 +226,7 @@ export function Dokumente() {
   const entscheideFreigabe = async (d: Dokument, status: 'freigegeben' | 'abgelehnt') => {
     if (!user) return
     setFehler(null)
-    const { data: offeneAnforderung } = await supabase
+    const { data: offeneAnforderung } = await backend
       .from('dokument_freigaben')
       .select('id')
       .eq('dokument_id', d.id)
@@ -235,12 +235,12 @@ export function Dokumente() {
       .limit(1)
       .maybeSingle()
     if (offeneAnforderung) {
-      await supabase
+      await backend
         .from('dokument_freigaben')
         .update({ status, entschieden_von: user.id, entschieden_am: new Date().toISOString() })
         .eq('id', offeneAnforderung.id)
     }
-    const { error } = await supabase.from('dokumente').update({ freigabestatus: status }).eq('id', d.id)
+    const { error } = await backend.from('dokumente').update({ freigabestatus: status }).eq('id', d.id)
     if (error) setFehler(error.message)
     load()
   }

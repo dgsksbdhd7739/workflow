@@ -1,14 +1,16 @@
-// Verpackt den aktuellen dist/-Build als Live-Update-Bundle und laedt es
-// ueber die publish-app-update-Edge-Function in den oeffentlichen
-// Supabase-Storage-Bucket "app-updates" hoch. Danach erkennt jede laufende
-// App-Instanz (siehe src/lib/liveUpdate.ts) beim naechsten Start die neue
-// Version und spielt sie automatisch ein -- kein APK-Neubau/-Reinstall
-// noetig fuer reine JS/CSS/HTML-Aenderungen.
+// Verpackt den aktuellen dist/-Build als Live-Update-Bundle und legt es per
+// scp auf dem eigenen VPS unter /var/www/updates ab (Nginx liefert es unter
+// <UPDATE_BASIS_URL>/ aus). Danach erkennt jede laufende App-Instanz (siehe
+// src/lib/liveUpdate.ts) beim naechsten Start die neue Version und spielt sie
+// automatisch ein -- kein APK-Neubau/-Reinstall noetig fuer reine
+// JS/CSS/HTML-Aenderungen.
 //
-// Voraussetzung: `npm run build` wurde bereits ausgefuehrt (dist/ ist aktuell).
+// Voraussetzung: `npm run build` wurde bereits ausgefuehrt (dist/ ist aktuell),
+// VPS_HOST/VPS_SSH_KEY stehen in .env.
 // Aufruf: node scripts/publish-update.mjs
 
-import { createWriteStream, readFileSync, existsSync, mkdtempSync, rmSync, readFileSync as readFileBytes } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { createWriteStream, readFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createRequire } from 'node:module'
@@ -37,10 +39,14 @@ const envVars = Object.fromEntries(
     }),
 )
 
-const supabaseUrl = envVars.VITE_SUPABASE_URL
-const publishSecret = envVars.PUBLISH_UPDATE_SECRET
-if (!supabaseUrl || !publishSecret) {
-  console.error('VITE_SUPABASE_URL oder PUBLISH_UPDATE_SECRET fehlt in .env')
+const host = envVars.VPS_HOST
+const user = envVars.VPS_USER || 'root'
+const keyPath = envVars.VPS_SSH_KEY
+// Oeffentliche Adresse, unter der Nginx /var/www/updates ausliefert (siehe
+// scripts/vps-setup.sh). Muss zur Manifest-URL in src/lib/liveUpdate.ts passen.
+const basisUrl = (envVars.UPDATE_BASIS_URL || 'https://217-154-200-72.sslip.io/updates').replace(/\/$/, '')
+if (!host || !keyPath || !existsSync(keyPath)) {
+  console.error('VPS_HOST/VPS_SSH_KEY fehlt in .env oder der Schluessel existiert nicht.')
   process.exit(1)
 }
 
@@ -65,24 +71,27 @@ await new Promise((resolve, reject) => {
   archive.finalize()
 })
 
-console.log(`Lade Version ${version} hoch ...`)
-const zipBytes = readFileBytes(zipPath)
-const res = await fetch(`${supabaseUrl}/functions/v1/publish-app-update`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/zip',
-    'x-publish-secret': publishSecret,
-    'x-version': version,
-  },
-  body: zipBytes,
-})
-const result = await res.json()
-if (!res.ok) {
-  console.error('Upload fehlgeschlagen:', result)
+console.log(`Lade Version ${version} auf den Server ...`)
+const ziel = `${user}@${host}`
+const ssh = (befehl) => execFileSync('ssh', ['-i', keyPath, ziel, befehl], { stdio: 'inherit' })
+const scp = (quelle, zielPfad) => execFileSync('scp', ['-q', '-i', keyPath, quelle, `${ziel}:${zielPfad}`], { stdio: 'inherit' })
+
+// Erst das Zip, dann das Manifest -- und dieses per mv atomar ersetzen, damit
+// kein Geraet ein Manifest sieht, dessen Zip noch nicht vollstaendig da ist.
+const manifest = { version, url: `${basisUrl}/dist-${version}.zip` }
+const manifestPfad = path.join(tmpDir, 'latest.json')
+writeFileSync(manifestPfad, JSON.stringify(manifest))
+try {
+  ssh('mkdir -p /var/www/updates')
+  scp(zipPath, `/var/www/updates/dist-${version}.zip`)
+  scp(manifestPfad, '/var/www/updates/latest.json.neu')
+  ssh('mv /var/www/updates/latest.json.neu /var/www/updates/latest.json && chown -R www-data:www-data /var/www/updates')
+} catch (fehler) {
+  console.error('Upload fehlgeschlagen:', fehler.message)
   rmSync(tmpDir, { recursive: true, force: true })
   process.exit(1)
 }
 
 rmSync(tmpDir, { recursive: true, force: true })
 console.log(`\nFertig. Version ${version} ist live -- Apps holen sie sich beim naechsten Start automatisch.`)
-console.log(result)
+console.log(manifest)

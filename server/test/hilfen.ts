@@ -1,4 +1,7 @@
 import { randomBytes } from 'node:crypto'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import bcrypt from 'bcryptjs'
 import { authenticator } from 'otplib'
 import { baueApp } from '../src/app.ts'
@@ -24,6 +27,10 @@ export function testKonfiguration(anpassung: Partial<Konfiguration> = {}): Konfi
     zugriffstokenSekunden: 3600,
     sitzungInaktivTage: 90,
     anmeldeVersucheProMinute: 1000,
+    dateienVerzeichnis: mkdtempSync(path.join(tmpdir(), 'workflow-dateien-')),
+    maxUploadBytes: 5 * 1024 * 1024,
+    provisionGeheimnis: null,
+    firebaseDienstkontoDatei: null,
     ...anpassung,
   }
 }

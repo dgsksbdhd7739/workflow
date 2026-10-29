@@ -1,81 +1,162 @@
 # WorkFlow
 
-Projekt-Management-App: Aufgabenmanagement, Pläne mit Markierungen, Bautagebuch/Tagesberichte und Zeiterfassung. Läuft als Web-App (Browser), Android-App (Capacitor) und Windows-Desktop-App (Tauri) aus derselben React/TypeScript-Codebasis.
+**Projekt-Management für Bau- und Handwerksbetriebe** – Aufgaben und Mängel, Pläne mit Markierungen, Gebäude in 3D, Bautagebuch, Zeiterfassung und Chat in einer App. Läuft im Browser, als Android-App und als Windows-Programm aus derselben Codebasis.
 
-## Tech-Stack
+WorkFlow ist mandantenfähig: Mehrere Firmen nutzen dieselbe Installation, ihre Daten sind über Row Level Security in der Datenbank strikt voneinander getrennt.
 
-- **Frontend:** React + TypeScript + Vite, Tailwind CSS, React Router — spricht das Backend über [src/lib/backend.ts](src/lib/backend.ts) an.
-- **Backend:** eigenes Node-Backend in [server/](server/) (Fastify, Node 24 führt TypeScript direkt aus) mit PostgreSQL 17, beides auf dem eigenen STRATO-VPS in Deutschland. Anmeldung inkl. TOTP-2FA, Daten-Schnittstelle, Dateiablage, Chat-Echtzeit (WebSocket), Push (FCM) und Live-Update-Dateien — seit Version 2.0.0, vorher Supabase.
-- **Android:** Capacitor (`android/`), Live-Updates über `@capgo/capacitor-updater` vom eigenen Server.
-- **Windows:** Tauri (`src-tauri/`).
+---
 
-## Setup (Frontend)
+## Funktionen
+
+| Bereich | Was es kann |
+|---|---|
+| **Projekte** | Projektübersicht mit Kennzahlen, Favoriten, Archiv, Projekt-Logos |
+| **Aufgaben & Mängel** | Status, Priorität, Fälligkeit, Verantwortliche, Fotos, Kommentare, Material, Tickets, Listen- und Board-Ansicht, gespeicherte Filter, PDF-Export |
+| **Pläne** | PDF- und Bildpläne hochladen (auch mehrseitige PDFs), Markierungen als Punkt oder Rechteck direkt auf dem Plan, scharfes Zoomen auch bei großen Werkplänen |
+| **Gebäude in 3D** | Geschosse und Wohnungen/Zimmer, Status-Einfärbung aus den Aufgaben, Baustellenansicht aller Gebäude. „Aus Plänen aufbauen“ liest Grundriss-PDFs aus (Geschoss, Maßstab, Umriss, Zimmernummern, Achsraster) und legt die Etagen deckungsgleich übereinander |
+| **Bautagebuch** | Tagesberichte mit Vorlagen, PDF-Ausgabe |
+| **Zeiterfassung** | Arbeitszeiten je Mitarbeiter, Projekt und Aufgabe |
+| **Termine & Dokumente** | Termine mit Verzugsanzeige, Dokumentenablage mit Ordnern und Freigaben |
+| **Kommunikation** | Team-Chat und Projekt-Chat in Echtzeit, Push-Benachrichtigungen (Android) |
+| **Verwaltung** | Rollen (Admin, Planer, Techniker, Kunde), Nutzer anlegen/sperren, Zwei-Faktor-Anmeldung, angemeldete Geräte, Pakete mit Nutzerlimit |
+| **Plattform-Betrieb** | Firmen anlegen, stilllegen und löschen; Serverzustand (CPU, RAM, Festplatte, Dienste, Sicherung) direkt im Dashboard |
+
+---
+
+## Technik
+
+| Teil | Stack |
+|---|---|
+| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS, React Router; 3D mit three.js / React Three Fiber (nur bei Bedarf nachgeladen); pdf.js für Pläne |
+| **Backend** (`server/`) | Node.js 24 (führt TypeScript direkt aus), Fastify, PostgreSQL 17 |
+| **Android** (`android/`) | Capacitor 8, Live-Updates über `@capgo/capacitor-updater` vom eigenen Server |
+| **Windows** (`src-tauri/`) | Tauri 2 |
+| **Betrieb** | Eigener Linux-Server (Ubuntu 24.04) mit nginx, Let's Encrypt, systemd, nächtlicher Sicherung |
+
+### Architektur in einem Satz
+
+Die Zugriffsregeln stecken **in der Datenbank**: Das Backend führt jede Anfrage in einer Transaktion als Rolle `authenticated` mit den Claims des angemeldeten Nutzers aus – so trennen die Row-Level-Security-Policies die Firmen, nicht der Anwendungscode.
+
+```
+Browser / Android / Windows
+          │  HTTPS, WebSocket
+          ▼
+   nginx ──► Backend (Fastify, server/) ──► PostgreSQL (RLS)
+                     │
+                     └──► Dateiablage /var/lib/workflow/dateien
+```
+
+**Endpunkte des Backends**
+
+| Pfad | Zweck |
+|---|---|
+| `/api/auth/*` | Anmeldung, Zwei-Faktor (TOTP), Sitzungen, Passwort |
+| `/api/daten/:tabelle` | Generische Datenschnittstelle – nur Tabellen mit aktivem RLS, Werte ausschließlich als Parameter |
+| `/api/rpc/:name` | Freigegebene Datenbankfunktionen |
+| `/api/dateien/*` | Upload, signierte Download-Links, Löschen (berechtigt über Policies) |
+| `/api/funktionen/*` | Nutzer- und Firmenverwaltung |
+| `/api/live` | WebSocket für die Chats |
+| `/api/betrieb/serverzustand` | Serverauslastung und Verlauf (nur Plattform-Admins) |
+
+---
+
+## Projektstruktur
+
+```
+src/                Frontend
+  pages/            Seiten
+  components/       Wiederverwendbare Komponenten (inkl. 3D-Ansichten)
+  lib/              Domain- und Hilfslogik (backend.ts = API-Client, planAnalyse.ts = Planauswertung)
+server/             Backend
+  src/              Fastify-App (auth, daten, dateien, funktionen, live, betrieb, push)
+  db/migrationen/   SQL-Migrationen, fortlaufend nummeriert
+  test/             Tests gegen eine echte Test-Datenbank
+android/            Capacitor-Projekt
+src-tauri/          Windows-App
+scripts/            Deploy, Live-Update, Server-Ersteinrichtung
+landing/            Landingpage und APK-Download
+docs/               Betriebsanleitungen
+```
+
+---
+
+## Entwicklung
+
+### Voraussetzungen
+
+- Node.js 24
+- Für Android: Android Studio (JDK aus Android Studio verwenden)
+- Für Windows: Rust und die Tauri-Voraussetzungen
+
+### Frontend
 
 ```bash
 npm install
-cp .env.example .env   # VITE_API_URL = Adresse des Backends
-npm run dev             # Web, http://localhost:5173
+cp .env.example .env      # VITE_API_URL = Adresse des Backends
+npm run dev               # http://localhost:5173
+npm run build             # Produktions-Build nach dist/
+npm run lint
 ```
 
-### Lokale Demo ohne Server
+Ohne Backend: `VITE_LOKALE_DEMO=true` startet eine lokale Gebäude-Demo mit Beispieldaten (keine Anmeldung, keine Synchronisation).
 
-Mit `VITE_LOKALE_DEMO=true` startet WorkFlow ohne Backend und ohne Anmeldung direkt in einer lokalen Gebäude-Demo. Die Demo zeigt ausschließlich Beispieldaten; Änderungen werden im lokalen Browser-/App-Speicher abgelegt und nicht mit anderen Geräten synchronisiert. Sie ist kein Ersatz für Authentifizierung oder die echte, mandantengetrennte Projektdatenbank.
-
-## Backend (`server/`)
+### Backend
 
 ```bash
 cd server
 npm install
+cp .env.example .env      # Datenbank-Zugang und JWT_SECRET eintragen
 npm run typecheck
-npm run tunnel        # zweites Terminal: SSH-Tunnel zur Test-Datenbank workflow_test (Port 5433)
-npm test              # Tests gegen workflow_test (TEST_DATABASE_URL in server/.env, siehe server/.env.example)
+npm test                  # braucht TEST_DATABASE_URL (wird geleert und neu befüllt)
+npm start
 ```
 
-Kernidee: Die Zugriffsregeln stecken als **Row Level Security** in Postgres. Das Backend führt jede Anfrage in einer Transaktion als Rolle `authenticated` mit den Claims des angemeldeten Nutzers aus (`request.jwt.claims`, gelesen von `auth.uid()`), dadurch trennen die Policies die Firmen — nicht der Anwendungscode. Die Daten-Schnittstelle (`/api/daten/:tabelle`) gibt nur Tabellen mit aktivem RLS frei, prüft Tabellen-/Spaltennamen gegen das Schema und übergibt Werte nur als Parameter.
+### Datenbank-Migrationen
 
-Weitere Endpunkte: `/api/auth/*` (Anmeldung, 2FA, Sitzungen), `/api/rpc/:name` (Freigabeliste), `/api/dateien/*` (Upload, signierte Links, Löschen — berechtigt über die Policies auf `storage.objects`), `/api/funktionen/*` (Nutzer/Firmen verwalten), `/api/live` (WebSocket für die Chats), `/api/betrieb/serverzustand` (Serverauslastung und Verlauf für die Plattform-Verwaltung; Messwerte jede Minute in `betrieb.messwerte`).
-
-Prüfung mit echten Daten: `server/scripts/mandanten-pruefung.ts` simuliert jeden Nutzer gegen eine Kopie der Produktivdatenbank und meldet fremd sichtbare Zeilen.
-
-## Datenbank-Migrationen
-
-Schema liegt in [server/db/migrationen/](server/db/migrationen/) (fortlaufend nummeriert; `0000` bildet die wenigen von Policies genutzten Supabase-Objekte nach, `0001` ist das übernommene Basis-Schema). Eingespielt werden sie beim Backend-Deploy automatisch, manuell auf dem Server mit:
+Liegen in `server/db/migrationen/` und werden beim Backend-Deploy automatisch eingespielt. Manuell auf dem Server:
 
 ```bash
 sudo -u postgres /opt/workflow/server/scripts/migrieren.sh workflow
 ```
 
-Die frühere Supabase-Migrationshistorie (0001–0060) steht in der Git-Historie.
+Neue Tabellen mit Firmen- oder Projektbezug brauchen immer eine RLS-Policy – ohne aktives RLS ist eine Tabelle über die API gar nicht erreichbar.
 
-## Deploy
+### Mandantentrennung prüfen
 
-```bash
-npm run deploy-server     # Backend: committeter Stand von server/, Migrationen, Neustart mit Rückfall
-npm run deploy-vps        # Web-App (dist/) und Landing-Page per scp
-node scripts/publish-update.mjs   # Live-Update für Android (vorher package.json-version erhöhen)
-```
+`server/scripts/mandanten-pruefung.ts` simuliert jeden Nutzer gegen eine Kopie der Datenbank und meldet Zeilen, die er nicht sehen dürfte.
 
-Server-Ersteinrichtung bzw. Neuinstallation: [scripts/vps-setup.sh](scripts/vps-setup.sh) (Nginx, Let's Encrypt, Postgres, Node, Dienst, nächtliche Sicherung).
+---
 
-## Plattform-Builds
+## Betrieb und Deploy
+
+Es gibt keine CI/CD – alle Wege werden bewusst manuell ausgelöst:
 
 ```bash
-npm run build            # Web-Build nach dist/
-npm run android          # Capacitor: synct dist/ und öffnet Android Studio
-npx tauri dev             # Windows-Desktop, Entwicklung
-npx tauri build           # Windows-Desktop, Release-Installer
+npm run deploy-server             # Backend + Migrationen, Neustart mit automatischem Rückfall
+npm run deploy-vps                # Web-App und Landingpage
+node scripts/publish-update.mjs   # Live-Update für installierte Android-Apps
 ```
 
-## Datenmodell (Kurzüberblick)
+- **Server neu einrichten:** [`scripts/vps-setup.sh`](scripts/vps-setup.sh) (nginx, Zertifikate, PostgreSQL, Node, Dienst, Sicherung)
+- **Neue Firma anlegen:** in der App unter Plattform-Verwaltung oder per Skript, siehe [`docs/firma-erstellen.md`](docs/firma-erstellen.md)
+- **Android-APK:** `npm run build` → `npx cap sync android` → `gradlew assembleRelease`. Die Release-APK heißt `WorkFlow-v<version>.apk`.
 
-- `unternehmen` — Firmen (Mandanten); `profiles` — Nutzer mit Rolle und Firma
-- `projekte` — Projekte (oberste Ebene je Firma)
-- `aufgaben` — Aufgaben je Projekt, mit Status/Priorität/Foto/optionaler Plan-Position
-- `plaene` — hochgeladene Pläne (bei mehrseitigen PDFs mit `seite`; mehrere Pläne können eine Datei teilen); Markierungen sind Aufgaben mit Plan-Position
-- `gebaeude` → `geschosse` → `einheiten` — Gebäude je Projekt mit Etagen und Wohnungen/Gewerbe/Technik, dargestellt in 3D (`src/components/Gebaeude3D.tsx`, `Baustelle3D.tsx`, three.js wird nur dort nachgeladen). Aufgaben und Termine können optional genau einem Bereich zugeordnet werden (`gebaeude_id` **oder** `geschoss_id` **oder** `einheit_id`); Fortschritt/Status wird daraus berechnet (`src/lib/gebaeude3d.ts`), nicht gespeichert. „Aus Plänen aufbauen“ liest Grundriss-PDFs aus und speichert je Geschoss Umriss, Planbild und Einheiten-Positionen (`src/lib/planAnalyse.ts`)
-- `tagesberichte` — Bautagebuch-Einträge je Tag/Projekt
-- `zeiterfassung` — Arbeitszeiten je Mitarbeiter/Projekt
-- `auth.users`, `auth.mfa_factors`, `auth.sitzungen` — Logins, 2FA, Sitzungen (nur für das Backend lesbar)
-- `storage.objects` — Metadaten der Dateien; die Dateien selbst liegen unter `/var/lib/workflow/dateien/<bereich>/<pfad>`
+---
 
-Mandantenfähig: Daten sind strikt pro Firma (`unternehmen`) getrennt (Row Level Security), innerhalb einer Firma sieht/bearbeitet jeder eingeloggte Nutzer je nach Rolle die gemeinsamen Daten. Neue Firma anlegen: [docs/firma-erstellen.md](docs/firma-erstellen.md).
+## Sicherheit
+
+- Keine Zugangsdaten im Repository: echte Werte liegen nur in `.env` (lokal) bzw. `/etc/workflow/server.env` (Server); beide sind von Git ausgeschlossen. `*.env.example` enthält nur Platzhalter.
+- Passwörter als bcrypt-Hash, Zwei-Faktor-Anmeldung serverseitig erzwungen, jeder TOTP-Code nur einmal gültig.
+- Sitzungen werden bei jeder Anfrage geprüft – Sperren, Abmelden und Stilllegen wirken sofort.
+- Anmeldeversuche pro IP begrenzt, Datenbank nur lokal erreichbar, Dateien nur über kurzlebige signierte Links.
+
+Sicherheitslücken bitte nicht als öffentliches Issue melden, sondern direkt an den Betreiber.
+
+---
+
+## Weitere Dokumente
+
+- [`Agents.md`](Agents.md) – ausführlicher technischer Stand und Architekturregeln
+- [`CLAUDE.md`](CLAUDE.md) – Arbeitsregeln für die Entwicklung mit Claude Code
+- [`TODO.md`](TODO.md) – offene Punkte
+- In-App-Änderungsprotokoll: [`src/lib/changelog.ts`](src/lib/changelog.ts)

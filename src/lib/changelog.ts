@@ -11,6 +11,16 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.1.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'Neu: 3D-Ansicht für Gebäude. Etagen werden gestapelt und nach Stand eingefärbt (offen, in Arbeit, fertig, Verzug); ein Klick auf eine Etage schneidet sie auf und zeigt die Wohnungen.',
+      'Geschosse und Wohnungen lassen sich mit einem Assistenten in einem Schritt anlegen (z. B. 1 UG, 5 OG, 4 Wohnungen je Etage) und danach einzeln ergänzen oder löschen.',
+      'Aufgaben können direkt einer Wohnung zugeordnet werden; Baufortschritt und Status werden daraus automatisch berechnet.',
+      'Im Projekt zeigt eine 3D-Baustellenansicht alle Gebäude auf dem Baufeld – ein Klick öffnet das Gebäude.',
+    ],
+  },
+  {
     version: '2.0.0',
     datum: '2026-10-29',
     aenderungen: [

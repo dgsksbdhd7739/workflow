@@ -4,9 +4,10 @@
 
 import { useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Edges, Html, OrbitControls } from '@react-three/drei'
+import { Edges, OrbitControls } from '@react-three/drei'
 import type { Gebaeude, Geschoss } from '../types/database'
 import { type BereichAuswertung, STATUS_FARBE, STATUS_TEXT } from '../lib/gebaeude3d'
+import { Schild3D } from './Schild3D'
 
 interface Props {
   gebaeude: Gebaeude[]
@@ -72,6 +73,7 @@ export default function Baustelle3D({ gebaeude, geschosse, auswertung, onOeffnen
     ...platziert.map((p) => Math.abs(p.z) * 2 + p.tiefe),
     ...platziert.map((p) => p.hoehe * 1.5),
   )
+  const schildHoehe = Math.max(ausdehnung / 12, 2.5)
 
   return (
     <Canvas frameloop="demand" dpr={[1, 2]} camera={{ position: [ausdehnung * 0.8, ausdehnung * 0.7, ausdehnung * 0.9], fov: 40 }}>
@@ -113,7 +115,9 @@ export default function Baustelle3D({ gebaeude, geschosse, auswertung, onOeffnen
               }}
             >
               <boxGeometry args={[p.breite, p.hoehe, p.tiefe]} />
+              {/* key: three.js uebernimmt einen Wechsel von transparent nicht ohne Neuanlage */}
               <meshStandardMaterial
+                key={p.ohneEtagen ? 'glas' : 'voll'}
                 color={farbe}
                 transparent={p.ohneEtagen}
                 opacity={p.ohneEtagen ? 0.45 : 1}
@@ -127,20 +131,20 @@ export default function Baustelle3D({ gebaeude, geschosse, auswertung, onOeffnen
                 <Kran hoehe={p.hoehe} />
               </group>
             )}
-            <Html position={[0, p.hoehe + 2, 0]} center distanceFactor={ausdehnung * 1.1} zIndexRange={[20, 0]}>
-              <button
-                type="button"
-                onClick={() => onOeffnen(p.g.id)}
-                className={`whitespace-nowrap rounded-lg border px-2 py-1 text-left text-[11px] shadow-sm ${aktiv ? 'border-brand bg-brand text-white' : 'border-border bg-surface/95 text-text'}`}
-              >
-                <span className="block font-semibold">{p.g.name}</span>
-                <span className={aktiv ? 'text-white/80' : 'text-text-muted'}>
-                  {a?.fortschritt != null ? `${Math.round(a.fortschritt * 100)} % · ` : ''}
-                  {p.ohneEtagen ? 'keine Etagen' : STATUS_TEXT[status]}
-                  {a?.verzoegerteTermine ? ` · ${a.verzoegerteTermine} Verzug` : ''}
-                </span>
-              </button>
-            </Html>
+            <Schild3D
+              position={[0, p.hoehe + schildHoehe * 1.4, 0]}
+              titel={p.g.name}
+              untertitel={`${a?.fortschritt != null ? `${Math.round(a.fortschritt * 100)} % · ` : ''}${
+                p.ohneEtagen
+                  ? 'keine Etagen'
+                  : a?.verzoegerteTermine
+                    ? `${a.verzoegerteTermine} Termin${a.verzoegerteTermine === 1 ? '' : 'e'} im Verzug`
+                    : STATUS_TEXT[status]
+              }`}
+              aktiv={aktiv}
+              hoehe={schildHoehe}
+              onClick={() => onOeffnen(p.g.id)}
+            />
           </group>
         )
       })}

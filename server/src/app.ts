@@ -5,6 +5,8 @@ import type { Datenbank } from './datenbank.ts'
 import type { Konfiguration } from './konfiguration.ts'
 import { AnfrageFehler } from './anfrage.ts'
 import { authRouten } from './auth/routen.ts'
+import { datenRouten } from './daten/routen.ts'
+import { ladeSchema } from './daten/schema.ts'
 
 export async function baueApp(db: Datenbank, konf: Konfiguration) {
   const app = Fastify({
@@ -36,6 +38,7 @@ export async function baueApp(db: Datenbank, konf: Konfiguration) {
 
   app.get('/api/gesund', async () => ({ ok: true }))
   authRouten(app, db, konf)
+  datenRouten(app, db, konf, await ladeSchema(db))
 
   return app
 }

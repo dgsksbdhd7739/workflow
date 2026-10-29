@@ -45,10 +45,8 @@ export async function testUmgebung(anpassung: Partial<Konfiguration> = {}) {
 }
 
 export async function datenbankLeeren(db: Datenbank) {
-  await db.alsDienst(async (v) => {
-    await v.query('delete from auth.users')
-    await v.query('delete from public.unternehmen')
-  })
+  // cascade leert alle Tabellen, die (indirekt) auf Nutzer oder Firmen verweisen.
+  await db.alsDienst((v) => v.query('truncate auth.users, public.unternehmen, storage.objects cascade'))
 }
 
 /** Legt eine Firma mit einem Nutzer an (Profil entsteht per handle_new_user-Trigger). */

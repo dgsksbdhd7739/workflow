@@ -17,6 +17,10 @@ import { ChatPush } from './push/fcm.ts'
 export async function baueApp(db: Datenbank, konf: Konfiguration) {
   const app = Fastify({
     logger: process.env.NODE_ENV === 'test' ? false : { level: 'info' },
+    // Keine Zugriffsprotokolle mit IP-Adressen im Journal -- die Datenschutz-
+    // erklaerung sagt 14 Tage zu, das leisten nur die rotierten Nginx-Logs.
+    // Fehler werden weiterhin protokolliert.
+    disableRequestLogging: true,
     // Nginx sitzt davor; die echte Client-IP (fuer Rate-Limits) steht in X-Forwarded-For.
     trustProxy: '127.0.0.1',
     bodyLimit: 1024 * 1024,

@@ -1,0 +1,30 @@
+{
+  "name": "workflow-server",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --env-file-if-exists=.env --test --test-concurrency=1 test/*.test.ts",
+    "tunnel": "ssh -N -L 5433:127.0.0.1:5432 -i ~/.ssh/workflow_vps_ed25519 root@217.154.200.72"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.3.1",
+    "@fastify/rate-limit": "^11.2.1",
+    "bcryptjs": "^3.0.3",
+    "fastify": "^5.12.7",
+    "jose": "^6.2.14",
+    "otplib": "^12.0.1",
+    "pg": "^8.23.1",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
+    "@types/qrcode": "^1.5.6",
+    "typescript": "~6.0.2"
+  }
+}

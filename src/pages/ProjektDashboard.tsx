@@ -24,6 +24,7 @@ import { ProjektForm } from '../components/ProjektForm'
 import { SignedImage } from '../components/SignedImage'
 import { formatProjektAdresse, kartenUrl } from '../lib/adresse'
 import { formatDatum } from '../lib/datum'
+import { BaustellenUebersicht3D } from '../components/BaustellenUebersicht3D'
 import type { Projekt, Aufgabe, Gebaeude, Rolle, Tagesbericht, Termin } from '../types/database'
 
 const heute = () => new Date().toISOString().slice(0, 10)
@@ -402,6 +403,8 @@ export function ProjektDashboard() {
             </div>
           </form>
         )}
+
+        {gebaeude.length > 0 && projektId && <BaustellenUebersicht3D projektId={projektId} gebaeude={gebaeude} />}
 
         {gebaeude.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">

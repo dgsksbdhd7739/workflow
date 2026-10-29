@@ -100,6 +100,17 @@ describe('Daten-Schnittstelle: Grundfunktionen', () => {
     assert.deepEqual(arr.json().data[0].filter, [1, 2])
   })
 
+  test('numeric-Spalten kommen als Zahl an (wie frueher bei Supabase)', async () => {
+    const a = await admin('Alpha')
+    const p = await projektAnlegen(a, 'P')
+    const r = await a.daten('aufgaben', {
+      aktion: 'insert', werte: { projekt_id: p.id, titel: 'Pin', erstellt_von: a.userId, label_x: 0.42, label_y: 0.5 }, rueckgabe: true,
+    })
+    assert.equal(r.statusCode, 200, r.body)
+    assert.equal(r.json().data[0].label_x, 0.42)
+    assert.equal(typeof r.json().data[0].label_y, 'number')
+  })
+
   test('upsert mit Konfliktspalten aktualisiert statt doppelt anzulegen', async () => {
     const a = await admin('Alpha')
     const zeile = (name: string) => ({ user_id: a.userId, geraet_kennung: 'geraet-1', geraet_name: name })

@@ -1,5 +1,13 @@
 import pg from 'pg'
 
+// numeric (1700) und bigint (20) liefert node-pg standardmaessig als Text, um
+// keine Genauigkeit zu verlieren. Supabase/PostgREST gab beide als JSON-Zahlen
+// aus, und das Frontend rechnet damit (z. B. aufgaben.label_x) -- daher hier
+// ebenso als Zahl. Fuer unsere Werte (Koordinaten, Flaechen, Zaehler) reicht
+// die Genauigkeit von double.
+pg.types.setTypeParser(1700, (wert) => Number.parseFloat(wert))
+pg.types.setTypeParser(20, (wert) => Number.parseInt(wert, 10))
+
 // Inhalt von request.jwt.claims -- dieselben Felder, die auth.uid()/auth.role()
 // und die RLS-Policies (urspruenglich fuer Supabase geschrieben) auslesen.
 export interface Claims {

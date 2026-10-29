@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, CalendarClock, LayoutGrid, List, Map as MapIcon, Search } from 'lucide-react'
 import { backend, uploadFile } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
@@ -197,7 +197,9 @@ export function Aufgaben() {
   const [ansicht, setAnsicht] = useState<'liste' | 'board'>('liste')
   const [ziehtId, setZiehtId] = useState<string | null>(null)
   const [dragZielSpalte, setDragZielSpalte] = useState<AufgabeStatus | null>(null)
-  const [geoeffnetId, setGeoeffnetId] = useState<string | null>(null)
+  // ?aufgabe=<id> (z. B. aus der Gebaeudeansicht) oeffnet diese Aufgabe direkt.
+  const [suchParameter] = useSearchParams()
+  const [geoeffnetId, setGeoeffnetId] = useState<string | null>(() => suchParameter.get('aufgabe'))
   const [werteMap, setWerteMap] = useState<Record<string, StatusVorlageWert>>({})
   const [material, setMaterial] = useState<AufgabeMaterial[]>([])
   const [kommentare, setKommentare] = useState<AufgabeKommentar[]>([])

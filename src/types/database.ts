@@ -124,6 +124,10 @@ export interface Aufgabe {
   farbe: string | null
   status_wert_id: string | null
   abnahme_nummer: string | null
+  // Optionale Zuordnung zu genau einem Bereich (Einheit ODER Geschoss ODER Gebaeude).
+  gebaeude_id: string | null
+  geschoss_id: string | null
+  einheit_id: string | null
   erstellt_von: string
   erstellt_am: string
 }
@@ -144,7 +148,37 @@ export interface Gebaeude {
   name: string
   adresse: string | null
   beschreibung: string | null
+  // Lage/Grundriss in Metern fuer die 3D-Ansichten; ohne Lage ordnet die Oberflaeche automatisch an.
+  lage_x: number | null
+  lage_z: number | null
+  breite_m: number
+  tiefe_m: number
+  drehung_grad: number
   erstellt_von: string
+  erstellt_am: string
+}
+
+export interface Geschoss {
+  id: string
+  gebaeude_id: string
+  projekt_id: string
+  name: string
+  // -1 = UG, 0 = EG, 1 = OG 1 ...
+  ebene: number
+  hoehe_m: number
+  erstellt_am: string
+}
+
+export type EinheitArt = 'wohnung' | 'gewerbe' | 'technik' | 'allgemein' | 'sonstiges'
+
+export interface Einheit {
+  id: string
+  geschoss_id: string
+  projekt_id: string
+  name: string
+  art: EinheitArt
+  flaeche_m2: number | null
+  reihenfolge: number
   erstellt_am: string
 }
 
@@ -194,6 +228,9 @@ export interface Termin {
   end_datum: string
   status: TerminStatus
   vorgaenger_id: string | null
+  gebaeude_id: string | null
+  geschoss_id: string | null
+  einheit_id: string | null
   erstellt_von: string
   erstellt_am: string
 }

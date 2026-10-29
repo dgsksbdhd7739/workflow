@@ -107,4 +107,43 @@ describe('Geschosse und Einheiten', () => {
     })
     assert.equal(schreiben.statusCode, 403)
   })
+
+  test('Grundriss aus Plaenen: Planseite, Umriss, Bildlage und Einheiten-Lage', async () => {
+    const a = await angemeldet('Alpha')
+    const { p, og } = await gebaeudeMitEtagen(a)
+    // Zwei Plaene auf dieselbe (mehrseitige) Datei, je eigene Seite
+    const plaene = await a.daten('plaene', {
+      aktion: 'insert', rueckgabe: true,
+      werte: [
+        { projekt_id: p.id, name: 'EG', datei_pfad: `${p.id}/satz.pdf`, erstellt_von: a.userId },
+        { projekt_id: p.id, name: '1.OG', datei_pfad: `${p.id}/satz.pdf`, seite: 2, erstellt_von: a.userId },
+      ],
+    })
+    assert.equal(plaene.statusCode, 200, plaene.body)
+    assert.deepEqual(plaene.json().data.map((x: { seite: number }) => x.seite), [1, 2])
+    const ungueltig = await a.daten('plaene', { aktion: 'insert', werte: { projekt_id: p.id, name: 'x', datei_pfad: 'x.pdf', seite: 0, erstellt_von: a.userId } })
+    assert.equal(ungueltig.statusCode, 400, ungueltig.body)
+
+    const grundriss = [[-40.5, -12], [40.5, -12], [40.5, 12], [-40.5, 12]]
+    const lage = { x: -42.5, z: -14, breite: 85, tiefe: 28 }
+    const r = await a.daten('geschosse', {
+      aktion: 'update', rueckgabe: true, filter: [{ spalte: 'id', op: 'eq', wert: og.id }],
+      werte: { plan_id: plaene.json().data[1].id, plan_seite: 2, grundriss, plan_bild_lage: lage, massstab: 50 },
+    })
+    assert.equal(r.statusCode, 200, r.body)
+    const g = r.json().data[0]
+    assert.deepEqual(g.grundriss, grundriss)
+    assert.deepEqual(g.plan_bild_lage, lage)
+    assert.equal(g.massstab, 50)
+
+    const e = await a.daten('einheiten', { aktion: 'insert', rueckgabe: true, werte: { geschoss_id: og.id, projekt_id: p.id, name: '101', lage_x: -30.25, lage_z: -9.5 } })
+    assert.equal(e.statusCode, 200, e.body)
+    assert.equal(e.json().data[0].lage_x, -30.25)
+
+    // Plan loeschen: Geschoss bleibt, verliert nur den Verweis
+    await a.daten('plaene', { aktion: 'delete', filter: [{ spalte: 'id', op: 'eq', wert: plaene.json().data[1].id }] })
+    const nachher = await a.daten('geschosse', { aktion: 'select', filter: [{ spalte: 'id', op: 'eq', wert: og.id }] })
+    assert.equal(nachher.json().data[0].plan_id, null)
+    assert.deepEqual(nachher.json().data[0].grundriss, grundriss)
+  })
 })

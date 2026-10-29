@@ -71,8 +71,8 @@ npx tauri build           # Windows-Desktop, Release-Installer
 - `unternehmen` — Firmen (Mandanten); `profiles` — Nutzer mit Rolle und Firma
 - `projekte` — Projekte (oberste Ebene je Firma)
 - `aufgaben` — Aufgaben je Projekt, mit Status/Priorität/Foto/optionaler Plan-Position
-- `plaene` — hochgeladene Pläne; Markierungen sind Aufgaben mit Plan-Position
-- `gebaeude` → `geschosse` → `einheiten` — Gebäude je Projekt mit Etagen und Wohnungen/Gewerbe/Technik, dargestellt in 3D (`src/components/Gebaeude3D.tsx`, `Baustelle3D.tsx`, three.js wird nur dort nachgeladen). Aufgaben und Termine können optional genau einem Bereich zugeordnet werden (`gebaeude_id` **oder** `geschoss_id` **oder** `einheit_id`); Fortschritt/Status wird daraus berechnet (`src/lib/gebaeude3d.ts`), nicht gespeichert
+- `plaene` — hochgeladene Pläne (bei mehrseitigen PDFs mit `seite`; mehrere Pläne können eine Datei teilen); Markierungen sind Aufgaben mit Plan-Position
+- `gebaeude` → `geschosse` → `einheiten` — Gebäude je Projekt mit Etagen und Wohnungen/Gewerbe/Technik, dargestellt in 3D (`src/components/Gebaeude3D.tsx`, `Baustelle3D.tsx`, three.js wird nur dort nachgeladen). Aufgaben und Termine können optional genau einem Bereich zugeordnet werden (`gebaeude_id` **oder** `geschoss_id` **oder** `einheit_id`); Fortschritt/Status wird daraus berechnet (`src/lib/gebaeude3d.ts`), nicht gespeichert. „Aus Plänen aufbauen“ liest Grundriss-PDFs aus und speichert je Geschoss Umriss, Planbild und Einheiten-Positionen (`src/lib/planAnalyse.ts`)
 - `tagesberichte` — Bautagebuch-Einträge je Tag/Projekt
 - `zeiterfassung` — Arbeitszeiten je Mitarbeiter/Projekt
 - `auth.users`, `auth.mfa_factors`, `auth.sitzungen` — Logins, 2FA, Sitzungen (nur für das Backend lesbar)

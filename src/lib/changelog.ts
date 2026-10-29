@@ -11,6 +11,17 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.3.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'Neu: Gebäude „Aus Plänen aufbauen“. WorkFlow liest die hochgeladenen Grundriss-PDFs aus (Geschoss aus dem Plantitel, Maßstab, Außenumriss aus den Wänden, Zimmer- und Wohnungsnummern) und baut daraus die Etagen in ihrer echten Form auf. Die gewählte Etage zeigt den Grundriss als Boden, die Zimmer stehen an ihrer Stelle im Plan.',
+      'Die Baustellenansicht im Projekt zeigt Gebäude mit Plan-Umriss ebenfalls in ihrer echten Form.',
+      'PDF-Pläne öffnen wieder: Die PDF-Anzeige wurde vom Server falsch ausgeliefert und vom Browser blockiert.',
+      'Große Werkpläne (bis 3 m Blattbreite) erscheinen sofort in einer schnellen Fassung und werden danach scharf nachgezeichnet; auch auf Handys und Tablets.',
+      'Mehrseitige PDFs: Ein Plan kann eine bestimmte Seite zeigen (Auswahl „Seite“ oben in der Planansicht). Mehrere Pläne können sich eine Datei teilen.',
+    ],
+  },
+  {
     version: '2.2.0',
     datum: '2026-10-29',
     aenderungen: [

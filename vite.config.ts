@@ -59,6 +59,19 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // Der PDF-Worker (pdfjs, per ?url eingebunden) heisst sonst *.mjs. Nginx
+        // lieferte .mjs als application/octet-stream aus, der Browser blockierte
+        // den Modul-Worker, und keine PDF liess sich oeffnen; diese falsche
+        // Antwort steckt bis zu einem Jahr im Browser-Cache. Als .js bekommt
+        // die Datei einen neuen Namen und ueberall den richtigen MIME-Typ.
+        assetFileNames: (datei) =>
+          datei.names?.[0]?.endsWith('.mjs') ? 'assets/[name]-[hash].js' : 'assets/[name]-[hash][extname]',
+      },
+    },
+  },
   server: {
     host: true,
   },

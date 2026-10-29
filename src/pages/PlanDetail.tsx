@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, type FormEvent, type MouseEvent,
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, List, MapPin, MousePointer2, Search, X } from 'lucide-react'
 import { backend, getSignedUrl } from '../lib/backend'
+import { begrenzterMassstab, pdfDokument, pdfSeite } from '../lib/pdfLaden'
 import { useAuth } from '../contexts/AuthContext'
 import { AufgabeDetails } from '../components/AufgabeDetails'
 import { Arbeitszeit } from '../components/Arbeitszeit'
@@ -100,6 +101,7 @@ export function PlanDetail() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [pdfReady, setPdfReady] = useState(false)
   const [pdfError, setPdfError] = useState(false)
+  const [seitenAnzahl, setSeitenAnzahl] = useState(1)
   const [datenUrl, setDatenUrl] = useState<string | null>(null)
   const [zeigePunkte, setZeigePunkte] = useState(true)
   // "navigation" ist der Standard: Klicks bewegen/zoomen nur bzw. oeffnen
@@ -389,32 +391,44 @@ export function PlanDetail() {
   }, [plan?.datei_pfad])
 
   useEffect(() => {
-    if (!datenUrl || !isPdf) return
+    if (!plan || !isPdf) return
     let cancelled = false
     setPdfReady(false)
     setPdfError(false)
 
-    Promise.all([import('pdfjs-dist'), import('pdfjs-dist/build/pdf.worker.min.mjs?url')])
-      .then(([pdfjsLib, { default: workerUrl }]) => {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
-        return pdfjsLib.getDocument({ url: datenUrl }).promise
+    pdfDokument('plaene', plan.datei_pfad)
+      .then((pdf) => {
+        if (!cancelled) setSeitenAnzahl(pdf.numPages)
+        return pdfSeite(pdf, plan.seite ?? 1)
       })
-      .then((pdf) => pdf.getPage(1))
       .then(async (page) => {
-        const canvas = canvasRef.current
-        if (!canvas || cancelled) return
-        const viewport = page.getViewport({ scale: 2 })
-        canvas.width = viewport.width
-        canvas.height = viewport.height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        await page.render({ canvas, canvasContext: ctx, viewport }).promise
-        if (!cancelled) {
-          const fit = berechneFitZoom()
-          setzeMinZoom(fit)
-          updateZoomPan(fit, { x: 0, y: 0 })
-          setPdfReady(true)
+        // Werkplaene haben oft Hunderttausende Zeichenbefehle: erst eine
+        // schnelle Fassung (2400 px breit) zeigen, dann die scharfe eintauschen.
+        // Die Anzeigegroesse haengt nur an CSS (w-full), Zoom/Markierungen bleiben.
+        const zeichnen = async (scale: number) => {
+          const viewport = page.getViewport({ scale })
+          const ziel = document.createElement('canvas')
+          ziel.width = viewport.width
+          ziel.height = viewport.height
+          await page.render({ canvas: ziel, viewport }).promise
+          return ziel
         }
+        const uebernehmen = (quelle: HTMLCanvasElement) => {
+          const canvas = canvasRef.current
+          if (!canvas || cancelled) return false
+          canvas.width = quelle.width
+          canvas.height = quelle.height
+          canvas.getContext('2d')?.drawImage(quelle, 0, 0)
+          return true
+        }
+        const voll = begrenzterMassstab(page, 2)
+        const schnell = Math.min(voll, 2400 / page.getViewport({ scale: 1 }).width)
+        if (!uebernehmen(await zeichnen(schnell))) return
+        const fit = berechneFitZoom()
+        setzeMinZoom(fit)
+        updateZoomPan(fit, { x: 0, y: 0 })
+        setPdfReady(true)
+        if (voll > schnell * 1.2 && !cancelled) uebernehmen(await zeichnen(voll))
       })
       .catch(() => {
         if (!cancelled) setPdfError(true)
@@ -423,7 +437,20 @@ export function PlanDetail() {
     return () => {
       cancelled = true
     }
-  }, [datenUrl, isPdf])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan?.datei_pfad, plan?.seite, isPdf])
+
+  // Mehrseitige PDF: Seite fuer diesen Plan festlegen (Markierungen beziehen
+  // sich auf die Seite, daher nur fuer Admin/Planer).
+  const seiteWechseln = async (seite: number) => {
+    if (!plan) return
+    const { error } = await backend.from('plaene').update({ seite }).eq('id', plan.id)
+    if (error) {
+      setFehler(error.message)
+      return
+    }
+    setPlan({ ...plan, seite })
+  }
 
   useEffect(() => {
     if (!selectedPin) return
@@ -871,6 +898,27 @@ export function PlanDetail() {
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-text" title={plan.name}>
           {plan.name}
         </span>
+        {isPdf && seitenAnzahl > 1 && (
+          <label className="flex flex-shrink-0 items-center gap-1 text-xs text-text-muted">
+            Seite
+            <select
+              value={plan.seite ?? 1}
+              disabled={!kannLoeschen}
+              onChange={(e) => {
+                if (pins.length > 0 && !window.confirm('Vorhandene Markierungen behalten ihre Position und liegen dann auf der neuen Seite. Trotzdem wechseln?')) return
+                seiteWechseln(Number(e.target.value))
+              }}
+              className="field-input h-7 w-auto py-0 text-xs"
+              title={kannLoeschen ? 'Seite der PDF, die dieser Plan zeigt' : undefined}
+            >
+              {Array.from({ length: seitenAnzahl }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1} / {seitenAnzahl}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {fehler && <p className="banner-error w-full basis-full text-xs">Fehler: {fehler}</p>}
         <div className="flex flex-shrink-0 flex-wrap items-center gap-1">
               {pins.length > 0 && (

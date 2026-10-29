@@ -133,7 +133,10 @@ export function Plaene() {
       setFehler(error.message)
       return
     }
-    await dateienLoeschen('plaene', [p.datei_pfad])
+    // Mehrere Plaene koennen dieselbe (mehrseitige) PDF nutzen -- die Datei
+    // erst loeschen, wenn kein anderer Plan mehr darauf zeigt.
+    const andere = plaene.some((x) => x.id !== p.id && x.datei_pfad === p.datei_pfad)
+    if (!andere) await dateienLoeschen('plaene', [p.datei_pfad])
     load()
   }
 
@@ -216,7 +219,7 @@ export function Plaene() {
                   {p.datei_pfad.match(/\.(png|jpe?g|webp|gif)$/i) ? (
                     <SignedImage bucket="plaene" path={p.datei_pfad} alt={p.name} className="h-full w-full object-cover" />
                   ) : p.datei_pfad.match(/\.pdf$/i) ? (
-                    <PdfThumbnail bucket="plaene" path={p.datei_pfad} className="h-full w-full" />
+                    <PdfThumbnail bucket="plaene" path={p.datei_pfad} seite={p.seite} className="h-full w-full" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-3xl">📄</div>
                   )}

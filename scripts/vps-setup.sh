@@ -48,6 +48,14 @@ location = /index.html { add_header Cache-Control "no-cache"; }
 
 # Gehashte Vite-Bundles duerfen lange gecacht werden.
 location /assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; try_files $uri =404; }
+# Nginx kennt .mjs nicht (sonst application/octet-stream) -- der PDF-Worker
+# (pdfjs) wird als Modul geladen und vom Browser dann blockiert.
+location ~ ^/assets/.+\.mjs$ {
+    types { }
+    default_type text/javascript;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    try_files $uri =404;
+}
 
 # APK direkt ueber den App-Host (Uebergang, solange workflow-app.de nicht auf den VPS zeigt).
 location = /workflow.apk {

@@ -137,6 +137,8 @@ export interface Plan {
   projekt_id: string
   name: string
   datei_pfad: string
+  // Seite der (ggf. mehrseitigen) PDF, die dieser Plan zeigt
+  seite: number
   statusvorlage_id: string | null
   erstellt_von: string
   erstellt_am: string
@@ -166,6 +168,14 @@ export interface Geschoss {
   // -1 = UG, 0 = EG, 1 = OG 1 ...
   ebene: number
   hoehe_m: number
+  // Aus einem Grundriss-Plan erzeugt (src/lib/planAnalyse.ts); Meter im
+  // Gebaeude-Koordinatensystem, x nach rechts, z nach unten wie auf dem Plan
+  plan_id: string | null
+  plan_seite: number | null
+  grundriss: [number, number][] | null
+  plan_bild_pfad: string | null
+  plan_bild_lage: { x: number; z: number; breite: number; tiefe: number } | null
+  massstab: number | null
   erstellt_am: string
 }
 
@@ -179,6 +189,9 @@ export interface Einheit {
   art: EinheitArt
   flaeche_m2: number | null
   reihenfolge: number
+  // Position aus dem Grundriss-Plan (Meter), sonst automatisch verteilt
+  lage_x: number | null
+  lage_z: number | null
   erstellt_am: string
 }
 

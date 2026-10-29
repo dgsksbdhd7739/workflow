@@ -1,14 +1,17 @@
 // 3D-Ansicht eines Gebaeudes: Geschosse gestapelt und nach Status eingefaerbt,
 // ein ausgewaehltes Geschoss wird "aufgeschnitten" (darueberliegende Etagen
 // nur noch als Umriss) und zeigt seine Einheiten als anklickbare Bloecke.
+// Geschosse mit Grundriss aus Plaenen (geschosse.grundriss) bekommen ihre
+// echte Form, das gewaehlte zusaetzlich das Planbild als Boden.
 // Wird per React.lazy geladen (three.js ist gross) -- daher Default-Export.
 
-import { useMemo, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { useMemo, useState, type ReactNode } from 'react'
+import { Canvas, type ThreeEvent } from '@react-three/fiber'
 import { Edges, OrbitControls } from '@react-three/drei'
 import type { Einheit, Gebaeude, Geschoss } from '../types/database'
 import { type GebaeudeAuswertung, STATUS_FARBE, STATUS_TEXT, einheitenAufteilen } from '../lib/gebaeude3d'
 import { Schild3D } from './Schild3D'
+import { useGrundrissTextur, useUmrissGeometrie } from './umriss3d'
 
 interface Props {
   gebaeude: Gebaeude
@@ -23,6 +26,50 @@ interface Props {
 
 const NEUTRAL = '#e5e7eb'
 const DECKE = 0.3
+
+interface KoerperProps {
+  umriss: [number, number][] | null
+  breite: number
+  tiefe: number
+  hoehe: number
+  children: ReactNode
+  onClick?: (ev: ThreeEvent<MouseEvent>) => void
+  onPointerOver?: (ev: ThreeEvent<PointerEvent>) => void
+  onPointerOut?: () => void
+  anklickbar?: boolean
+}
+
+/** Etagenkoerper von y = 0 bis hoehe: echte Form aus dem Grundriss, sonst Quader. */
+function Koerper({ umriss, breite, tiefe, hoehe, children, anklickbar = true, ...ereignisse }: KoerperProps) {
+  const geometrie = useUmrissGeometrie(umriss, hoehe)
+  const raycast = anklickbar ? undefined : () => null
+  if (geometrie) {
+    return (
+      <mesh geometry={geometrie} rotation={[-Math.PI / 2, 0, 0]} raycast={raycast} {...ereignisse}>
+        {children}
+      </mesh>
+    )
+  }
+  return (
+    <mesh position={[0, hoehe / 2, 0]} raycast={raycast} {...ereignisse}>
+      <boxGeometry args={[breite, hoehe, tiefe]} />
+      {children}
+    </mesh>
+  )
+}
+
+/** Planbild als Boden des aufgeschnittenen Geschosses. */
+function Planboden({ g }: { g: Geschoss }) {
+  const textur = useGrundrissTextur(g.plan_bild_pfad)
+  const lage = g.plan_bild_lage
+  if (!textur || !lage) return null
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[lage.x + lage.breite / 2, DECKE + 0.02, lage.z + lage.tiefe / 2]} raycast={() => null}>
+      <planeGeometry args={[lage.breite, lage.tiefe]} />
+      <meshBasicMaterial map={textur} toneMapped={false} transparent opacity={0.95} />
+    </mesh>
+  )
+}
 
 export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung, geschossId, einheitId, onGeschoss, onEinheit }: Props) {
   const [hover, setHover] = useState<string | null>(null)
@@ -50,11 +97,16 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
   )
   const aufteilung = useMemo(() => einheitenAufteilen(einheitenDesGeschosses, breite, tiefe), [einheitenDesGeschosses, breite, tiefe])
   const groesse = Math.max(breite, tiefe, gesamtHoehe)
-  const abstand = groesse * 2.1
-  const schildHoehe = Math.max(groesse / 11, 1.4)
+  // Grosse Gebaeude (z. B. aus Plaenen, 100 m lang) fuellen sonst nur einen kleinen Teil der Ansicht
+  const abstand = groesse * (groesse > 40 ? 1.3 : 2.1)
+  const schildHoehe = Math.min(Math.max(groesse / 11, 1.4), 5)
+  // Einheiten liegen bei echten Grundrissen dicht (Hotelzimmer) -- kleinere Schilder
+  const einheitSchild = Math.min(schildHoehe, Math.max(groesse / 40, 1.2))
 
   return (
     <Canvas
+      // Kamera wird nur beim Anlegen gesetzt -- nach "Aus Plaenen aufbauen" aendert sich die Groesse
+      key={Math.round(groesse)}
       frameloop="demand"
       dpr={[1, 2]}
       camera={{ position: [abstand * 0.75, gesamtHoehe * 0.6 + abstand * 0.55, abstand * 0.85], fov: 40 }}
@@ -77,11 +129,12 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
         // Ueber dem ausgewaehlten Geschoss: nur Umriss, damit der Blick frei ist.
         if (ausgewaehlt && g.ebene > ausgewaehlt.g.ebene) {
           return (
-            <mesh key={`geist-${g.id}`} position={[0, y + h / 2, 0]} raycast={() => null}>
-              <boxGeometry args={[breite, h - 0.12, tiefe]} />
-              <meshBasicMaterial transparent opacity={0.05} depthWrite={false} color="#94a3b8" />
-              <Edges color="#cbd5e1" />
-            </mesh>
+            <group key={`geist-${g.id}`} position={[0, y, 0]}>
+              <Koerper umriss={g.grundriss} breite={breite} tiefe={tiefe} hoehe={h - 0.12} anklickbar={false}>
+                <meshBasicMaterial transparent opacity={0.05} depthWrite={false} color="#94a3b8" />
+                <Edges color="#cbd5e1" />
+              </Koerper>
+            </group>
           )
         }
 
@@ -89,17 +142,21 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
           // Aufgeschnittenes Geschoss: Bodenplatte + Einheiten als Bloecke.
           return (
             <group key={`schnitt-${g.id}`} position={[0, y, 0]}>
-              <mesh position={[0, DECKE / 2, 0]}>
-                <boxGeometry args={[breite, DECKE, tiefe]} />
+              <Koerper umriss={g.grundriss} breite={breite} tiefe={tiefe} hoehe={DECKE}>
                 <meshStandardMaterial color="#cbd5e1" />
                 <Edges color="#64748b" />
-              </mesh>
+              </Koerper>
+              <Planboden g={g} />
               {einheitenDesGeschosses.map((e) => {
-                const r = aufteilung.get(e.id)
+                // Lage aus dem Plan (Nummer im Grundriss), sonst automatisch verteilt
+                const r =
+                  e.lage_x != null && e.lage_z != null
+                    ? { x: Number(e.lage_x), z: Number(e.lage_z), breite: 2.6, tiefe: 2.6 }
+                    : aufteilung.get(e.id)
                 if (!r) return null
                 const st = auswertung.einheit.get(e.id)?.status ?? 'leer'
                 const aktiv = einheitId === e.id
-                const hoehe = (h - DECKE) * 0.55
+                const hoehe = e.lage_x != null ? (h - DECKE) * 0.35 : (h - DECKE) * 0.55
                 return (
                   <group key={e.id} position={[r.x, DECKE + hoehe / 2, r.z]}>
                     <mesh
@@ -122,11 +179,11 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
                       <Edges color={aktiv ? '#4f46e5' : '#475569'} />
                     </mesh>
                     <Schild3D
-                      position={[0, hoehe / 2 + schildHoehe, 0]}
+                      position={[0, hoehe / 2 + einheitSchild, 0]}
                       titel={e.name}
                       untertitel={STATUS_TEXT[st]}
                       aktiv={aktiv}
-                      hoehe={schildHoehe}
+                      hoehe={einheitSchild}
                       onClick={() => onEinheit(aktiv ? null : e.id)}
                     />
                   </group>
@@ -137,8 +194,12 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
         }
 
         return (
-          <group key={`etage-${g.id}`} position={[0, y + h / 2, 0]}>
-            <mesh
+          <group key={`etage-${g.id}`} position={[0, y, 0]}>
+            <Koerper
+              umriss={g.grundriss}
+              breite={breite}
+              tiefe={tiefe}
+              hoehe={h - 0.12}
               onClick={(ev) => {
                 ev.stopPropagation()
                 onEinheit(null)
@@ -150,17 +211,18 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
               }}
               onPointerOut={() => setHover(null)}
             >
-              <boxGeometry args={[breite, h - 0.12, tiefe]} />
               <meshStandardMaterial color={farbe} emissive={hover === g.id ? '#4f46e5' : '#000000'} emissiveIntensity={0.18} />
-              <Edges color="#64748b" />
-            </mesh>
-            {/* angedeutete Fensterreihe */}
-            <mesh position={[0, h * 0.05, 0]} raycast={() => null}>
-              <boxGeometry args={[breite + 0.04, h * 0.32, tiefe + 0.04]} />
-              <meshStandardMaterial color="#475569" />
-            </mesh>
+              <Edges color="#64748b" threshold={20} />
+            </Koerper>
+            {/* angedeutete Fensterreihe, nur beim Quader */}
+            {!g.grundriss && (
+              <mesh position={[0, h * 0.55, 0]} raycast={() => null}>
+                <boxGeometry args={[breite + 0.04, h * 0.32, tiefe + 0.04]} />
+                <meshStandardMaterial color="#475569" />
+              </mesh>
+            )}
             {!ausgewaehlt && (
-              <Schild3D position={[breite / 2 + schildHoehe * 1.6, 0, tiefe / 2]} titel={g.name} hoehe={schildHoehe * 0.85} onClick={() => onGeschoss(g.id)} />
+              <Schild3D position={[breite / 2 + schildHoehe * 1.6, h / 2, tiefe / 2]} titel={g.name} hoehe={schildHoehe * 0.85} onClick={() => onGeschoss(g.id)} />
             )}
           </group>
         )

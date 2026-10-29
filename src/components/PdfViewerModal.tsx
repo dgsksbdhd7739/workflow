@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Share2, X } from 'lucide-react'
+import { begrenzterMassstab, pdfjsLaden } from '../lib/pdfLaden'
 
 // Rendert ein PDF Seite fuer Seite als Canvas-Stapel -- gleicher Ansatz wie
 // die Plan-Vorschau in PlanDetail.tsx, hier aber fuer beliebig viele Seiten
@@ -33,11 +34,7 @@ export function PdfViewerModal({
 
     ;(async () => {
       try {
-        const [pdfjsLib, { default: workerUrl }] = await Promise.all([
-          import('pdfjs-dist'),
-          import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
-        ])
-        pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
+        const pdfjsLib = await pdfjsLaden()
         const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise
         const container = containerRef.current
         if (!container || abgebrochen) return
@@ -45,7 +42,7 @@ export function PdfViewerModal({
 
         for (let i = 1; i <= pdf.numPages; i++) {
           const seite = await pdf.getPage(i)
-          const viewport = seite.getViewport({ scale: 1.5 })
+          const viewport = seite.getViewport({ scale: begrenzterMassstab(seite, 1.5) })
           const canvas = document.createElement('canvas')
           canvas.width = viewport.width
           canvas.height = viewport.height

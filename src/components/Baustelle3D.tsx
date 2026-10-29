@@ -2,12 +2,13 @@
 // Jedes Gebaeude als Stapel seiner Geschosse, eingefaerbt nach Gesamtstatus;
 // Klick oeffnet das Gebaeude. Per React.lazy geladen -- daher Default-Export.
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Edges, OrbitControls } from '@react-three/drei'
 import type { Gebaeude, Geschoss } from '../types/database'
 import { type BereichAuswertung, STATUS_FARBE, STATUS_TEXT } from '../lib/gebaeude3d'
 import { Schild3D } from './Schild3D'
+import { useUmrissGeometrie } from './umriss3d'
 
 interface Props {
   gebaeude: Gebaeude[]
@@ -17,6 +18,17 @@ interface Props {
 }
 
 const ABSTAND = 10
+
+/** Eine Etage mit echtem Grundriss-Umriss (aus Plaenen), von y bis y + hoehe. */
+function UmrissEtage({ umriss, y, hoehe, children }: { umriss: [number, number][]; y: number; hoehe: number; children: ReactNode }) {
+  const geometrie = useUmrissGeometrie(umriss, hoehe)
+  if (!geometrie) return null
+  return (
+    <mesh geometry={geometrie} rotation={[-Math.PI / 2, 0, 0]} position={[0, y, 0]}>
+      {children}
+    </mesh>
+  )
+}
 
 /** Angedeuteter Turmdrehkran neben Gebaeuden, an denen gearbeitet wird. */
 function Kran({ hoehe }: { hoehe: number }) {
@@ -52,10 +64,18 @@ export default function Baustelle3D({ gebaeude, geschosse, auswertung, onOeffnen
       const tiefe = Number(g.tiefe_m) || 14
       const auto = { x: x + breite / 2, z: 0 }
       x += breite + ABSTAND
-      const etagen = geschosse.filter((s) => s.gebaeude_id === g.id && s.ebene >= 0)
+      const etagen = geschosse.filter((s) => s.gebaeude_id === g.id && s.ebene >= 0).sort((a, b) => a.ebene - b.ebene)
       const hoehe = etagen.reduce((s, e) => s + (Number(e.hoehe_m) || 3), 0)
+      // Etagen mit Umriss aus Plaenen gestapelt; ohne Umriss bleibt es beim Quader
+      let y = 0
+      const umrisse = etagen.map((e) => {
+        const eintrag = { id: e.id, umriss: e.grundriss, y, h: Number(e.hoehe_m) || 3 }
+        y += eintrag.h
+        return eintrag
+      })
       return {
         g,
+        umrisse: umrisse.every((u) => u.umriss) && umrisse.length ? umrisse : null,
         breite,
         tiefe,
         hoehe: hoehe || 9,
@@ -98,7 +118,18 @@ export default function Baustelle3D({ gebaeude, geschosse, auswertung, onOeffnen
         const aktiv = hover === p.g.id
         return (
           <group key={p.g.id} position={[p.x, 0, p.z]} rotation={[0, p.drehung, 0]}>
+            {p.umrisse && (
+              <group raycast={() => null}>
+                {p.umrisse.map((u) => (
+                  <UmrissEtage key={u.id} umriss={u.umriss!} y={u.y} hoehe={u.h - 0.1}>
+                    <meshStandardMaterial color={farbe} emissive={aktiv ? '#4f46e5' : '#000000'} emissiveIntensity={0.2} />
+                    <Edges color="#64748b" threshold={20} />
+                  </UmrissEtage>
+                ))}
+              </group>
+            )}
             <mesh
+              visible={!p.umrisse}
               position={[0, p.hoehe / 2, 0]}
               onClick={(ev) => {
                 ev.stopPropagation()

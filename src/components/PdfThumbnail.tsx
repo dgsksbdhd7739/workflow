@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { getSignedUrl } from '../lib/backend'
+import { pdfDokument, pdfSeite } from '../lib/pdfLaden'
 
 export function PdfThumbnail({
   bucket,
   path,
+  seite = 1,
   className,
 }: {
   bucket: 'plaene'
   path: string
+  seite?: number
   className?: string
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -19,38 +21,28 @@ export function PdfThumbnail({
     setReady(false)
     setFehler(false)
 
-    getSignedUrl(bucket, path).then(({ url, error }) => {
-      if (cancelled) return
-      if (error || !url) {
-        setFehler(true)
-        return
-      }
-      Promise.all([import('pdfjs-dist'), import('pdfjs-dist/build/pdf.worker.min.mjs?url')])
-        .then(([pdfjsLib, { default: workerUrl }]) => {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
-          return pdfjsLib.getDocument({ url }).promise
-        })
-        .then((pdf) => pdf.getPage(1))
-        .then(async (page) => {
-          const canvas = canvasRef.current
-          if (!canvas || cancelled) return
-          const viewport = page.getViewport({ scale: 0.5 })
-          canvas.width = viewport.width
-          canvas.height = viewport.height
-          const ctx = canvas.getContext('2d')
-          if (!ctx) return
-          await page.render({ canvas, canvasContext: ctx, viewport }).promise
-          if (!cancelled) setReady(true)
-        })
-        .catch(() => {
-          if (!cancelled) setFehler(true)
-        })
-    })
+    pdfDokument(bucket, path)
+      .then((pdf) => pdfSeite(pdf, seite))
+      .then(async (page) => {
+        const canvas = canvasRef.current
+        if (!canvas || cancelled) return
+        // Vorschau etwa 480 px breit, egal wie gross das Blatt ist
+        const viewport = page.getViewport({ scale: 480 / page.getViewport({ scale: 1 }).width })
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        await page.render({ canvas, canvasContext: ctx, viewport }).promise
+        if (!cancelled) setReady(true)
+      })
+      .catch(() => {
+        if (!cancelled) setFehler(true)
+      })
 
     return () => {
       cancelled = true
     }
-  }, [bucket, path])
+  }, [bucket, path, seite])
 
   if (fehler) {
     return <div className={`${className ?? ''} flex items-center justify-center text-3xl`}>📄</div>

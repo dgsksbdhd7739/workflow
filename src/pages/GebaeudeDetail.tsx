@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { backend } from '../lib/backend'
 import { STATUS_FARBE, STATUS_TEXT, gebaeudeAuswerten, geschossName, type BereichAuswertung, type BereichStatus } from '../lib/gebaeude3d'
 import type { Aufgabe, Einheit, Gebaeude, Geschoss, Projekt, Termin } from '../types/database'
+import { PlanAufbau } from '../components/PlanAufbau'
 
 // three.js nur laden, wenn ein Gebaeude geoeffnet wird.
 const Gebaeude3D = lazy(() => import('../components/Gebaeude3D'))
@@ -251,6 +252,9 @@ export function GebaeudeDetail() {
         </section>
 
         <aside className="space-y-4">
+          {kannBearbeiten && (
+            <PlanAufbau projektId={projektId} gebaeude={gebaeude} geschosse={geschosse} einheiten={einheiten} onFertig={laden} />
+          )}
           {geschosse.length === 0 ? (
             <section className="card p-4">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-text"><Layers className="h-4 w-4 text-brand" /> Geschosse anlegen</h2>

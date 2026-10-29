@@ -10,6 +10,7 @@
 import type { PDFPageProxy } from 'pdfjs-dist'
 import type { TextItem } from 'pdfjs-dist/types/src/display/api'
 import { pdfjsLaden } from './pdfLaden'
+import { vektorMasken } from './planVektoren'
 
 export type Punkt = [number, number]
 
@@ -156,8 +157,10 @@ function massstabErmitteln(texte: Text[]) {
 function achsenErmitteln(texte: Text[], breite: number, hoehe: number, mProPt: number) {
   const mh = median(texte.map((t) => t.h))
   const kandidaten = texte.filter((t) => /^([0-9]{1,2}|[A-Z])$/.test(t.str) && t.h >= mh * 1.5)
-  const achsenX: Record<string, number> = {}
-  const achsenY: Record<string, number> = {}
+  // Alle Paare je Beschriftung sammeln: Achsbeschriftungen stehen am Blattrand,
+  // eine oben/links und eine unten/rechts (je im aeusseren Zehntel)
+  const xKandidaten = new Map<string, number[]>()
+  const yKandidaten = new Map<string, number[]>()
   const gruppen = new Map<string, Text[]>()
   for (const t of kandidaten) gruppen.set(t.str, [...(gruppen.get(t.str) ?? []), t])
   for (const [name, liste] of gruppen) {
@@ -165,104 +168,43 @@ function achsenErmitteln(texte: Text[], breite: number, hoehe: number, mProPt: n
       for (let j = i + 1; j < liste.length; j++) {
         const a = liste[i]
         const b = liste[j]
-        if (Math.abs(a.x - b.x) < 3 && Math.abs(a.y - b.y) > hoehe * 0.5) achsenX[name] = ((a.x + b.x) / 2) * mProPt
-        if (Math.abs(a.y - b.y) < 3 && Math.abs(a.x - b.x) > breite * 0.5) achsenY[name] = ((a.y + b.y) / 2) * mProPt
+        const obenUnten = Math.min(a.y, b.y) < hoehe * 0.1 && Math.max(a.y, b.y) > hoehe * 0.9
+        const linksRechts = Math.min(a.x, b.x) < breite * 0.1 && Math.max(a.x, b.x) > breite * 0.9
+        if (Math.abs(a.x - b.x) < 3 && obenUnten) xKandidaten.set(name, [...(xKandidaten.get(name) ?? []), ((a.x + b.x) / 2) * mProPt])
+        if (Math.abs(a.y - b.y) < 3 && linksRechts) yKandidaten.set(name, [...(yKandidaten.get(name) ?? []), ((a.y + b.y) / 2) * mProPt])
       }
     }
   }
-  return { achsenX, achsenY }
-}
-
-function grauwert(stil: unknown): number | null {
-  if (typeof stil !== 'string') return null
-  const m = stil.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)
-  if (!m) return null
-  const [r, g, b] = [m[1], m[2], m[3]].map((h) => parseInt(h, 16))
-  return Math.max(r, g, b) - Math.min(r, g, b) <= 8 ? r : null
+  return { achsenX: rasterBereinigen(xKandidaten), achsenY: rasterBereinigen(yKandidaten) }
 }
 
 /**
- * Zeichnet nur die neutral-grau gefuellten Flaechen (Wandschnitte in
- * Werkplaenen) schwarz auf weiss. Dafuer bekommt pdfjs einen Zeichenkontext,
- * der alle anderen Zeichenbefehle (Linien, Texte, Bilder, farbige Flaechen)
- * verschluckt.
+ * Achsraster sind fortlaufend beschriftet (1, 2, 3 ... bzw. A, B, C ...) und
+ * liegen in dieser Reihenfolge. Gerade durch die eindeutigen Achsen legen,
+ * bei mehreren Kandidaten den passendsten nehmen, Ausreisser (> 3 m) verwerfen.
  */
-// Wandkanten sind in CAD-Plaenen mit dickeren Stiften gezeichnet als Moebel,
-// Bemassung und Schraffur (dort 0,18-0,25 pt); Trockenbauwaende sind oft nur
-// so gezeichnet und nicht grau gefuellt.
-const WANDLINIE_MIN_PT = 0.27
-
-/**
- * mitLinien: zusaetzlich dunkle, neutrale Linien ab WANDLINIE_MIN_PT (fuer die
- * Raumerkennung). Die echte Linienbreite wird beim Setzen von lineWidth
- * mitgelesen -- beim Strich selbst hat pdfjs duenne Linien bereits auf 1 Pixel
- * verbreitert (erkennbar daran, dass Breite x Massstab genau 1 ergibt).
- */
-async function wandMaske(seite: PDFPageProxy, pxProPt: number, mitLinien = false, schraffur = false) {
-  const viewport = seite.getViewport({ scale: pxProPt })
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.ceil(viewport.width)
-  canvas.height = Math.ceil(viewport.height)
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  const istWand = () => {
-    if (schraffur) return false
-    const g = grauwert(ctx.fillStyle)
-    return g !== null && g >= 77 && g <= 217
+function rasterBereinigen(kandidaten: Map<string, number[]>): Record<string, number> {
+  const index = (name: string) => (/^\d+$/.test(name) ? Number(name) : name.charCodeAt(0) - 64)
+  const eindeutig = [...kandidaten].filter(([, werte]) => werte.length === 1).map(([name, [wert]]) => [index(name), wert])
+  const ergebnis: Record<string, number> = {}
+  if (eindeutig.length < 2) {
+    for (const [name, werte] of kandidaten) if (werte.length === 1) ergebnis[name] = werte[0]
+    return ergebnis
   }
-  let linienPt = 0
-  const geraetMassstab = () => {
-    const m = ctx.getTransform()
-    return Math.sqrt(Math.abs(m.a * m.d - m.b * m.c))
+  // Robuste Gerade: Median der paarweisen Steigungen (Theil-Sen), dann Median-Achsabschnitt
+  const steigungen: number[] = []
+  for (let i = 0; i < eindeutig.length; i++)
+    for (let j = i + 1; j < eindeutig.length; j++)
+      if (eindeutig[j][0] !== eindeutig[i][0]) steigungen.push((eindeutig[j][1] - eindeutig[i][1]) / (eindeutig[j][0] - eindeutig[i][0]))
+  const steigung = median(steigungen)
+  const abschnitt = median(eindeutig.map(([i, wert]) => wert - steigung * i))
+  for (const [name, werte] of kandidaten) {
+    const erwartet = abschnitt + steigung * index(name)
+    const bester = werte.reduce((a, b) => (Math.abs(b - erwartet) < Math.abs(a - erwartet) ? b : a))
+    // Achsabstaende sind nicht gleichmaessig -- 3 m Spielraum zur Geraden
+    if (Math.abs(bester - erwartet) <= Math.max(3, Math.abs(steigung) * 0.6)) ergebnis[name] = bester
   }
-  const istWandlinie = () => {
-    const g = grauwert(ctx.strokeStyle)
-    // Schraffur geschnittener Waende: duenne graue Linien zwischen den Wandkanten
-    if (schraffur) return g !== null && g >= 90 && g <= 210
-    return mitLinien && g !== null && g <= 153 && linienPt >= WANDLINIE_MIN_PT
-  }
-  const filter = new Proxy(ctx, {
-    get(ziel, name) {
-      if (name === 'stroke') {
-        return (...args: unknown[]) => {
-          if (!istWandlinie()) return
-          const vorher = ziel.strokeStyle
-          ziel.strokeStyle = '#000000'
-          ;(ziel.stroke as (...a: unknown[]) => void).apply(ziel, args)
-          ziel.strokeStyle = vorher
-        }
-      }
-      if (name === 'fill' || name === 'fillRect') {
-        return (...args: unknown[]) => {
-          if (!istWand()) return
-          const vorher = ziel.fillStyle
-          ziel.fillStyle = '#000000'
-          ;(ziel[name] as (...a: unknown[]) => void).apply(ziel, args)
-          ziel.fillStyle = vorher
-        }
-      }
-      if (['fillText', 'strokeText', 'drawImage', 'putImageData', 'strokeRect'].includes(name as string)) {
-        return () => {}
-      }
-      const wert = Reflect.get(ziel, name)
-      return typeof wert === 'function' ? wert.bind(ziel) : wert
-    },
-    set(ziel, name, wert) {
-      if (name === 'lineWidth' && typeof wert === 'number') {
-        const geraetBreite = wert * geraetMassstab()
-        if (Math.abs(geraetBreite - 1) > 1e-6) linienPt = geraetBreite / pxProPt
-      }
-      return Reflect.set(ziel, name, wert)
-    },
-  })
-  // Nur canvasContext uebergeben: mit "canvas" holt sich pdfjs 6 selbst einen
-  // (ungefilterten) Kontext.
-  await seite.render({ canvas: null, canvasContext: filter as CanvasRenderingContext2D, viewport, background: '#ffffff' }).promise
-  const daten = ctx.getImageData(0, 0, canvas.width, canvas.height).data
-  const maske = new Uint8Array(canvas.width * canvas.height)
-  for (let i = 0; i < maske.length; i++) maske[i] = daten[i * 4] < 128 ? 1 : 0
-  return { maske, breite: canvas.width, hoehe: canvas.height }
+  return ergebnis
 }
 
 /** Dilatation (max) bzw. Erosion (min) mit quadratischem Fenster, zeilen- und spaltenweise ueber laufende Summen. */
@@ -400,15 +342,40 @@ function kontur(f: ArrayLike<number> & { indexOf(w: number, ab?: number): number
  * liefe jedes Zimmer ueber sein Fenster nach draussen).
  */
 function raeumeErmitteln(
-  wand: Uint8Array,
+  wandEingang: Uint8Array,
   w: number,
   h: number,
   fensterMeter: number,
   schraffur: Uint8Array,
+  paare: Uint8Array,
+  umriss: Punkt[] | null,
 ): { raeume: { punkte: Punkt[]; pixel: number; typ: 'flur' | null }[]; rechtecke: number[] } {
+  let wand = wandEingang
   const rf = Math.round(fensterMeter / RAUM_M_PRO_PX)
   const zuGross = morph(morph(wand, w, h, rf, 'dilatieren'), w, h, rf, 'erodieren')
   const { flaeche: gebaeude } = hauptflaeche(zuGross, w, h)
+  // Grenze fuer Waende: Aussenumriss aus den gefuellten Wandschnitten (+15 cm).
+  // Verlaesslicher als der grob geschlossene Bereich, der unterstrichene Texte
+  // und Rahmen vor der Fassade mitnehmen wuerde.
+  let grenze = gebaeude
+  if (umriss && umriss.length >= 3) {
+    const leinwand = document.createElement('canvas')
+    leinwand.width = w
+    leinwand.height = h
+    const ctx = leinwand.getContext('2d', { willReadFrequently: true })!
+    ctx.fillStyle = '#000000'
+    ctx.beginPath()
+    umriss.forEach(([x, z], i) => (i ? ctx.lineTo(x / RAUM_M_PRO_PX, z / RAUM_M_PRO_PX) : ctx.moveTo(x / RAUM_M_PRO_PX, z / RAUM_M_PRO_PX)))
+    ctx.closePath()
+    ctx.fill()
+    const daten = ctx.getImageData(0, 0, w, h).data
+    const innen = new Uint8Array(w * h)
+    for (let i = 0; i < innen.length; i++) innen[i] = daten[i * 4 + 3] > 0 ? 1 : 0
+    grenze = morph(innen, w, h, 3, 'dilatieren')
+  }
+  // Duenne Waende aus Linienpaaren erst jetzt und nur im Gebaeude ergaenzen
+  wand = wand.slice()
+  for (let i = 0; i < wand.length; i++) if (paare[i] && grenze[i]) wand[i] = 1
   const r = Math.round(TUER_M / RAUM_M_PRO_PX)
   const zu = morph(morph(wand, w, h, r, 'dilatieren'), w, h, r, 'erodieren')
   for (let i = 0; i < zu.length; i++) if (!gebaeude[i]) zu[i] = 1
@@ -442,30 +409,71 @@ function raeumeErmitteln(
     if (punkte.length >= 3) ergebnis.push({ punkte, pixel: ende })
   }
 
-  // Volle Wandflaeche: gefuellte Wandschnitte, dicke Wandkanten und die Schraffur
-  // zwischen ihnen (nur nahe an Wandlinien, damit Achs-/Masslinien quer durch
-  // Raeume keine Waende erzeugen); Doppellinien duenner Waende bis 20 cm geschlossen.
-  const nahWand = morph(wand, w, h, 4, 'dilatieren')
-  const schraffurFlaeche = morph(morph(schraffur, w, h, 3, 'dilatieren'), w, h, 3, 'erodieren')
+  // Volle Wandflaeche: Wandschnitte und -kanten plus die Schraffur dazwischen.
+  // Schraffur zaehlt nur als bandfoermige Flaeche (langgestreckt >= 3:1 oder
+  // >= 2 m2) und nur zwischen Wandkanten (Wand bis 60 cm dick) -- so werden
+  // Moebelstriche neben der Wand nicht zu Wandstuecken.
+  let schraffurFlaeche = morph(morph(schraffur, w, h, 3, 'dilatieren'), w, h, 3, 'erodieren')
+  schraffurFlaeche = morph(morph(schraffurFlaeche, w, h, 1, 'erodieren'), w, h, 1, 'dilatieren')
+  const zwischenKanten = morph(morph(wand, w, h, 6, 'dilatieren'), w, h, 6, 'erodieren')
   const roh = new Uint8Array(wand.length)
-  for (let i = 0; i < roh.length; i++) roh[i] = wand[i] || (schraffurFlaeche[i] && nahWand[i]) ? 1 : 0
-  const geschlossen = morph(morph(roh, w, h, 2, 'dilatieren'), w, h, 2, 'erodieren')
-  const imGebaeude = morph(gebaeude, w, h, 2, 'dilatieren')
-  for (let i = 0; i < geschlossen.length; i++) if (!imGebaeude[i]) geschlossen[i] = 0
-  // Kleine Einzelteile (dick gezeichnete Sanitaerobjekte, Moebel, Symbole) unter 0,3 m2 verwerfen
-  const fest = new Uint8Array(geschlossen.length)
   {
-    const gesehen = new Uint8Array(geschlossen.length)
-    const minWand = 0.3 / RAUM_M_PRO_PX ** 2
-    for (let start = 0; start < geschlossen.length; start++) {
-      if (!geschlossen[start] || gesehen[start]) continue
+    const gesehen = new Uint8Array(wand.length)
+    for (let start = 0; start < roh.length; start++) {
+      if (!schraffurFlaeche[start] || gesehen[start]) continue
       let kopf = 0
       let ende = 0
+      let minX = w, maxX = 0, minY = h, maxY = 0
       gesehen[start] = 1
       warteschlange[ende++] = start
       while (kopf < ende) {
         const i = warteschlange[kopf++]
         const x = i % w
+        const y = (i - x) / w
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y)
+        for (const n of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) {
+          if (n >= 0 && n < roh.length && schraffurFlaeche[n] && !gesehen[n]) {
+            gesehen[n] = 1
+            warteschlange[ende++] = n
+          }
+        }
+      }
+      const lang = Math.max(maxX - minX, maxY - minY) + 1
+      const kurz = Math.min(maxX - minX, maxY - minY) + 1
+      if (lang / kurz < 3 && ende * RAUM_M_PRO_PX ** 2 < 2) continue
+      for (let k = 0; k < ende; k++) if (zwischenKanten[warteschlange[k]]) roh[warteschlange[k]] = 1
+    }
+  }
+  for (let i = 0; i < roh.length; i++) if (wand[i]) roh[i] = 1
+  const geschlossen = morph(morph(roh, w, h, 2, 'dilatieren'), w, h, 2, 'erodieren')
+  for (let i = 0; i < geschlossen.length; i++) if (!grenze[i]) geschlossen[i] = 0
+  // Flaechen dicker als ~1,6 m sind keine Wand (grau angelegte Bestands-/Nebenflaechen):
+  // was ein Oeffnen mit 0,8 m Radius uebersteht, wieder entfernen
+  {
+    const r = Math.round(0.8 / RAUM_M_PRO_PX)
+    const dick = morph(morph(geschlossen, w, h, r, 'erodieren'), w, h, r, 'dilatieren')
+    for (let i = 0; i < geschlossen.length; i++) if (dick[i]) geschlossen[i] = 0
+  }
+  // Kleine kompakte Einzelteile (dick gezeichnete Sanitaerobjekte, Moebel, Symbole)
+  // unter 0,3 m2 verwerfen; kurze duenne Wandstuecke (z. B. neben einer
+  // Tueroeffnung, >= 4:1 und >= 0,8 m lang) bleiben erhalten.
+  const fest = new Uint8Array(geschlossen.length)
+  {
+    const gesehen = new Uint8Array(geschlossen.length)
+    const minWand = 0.3 / RAUM_M_PRO_PX ** 2
+    const minLaenge = 0.8 / RAUM_M_PRO_PX
+    for (let start = 0; start < geschlossen.length; start++) {
+      if (!geschlossen[start] || gesehen[start]) continue
+      let kopf = 0
+      let ende = 0
+      let minX = w, maxX = 0, minY = h, maxY = 0
+      gesehen[start] = 1
+      warteschlange[ende++] = start
+      while (kopf < ende) {
+        const i = warteschlange[kopf++]
+        const x = i % w
+        const y = (i - x) / w
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y)
         for (const n of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) {
           if (n >= 0 && n < geschlossen.length && geschlossen[n] && !gesehen[n]) {
             gesehen[n] = 1
@@ -473,7 +481,10 @@ function raeumeErmitteln(
           }
         }
       }
-      if (ende >= minWand) for (let k = 0; k < ende; k++) fest[warteschlange[k]] = 1
+      const lang = Math.max(maxX - minX, maxY - minY) + 1
+      const kurz = Math.min(maxX - minX, maxY - minY) + 1
+      const wandstueck = lang >= minLaenge && lang / kurz >= 4
+      if (ende >= minWand || wandstueck) for (let k = 0; k < ende; k++) fest[warteschlange[k]] = 1
     }
   }
 
@@ -627,7 +638,8 @@ export async function seiteAnalysieren(seite: PDFPageProxy, planName: string | n
 
   const { achsenX, achsenY } = achsenErmitteln(texte, vp.width, vp.height, mProPt)
 
-  const { maske, breite, hoehe } = await wandMaske(seite, mProPt / MASKE_M_PRO_PX)
+  const grob = await vektorMasken(seite, mProPt / MASKE_M_PRO_PX, mProPt, false)
+  const { wand: maske, breite, hoehe } = grob
   let umriss: Punkt[] | null = null
   let flaecheM2 = 0
   let fensterMeter = SCHLIESSEN_M[0]
@@ -669,13 +681,12 @@ export async function seiteAnalysieren(seite: PDFPageProxy, planName: string | n
     .sort((a, b) => a.name.localeCompare(b.name, 'de', { numeric: true }))
 
   // Raeume 1:1 aus den Waenden; Raumstempel "301.20 (301)" geben Nummer und Einheit
-  const fein = await wandMaske(seite, mProPt / RAUM_M_PRO_PX, true)
+  const fein = await vektorMasken(seite, mProPt / RAUM_M_PRO_PX, mProPt, true)
   const stempel = texte
     .map((t) => ({ t, m: t.str.match(/^(\d{1,4}[.,]\d{1,3}[a-z]?)(?:\s*\(\s*([\w.-]+)\s*\))?$/i) }))
     .filter((x): x is { t: Text; m: RegExpMatchArray } => !!x.m)
     .map(({ t, m }) => ({ p: [t.x * mProPt, t.y * mProPt] as Punkt, nr: m[1], einheit: m[2] ?? null }))
-  const schraffur = await wandMaske(seite, mProPt / RAUM_M_PRO_PX, false, true)
-  const raumErgebnis = raeumeErmitteln(fein.maske, fein.breite, fein.hoehe, fensterMeter, schraffur.maske)
+  const raumErgebnis = raeumeErmitteln(fein.wand, fein.breite, fein.hoehe, fensterMeter, fein.schraffur, fein.paare, umriss)
   const waende: WandRaster = { aufloesung: RAUM_M_PRO_PX, x0: 0, z0: 0, rechtecke: raumErgebnis.rechtecke }
   const raeume: Raum[] = raumErgebnis.raeume.map(({ punkte, pixel, typ }) => {
     const drin = stempel.filter((s) => punktInPolygon(s.p, punkte))

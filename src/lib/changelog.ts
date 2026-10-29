@@ -11,6 +11,15 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.10.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'Deutlich genauere Planauswertung: Die Wände werden jetzt direkt aus den Zeichnungsdaten des PDFs gelesen – grau gefüllte Wandschnitte, Wandkanten, rote Trockenbauwände, Wandschraffuren und dünne Trennwände aus parallelen Linien. Möbel, Beschriftungen, gestrichelte Achsen und Hinweislinien werden nicht mehr als Wand erkannt.',
+      'Die Etagen werden über das Achsraster exakt übereinandergelegt; jede Etage behält ihren eigenen Umriss.',
+      'Für bereits aufgebaute Gebäude einmal „Aus Plänen aufbauen“ ausführen.',
+    ],
+  },
+  {
     version: '2.9.0',
     datum: '2026-10-29',
     aenderungen: [

@@ -114,4 +114,54 @@ echo "== Let's Encrypt"
 certbot --nginx -d $SSLIP --non-interactive --agree-tos --register-unsafely-without-email --redirect
 systemctl list-timers certbot.timer --no-pager | head -3
 
+echo "== PostgreSQL 17 (nur localhost)"
+apt-get -y -q install postgresql-common
+/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+apt-get -y -q install postgresql-17
+sudo -u postgres psql -tAc "select 1 from pg_database where datname = 'workflow'" | grep -q 1 \
+  || sudo -u postgres psql -qc "create database workflow"
+# Schema: server/db/migrationen/*.sql (spielt das Backend beim Start ein).
+
+echo "== Datenverzeichnisse"
+mkdir -p /var/lib/workflow/dateien /var/backups/workflow
+chmod 700 /var/lib/workflow /var/backups/workflow
+
+echo "== Naechtliche Sicherung (DB + Dateien, 14 Tage)"
+cat > /usr/local/sbin/workflow-backup <<'EOF'
+#!/bin/bash
+# Sichert die WorkFlow-Datenbank und alle hochgeladenen Dateien nach
+# /var/backups/workflow. Liegt auf demselben Server -- schuetzt vor
+# Bedienfehlern/Datenverlust in der App, nicht vor Verlust des Servers.
+set -euo pipefail
+ziel=/var/backups/workflow
+stempel=$(date +%Y-%m-%d_%H%M)
+sudo -u postgres pg_dump -Fc -d workflow > "$ziel/db_$stempel.dump"
+tar -czf "$ziel/dateien_$stempel.tar.gz" -C /var/lib/workflow dateien
+find "$ziel" -type f -mtime +14 -delete
+EOF
+chmod 700 /usr/local/sbin/workflow-backup
+
+cat > /etc/systemd/system/workflow-backup.service <<'EOF'
+[Unit]
+Description=WorkFlow Sicherung (Datenbank + Dateien)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/workflow-backup
+EOF
+
+cat > /etc/systemd/system/workflow-backup.timer <<'EOF'
+[Unit]
+Description=WorkFlow Sicherung naechtlich
+
+[Timer]
+OnCalendar=*-*-* 03:15
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+systemctl daemon-reload
+systemctl enable --now workflow-backup.timer
+
 echo "== Fertig"

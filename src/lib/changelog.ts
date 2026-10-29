@@ -11,6 +11,11 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.11.1',
+    datum: '2026-10-30',
+    aenderungen: ['Dashboard: Der Serverzustand zeigt nur noch Prozessor, Arbeitsspeicher und Festplatte; die Verlaufskurven liegen jetzt ebenfalls unter „Details“.'],
+  },
+  {
     version: '2.11.0',
     datum: '2026-10-29',
     aenderungen: [

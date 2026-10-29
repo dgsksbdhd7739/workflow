@@ -105,9 +105,9 @@ function hinweiseErmitteln(z: Zustand) {
 }
 
 /**
- * Serverzustand direkt im Dashboard des Plattform-Admins: Hinweise,
- * Auslastung und Verlaufskurven sofort sichtbar; Dienste, Sicherung,
- * Speicher, Nutzung, Sicherheit, Laufzeit und Messwerttabelle hinter "Details".
+ * Serverzustand direkt im Dashboard des Plattform-Admins: Hinweise und
+ * Auslastung (CPU, RAM, Festplatte) sofort sichtbar; Verlaufskurven, Dienste,
+ * Sicherung, Speicher, Nutzung, Sicherheit, Laufzeit und Messwerttabelle hinter "Details".
  */
 export function ServerzustandPanel() {
   const [detailsOffen, setDetailsOffen] = useState(false)
@@ -242,6 +242,18 @@ export function ServerzustandPanel() {
             />
           </div>
 
+          <button
+            type="button"
+            onClick={() => setDetailsOffen((v) => !v)}
+            aria-expanded={detailsOffen}
+            className="btn-secondary w-full justify-center text-sm"
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${detailsOffen ? 'rotate-180' : ''}`} />
+            {detailsOffen ? 'Details ausblenden' : 'Details: Verlauf, Dienste, Sicherung, Speicher, Nutzung, Laufzeit'}
+          </button>
+
+          {detailsOffen && (
+          <>
           <div className="grid gap-4 sm:grid-cols-2">
             <VerlaufDiagramm titel="CPU-Auslastung" serien={einzel} punkte={verlauf.cpu} rasterMs={verlauf.rasterMs} vonMs={verlauf.von} bisMs={verlauf.bis} yMax={100} formatY={prozentText} />
             <VerlaufDiagramm titel="Arbeitsspeicher" serien={einzel} punkte={verlauf.ram} rasterMs={verlauf.rasterMs} vonMs={verlauf.von} bisMs={verlauf.bis} yMax={100} formatY={prozentText} />
@@ -260,18 +272,6 @@ export function ServerzustandPanel() {
             <VerlaufDiagramm titel="Festplatte" serien={einzel} punkte={verlauf.platte} rasterMs={verlauf.rasterMs} vonMs={verlauf.von} bisMs={verlauf.bis} yMax={100} formatY={prozentText} />
           </div>
 
-          <button
-            type="button"
-            onClick={() => setDetailsOffen((v) => !v)}
-            aria-expanded={detailsOffen}
-            className="btn-secondary w-full justify-center text-sm"
-          >
-            <ChevronDown className={`h-4 w-4 transition-transform ${detailsOffen ? 'rotate-180' : ''}`} />
-            {detailsOffen ? 'Details ausblenden' : 'Details: Dienste, Sicherung, Speicher, Nutzung, Laufzeit'}
-          </button>
-
-          {detailsOffen && (
-          <>
           <div className="grid gap-4 sm:grid-cols-2">
             <Kachel titel="Dienste">
               {zustand.dienste ? (

@@ -15,6 +15,18 @@ import path from 'node:path'
 
 const projectRoot = path.resolve(import.meta.dirname, '..')
 
+// Der angezeigte APK-Name (WorkFlow-v{versionName}.apk) steht fest in den
+// Landing-Seiten -- abbrechen, wenn er nicht zur gebauten App-Version passt.
+const versionName = readFileSync(path.join(projectRoot, 'android/app/build.gradle'), 'utf-8').match(/versionName "([^"]+)"/)?.[1]
+for (const seite of ['landing/index.html', 'landing/download.html']) {
+  const namen = [...readFileSync(path.join(projectRoot, seite), 'utf-8').matchAll(/WorkFlow-v([\d.]+)\.apk/g)].map((m) => m[1])
+  const falsch = namen.filter((v) => v !== versionName)
+  if (falsch.length) {
+    console.error(`${seite}: APK-Name v${falsch[0]} passt nicht zu versionName ${versionName} (android/app/build.gradle).`)
+    process.exit(1)
+  }
+}
+
 const envPath = path.join(projectRoot, '.env')
 const envVars = Object.fromEntries(
   readFileSync(envPath, 'utf-8')

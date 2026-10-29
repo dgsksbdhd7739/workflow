@@ -104,21 +104,14 @@ function RaumBoden({ raum, farbe, aktiv, ohnePlan = false, onClick }: { raum: Ra
 
 /** Waende 1:1 aus dem Plan (Umriss minus Raeume), halbhoch fuer den Blick hinein. */
 function Waende({ g, hoehe }: { g: Geschoss; hoehe: number }) {
-  const raster = useRasterWaende(g.waende, g.fenster, hoehe)
+  const raster = useRasterWaende(g.waende, hoehe)
   // Aeltere Aufbauten ohne Wandraster: Waende aus den Raumkanten
-  const geometrie = useWandGeometrie(raster ? null : g.grundriss, raster ? null : g.raeume, hoehe, g.tueren)
-  if (raster?.wand) {
+  const geometrie = useWandGeometrie(raster ? null : g.grundriss, raster ? null : g.raeume, hoehe)
+  if (raster) {
     return (
-      <>
-        <mesh geometry={raster.wand} position={[0, DECKE, 0]} raycast={() => null}>
-          <meshStandardMaterial color="#cbd5e1" side={DoubleSide} />
-        </mesh>
-        {raster.glas && (
-          <mesh geometry={raster.glas} position={[0, DECKE, 0]} raycast={() => null}>
-            <meshStandardMaterial color="#7dd3fc" transparent opacity={0.45} side={DoubleSide} depthWrite={false} />
-          </mesh>
-        )}
-      </>
+      <mesh geometry={raster} position={[0, DECKE, 0]} raycast={() => null}>
+        <meshStandardMaterial color="#cbd5e1" side={DoubleSide} />
+      </mesh>
     )
   }
   if (!geometrie) return null
@@ -179,7 +172,7 @@ export default function Gebaeude3D({
   }, [geschosse])
 
   const gesamtHoehe = stapel.reduce((s, x) => s + x.h, 0) || 3
-  // Waende geschosshoch (Fenster mit Bruestung/Sturz sichtbar) oder halbhoch
+  // Waende geschosshoch oder halbhoch (freier Blick in die Raeume)
   const wandHoehe = (h: number) => (waendeHalb ? Math.min(1.2, h - DECKE) : h - DECKE - 0.02)
   const ausgewaehlt = stapel.find((s) => s.g.id === geschossId) ?? null
   const einheitenDesGeschosses = useMemo(

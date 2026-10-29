@@ -127,7 +127,8 @@ export function PlanAufbau({ projektId, gebaeude, geschosse, einheiten, onFertig
             if (hochgeladen.error) throw new Error(hochgeladen.error)
             bildPfad = hochgeladen.path
             const r = (v: number) => Math.round(v * 100) / 100
-            bildLage = { x: r(lage.x - etage.blattVersatz.x), z: r(lage.z - etage.blattVersatz.z), breite: r(lage.breite), tiefe: r(lage.tiefe) }
+            // blatt_x/blatt_z: dieselbe Ecke in Blatt-Metern -- zum scharfen Nachzeichnen aus der PDF beim Heranzoomen
+            bildLage = { x: r(lage.x - etage.blattVersatz.x), z: r(lage.z - etage.blattVersatz.z), breite: r(lage.breite), tiefe: r(lage.tiefe), blatt_x: r(lage.x), blatt_z: r(lage.z) }
           }
         }
 

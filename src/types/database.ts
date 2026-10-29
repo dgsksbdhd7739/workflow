@@ -174,7 +174,8 @@ export interface Geschoss {
   plan_seite: number | null
   grundriss: [number, number][] | null
   plan_bild_pfad: string | null
-  plan_bild_lage: { x: number; z: number; breite: number; tiefe: number } | null
+  // blatt_x/blatt_z: Lage derselben Ecke auf dem PDF-Blatt (Meter), seit 2.7.0
+  plan_bild_lage: { x: number; z: number; breite: number; tiefe: number; blatt_x?: number; blatt_z?: number } | null
   massstab: number | null
   // Raeume 1:1 aus dem Plan; einheit = Name der Einheit auf diesem Geschoss
   raeume: { punkte: [number, number][]; nr: string | null; einheit: string | null; flaeche: number }[] | null

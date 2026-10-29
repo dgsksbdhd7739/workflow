@@ -11,6 +11,7 @@ import { Edges, OrbitControls } from '@react-three/drei'
 import type { Einheit, Gebaeude, Geschoss } from '../types/database'
 import { type GebaeudeAuswertung, STATUS_FARBE, STATUS_TEXT, einheitenAufteilen } from '../lib/gebaeude3d'
 import { Schild3D } from './Schild3D'
+import { PlanSchaerfe3D } from './PlanSchaerfe3D'
 import { useFlaechenGeometrie, useGrundrissTextur, useTuerGeometrie, useUmrissGeometrie, useWandGeometrie } from './umriss3d'
 
 interface Props {
@@ -106,16 +107,22 @@ function Waende({ g, hoehe }: { g: Geschoss; hoehe: number }) {
 }
 
 /** Planbild als Boden des aufgeschnittenen Geschosses. */
-function Planboden({ g }: { g: Geschoss }) {
+function Planboden({ g, y }: { g: Geschoss; y: number }) {
   const anisotropie = useThree((s) => s.gl.capabilities.getMaxAnisotropy())
+  const maxTextur = useThree((s) => s.gl.capabilities.maxTextureSize)
   const textur = useGrundrissTextur(g.plan_bild_pfad, anisotropie)
   const lage = g.plan_bild_lage
   if (!textur || !lage) return null
+  // Tatsaechliche Aufloesung des Bodenbilds auf diesem Geraet (grosse Bilder verkleinert three.js aufs Texturlimit)
+  const bildBreite = Math.min((textur.image as { width?: number } | null)?.width ?? 0, maxTextur)
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[lage.x + lage.breite / 2, DECKE + 0.02, lage.z + lage.tiefe / 2]} raycast={() => null}>
-      <planeGeometry args={[lage.breite, lage.tiefe]} />
-      <meshBasicMaterial map={textur} toneMapped={false} transparent opacity={0.95} />
-    </mesh>
+    <>
+      <PlanSchaerfe3D g={g} bodenY={y + DECKE + 0.03} hoeheLokal={DECKE + 0.03} basisPxProM={bildBreite / lage.breite} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[lage.x + lage.breite / 2, DECKE + 0.02, lage.z + lage.tiefe / 2]} raycast={() => null}>
+        <planeGeometry args={[lage.breite, lage.tiefe]} />
+        <meshBasicMaterial map={textur} toneMapped={false} transparent opacity={0.95} />
+      </mesh>
+    </>
   )
 }
 
@@ -194,7 +201,7 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
                 <meshStandardMaterial color="#cbd5e1" />
                 <Edges color="#64748b" />
               </Koerper>
-              <Planboden g={g} />
+              <Planboden g={g} y={y} />
               {g.raeume?.length ? (
                 <>
                   <Waende g={g} hoehe={Math.min(1.4, (h - DECKE) * 0.45)} />

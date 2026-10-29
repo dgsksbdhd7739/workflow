@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.7.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'Gebäudeansicht: Der Plan bleibt beim Heranzoomen scharf – der sichtbare Ausschnitt wird direkt aus der PDF in Bildschirmauflösung nachgezeichnet. Für bereits aufgebaute Gebäude einmal „Aus Plänen aufbauen“ ausführen.',
+      'Android: Die Zurück-Taste bzw. Zurück-Wischgeste geht in der App zurück, statt sie zu schließen. Dafür ist die neue App-Version 2.7.0 nötig (Download-Seite).',
+    ],
+  },
+  {
     version: '2.6.0',
     datum: '2026-10-29',
     aenderungen: [

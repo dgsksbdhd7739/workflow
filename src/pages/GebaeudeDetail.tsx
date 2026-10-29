@@ -49,14 +49,14 @@ export function GebaeudeDetail() {
 
   const kannBearbeiten = role === 'admin' || role === 'planer'
 
-  // Anzeige: Planbild fuers ganze Gebaeude bzw. je Etage aus-/einblenden, Wandhoehe.
+  // Anzeige: Planbild fuers ganze Gebaeude bzw. je Etage aus-/einblenden.
   // Nur eine Ansichtseinstellung je Geraet (localStorage), keine Projektdaten.
   const ansichtSchluessel = `workflow.gebaeudeansicht.${gebaeudeId}`
-  const [ansicht, setAnsicht] = useState<{ planAus: boolean; etagenAus: string[]; waendeHalb: boolean }>(() => {
+  const [ansicht, setAnsicht] = useState<{ planAus: boolean; etagenAus: string[] }>(() => {
     try {
-      return { planAus: false, etagenAus: [], waendeHalb: false, ...JSON.parse(localStorage.getItem(ansichtSchluessel) ?? '{}') }
+      return { planAus: false, etagenAus: [], ...JSON.parse(localStorage.getItem(ansichtSchluessel) ?? '{}') }
     } catch {
-      return { planAus: false, etagenAus: [], waendeHalb: false }
+      return { planAus: false, etagenAus: [] }
     }
   })
   const ansichtAendern = (aenderung: Partial<typeof ansicht>) => {
@@ -266,7 +266,6 @@ export function GebaeudeDetail() {
               onGeschoss={waehleGeschoss}
               onEinheit={setEinheitId}
               planSichtbar={planSichtbar}
-              waendeHalb={ansicht.waendeHalb}
             />
           </Suspense>
           <div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap gap-x-3 gap-y-1 rounded-lg bg-surface/90 px-2.5 py-1.5 text-[11px] text-text-muted shadow-sm">
@@ -274,7 +273,7 @@ export function GebaeudeDetail() {
               <span key={s} className="flex items-center gap-1"><Statuspunkt status={s} /> {STATUS_TEXT[s]}</span>
             ))}
           </div>
-          {geschosse.some((g) => g.plan_bild_pfad || g.waende) && (
+          {geschosse.some((g) => g.plan_bild_pfad) && (
             <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
               <button
                 type="button"
@@ -284,13 +283,6 @@ export function GebaeudeDetail() {
               >
                 {ansicht.planAus ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 {ansicht.planAus ? 'Plan einblenden' : 'Plan ausblenden'}
-              </button>
-              <button
-                type="button"
-                onClick={() => ansichtAendern({ waendeHalb: !ansicht.waendeHalb })}
-                className="btn-secondary px-2 py-1 text-xs"
-              >
-                Wände: {ansicht.waendeHalb ? 'halbhoch' : 'geschosshoch'}
               </button>
             </div>
           )}

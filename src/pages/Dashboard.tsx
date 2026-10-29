@@ -4,6 +4,7 @@ import { AlertTriangle, HelpCircle, Building2 } from 'lucide-react'
 import { backend } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { ProjektForm } from '../components/ProjektForm'
+import { ServerzustandPanel } from '../components/ServerzustandPanel'
 import { ProjektStatusKarte, type ProjektKartenStats } from '../components/ProjektStatusKarte'
 import { formatDatum } from '../lib/datum'
 import { PAKETE } from '../lib/pakete'
@@ -169,6 +170,8 @@ export function Dashboard() {
           </Link>
         )}
       </div>
+
+      {istPlattformAdmin && <ServerzustandPanel />}
 
       {kannUebersichtSehen && !loading && offeneTickets.length > 0 && (
         <div className="mb-6">

@@ -11,6 +11,16 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.11.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'Gebäude aus Plänen: Es wird nur noch der Grundumriss jeder Etage übernommen. Innenwände und Raumflächen werden nicht mehr erkannt oder gezeichnet; der Plan selbst liegt als Bild auf der Etage (ein-/ausblendbar, beim Zoomen scharf).',
+      'Zimmer- und Wohnungsnummern aus dem Plan erscheinen als anklickbare Schilder an ihrer Stelle.',
+      'Für bereits aufgebaute Gebäude einmal „Aus Plänen aufbauen“ ausführen.',
+      'Serverzustand direkt im Dashboard des Plattform-Admins: Auslastung und Verlauf sofort sichtbar, Dienste, Sicherung, Speicher und Nutzung hinter „Details“.',
+    ],
+  },
+  {
     version: '2.10.0',
     datum: '2026-10-29',
     aenderungen: [

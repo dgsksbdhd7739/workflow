@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { PaketRoute } from './components/PaketSperre'
@@ -12,7 +12,6 @@ import { Login } from './pages/Login'
 import { Datenschutz } from './pages/Datenschutz'
 import { Impressum } from './pages/Impressum'
 import { PlattformAdmin } from './pages/PlattformAdmin'
-import { Serverzustand } from './pages/Serverzustand'
 import { Dashboard } from './pages/Dashboard'
 import { ProjektDashboard } from './pages/ProjektDashboard'
 import { GebaeudeDetail } from './pages/GebaeudeDetail'
@@ -89,7 +88,8 @@ function App() {
               <Route path="/tagesbericht-vorlagen" element={<PaketRoute funktion="vorlagen"><TagesberichtVorlagen /></PaketRoute>} />
               <Route path="/nutzer" element={<Nutzerverwaltung />} />
               <Route path="/plattform-admin" element={<PlattformAdmin />} />
-              <Route path="/plattform-admin/server" element={<Serverzustand />} />
+              {/* Serverzustand steht seit 2.11.0 im Dashboard; alter Link fuehrt dorthin */}
+              <Route path="/plattform-admin/server" element={<Navigate to="/" replace />} />
               <Route path="/team-chat" element={<Gruppenchat />} />
               <Route path="/projekt-chat" element={<PaketRoute funktion="projekt_chat"><ProjektChat /></PaketRoute>} />
               <Route path="/material-stamm" element={<PaketRoute funktion="material"><MaterialStamm /></PaketRoute>} />

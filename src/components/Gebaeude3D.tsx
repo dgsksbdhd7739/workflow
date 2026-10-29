@@ -2,18 +2,18 @@
 // ein ausgewaehltes Geschoss wird "aufgeschnitten" (darueberliegende Etagen
 // nur noch als Umriss) und zeigt seine Einheiten als anklickbare Bloecke.
 // Geschosse mit Grundriss aus Plaenen (geschosse.grundriss) bekommen ihre
-// echte Form, das gewaehlte zusaetzlich das Planbild als Boden.
+// echte Form (nur der Aussenumriss, keine Innenwaende), das gewaehlte
+// zusaetzlich das Planbild als Boden.
 // Wird per React.lazy geladen (three.js ist gross) -- daher Default-Export.
 
 import { useMemo, useState, type ReactNode } from 'react'
 import { Canvas, type ThreeEvent, useThree } from '@react-three/fiber'
-import { DoubleSide } from 'three'
 import { Edges, OrbitControls } from '@react-three/drei'
 import type { Einheit, Gebaeude, Geschoss } from '../types/database'
 import { type GebaeudeAuswertung, STATUS_FARBE, STATUS_TEXT, einheitenAufteilen } from '../lib/gebaeude3d'
 import { Schild3D } from './Schild3D'
 import { PlanSchaerfe3D } from './PlanSchaerfe3D'
-import { useFlaechenGeometrie, useGrundrissTextur, useRasterWaende, useUmrissGeometrie, useWandGeometrie } from './umriss3d'
+import { useGrundrissTextur, useUmrissGeometrie } from './umriss3d'
 
 interface Props {
   gebaeude: Gebaeude
@@ -26,22 +26,10 @@ interface Props {
   onEinheit: (id: string | null) => void
   // Planbild je Geschoss ein-/ausblenden
   planSichtbar?: (geschossId: string) => boolean
-  // Waende halbhoch statt geschosshoch (freier Blick in die Raeume)
-  waendeHalb?: boolean
 }
 
 const NEUTRAL = '#e5e7eb'
 const DECKE = 0.3
-// Flure/Gaenge hell-gelb, damit Wege durch das Geschoss sofort erkennbar sind
-const FLUR_FARBE = '#facc15'
-
-/** Mittelpunkt eines Raums (Mittel der Eckpunkte) auf Hoehe y. */
-function schwerpunkt(punkte: [number, number][], y: number): [number, number, number] {
-  const x = punkte.reduce((s, p) => s + p[0], 0) / punkte.length
-  const z = punkte.reduce((s, p) => s + p[1], 0) / punkte.length
-  return [x, y, z]
-}
-
 interface KoerperProps {
   umriss: [number, number][] | null
   breite: number
@@ -69,55 +57,6 @@ function Koerper({ umriss, breite, tiefe, hoehe, children, anklickbar = true, ..
     <mesh position={[0, hoehe / 2, 0]} raycast={raycast} {...ereignisse}>
       <boxGeometry args={[breite, hoehe, tiefe]} />
       {children}
-    </mesh>
-  )
-}
-
-type RaumDaten = NonNullable<Geschoss['raeume']>[number]
-
-/** Bodenflaeche eines Raums; mit Einheit in deren Statusfarbe und anklickbar. */
-function RaumBoden({ raum, farbe, aktiv, ohnePlan = false, onClick }: { raum: RaumDaten; farbe: string | null; aktiv: boolean; ohnePlan?: boolean; onClick?: () => void }) {
-  const geometrie = useFlaechenGeometrie(raum.punkte)
-  return (
-    <mesh
-      geometry={geometrie}
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, DECKE + 0.05, 0]}
-      raycast={onClick ? undefined : () => null}
-      onClick={(ev) => {
-        if (!onClick) return
-        ev.stopPropagation()
-        onClick()
-      }}
-    >
-      <meshBasicMaterial
-        color={aktiv ? '#4f46e5' : (farbe ?? '#ffffff')}
-        transparent
-        // Ohne Planbild deckende helle Boeden, sonst durchscheinend ueber dem Plan
-        opacity={ohnePlan ? 0.9 : farbe || aktiv ? 0.35 : 0.08}
-        depthWrite={false}
-        toneMapped={false}
-      />
-    </mesh>
-  )
-}
-
-/** Waende 1:1 aus dem Plan (Umriss minus Raeume), halbhoch fuer den Blick hinein. */
-function Waende({ g, hoehe }: { g: Geschoss; hoehe: number }) {
-  const raster = useRasterWaende(g.waende, hoehe)
-  // Aeltere Aufbauten ohne Wandraster: Waende aus den Raumkanten
-  const geometrie = useWandGeometrie(raster ? null : g.grundriss, raster ? null : g.raeume, hoehe)
-  if (raster) {
-    return (
-      <mesh geometry={raster} position={[0, DECKE, 0]} raycast={() => null}>
-        <meshStandardMaterial color="#cbd5e1" side={DoubleSide} />
-      </mesh>
-    )
-  }
-  if (!geometrie) return null
-  return (
-    <mesh geometry={geometrie} position={[0, DECKE, 0]} raycast={() => null}>
-      <meshStandardMaterial color="#cbd5e1" />
     </mesh>
   )
 }
@@ -152,7 +91,6 @@ export default function Gebaeude3D({
   onGeschoss,
   onEinheit,
   planSichtbar = () => true,
-  waendeHalb = false,
 }: Props) {
   const [hover, setHover] = useState<string | null>(null)
   const breite = Number(gebaeude.breite_m) || 24
@@ -172,8 +110,6 @@ export default function Gebaeude3D({
   }, [geschosse])
 
   const gesamtHoehe = stapel.reduce((s, x) => s + x.h, 0) || 3
-  // Waende geschosshoch oder halbhoch (freier Blick in die Raeume)
-  const wandHoehe = (h: number) => (waendeHalb ? Math.min(1.2, h - DECKE) : h - DECKE - 0.02)
   const ausgewaehlt = stapel.find((s) => s.g.id === geschossId) ?? null
   const einheitenDesGeschosses = useMemo(
     () => (ausgewaehlt ? einheiten.filter((e) => e.geschoss_id === ausgewaehlt.g.id) : []),
@@ -231,30 +167,6 @@ export default function Gebaeude3D({
                 <Edges color="#64748b" />
               </Koerper>
               {planSichtbar(g.id) && <Planboden g={g} y={y} />}
-              {g.raeume?.length ? (
-                <>
-                  <Waende g={g} hoehe={wandHoehe(h)} />
-                  {g.raeume.map((raum, i) => {
-                    const e = raum.einheit ? einheitenDesGeschosses.find((x) => x.name === raum.einheit) : undefined
-                    const st = e ? (auswertung.einheit.get(e.id)?.status ?? 'leer') : null
-                    const flur = raum.typ === 'flur' && !e
-                    return (
-                      <group key={i}>
-                        <RaumBoden
-                          raum={raum}
-                          farbe={flur ? FLUR_FARBE : st && st !== 'leer' ? STATUS_FARBE[st] : e ? '#cbd5e1' : null}
-                          aktiv={!!e && einheitId === e.id}
-                          ohnePlan={!planSichtbar(g.id)}
-                          onClick={e ? () => onEinheit(einheitId === e.id ? null : e.id) : undefined}
-                        />
-                        {flur && raum.flaeche >= 6 && (
-                          <Schild3D position={[...schwerpunkt(raum.punkte, DECKE + 0.4)]} titel="Flur" hoehe={1} bildschirm />
-                        )}
-                      </group>
-                    )
-                  })}
-                </>
-              ) : null}
               {einheitenDesGeschosses.map((e) => {
                 // Lage aus dem Plan (Nummer im Grundriss), sonst automatisch verteilt
                 const r =
@@ -265,11 +177,12 @@ export default function Gebaeude3D({
                 const st = auswertung.einheit.get(e.id)?.status ?? 'leer'
                 const aktiv = einheitId === e.id
                 const hoehe = e.lage_x != null ? (h - DECKE) * 0.35 : (h - DECKE) * 0.55
-                if (g.raeume?.length) {
+                // Einheiten mit Lage aus dem Plan: nur das Schild an ihrer Nummer, keine Bloecke im Grundriss
+                if (e.lage_x != null && e.lage_z != null) {
                   return (
                     <Schild3D
                       key={e.id}
-                      position={[r.x, DECKE + wandHoehe(h) + 0.4, r.z]}
+                      position={[r.x, DECKE + 0.8, r.z]}
                       titel={e.name}
                       untertitel={STATUS_TEXT[st]}
                       aktiv={aktiv}

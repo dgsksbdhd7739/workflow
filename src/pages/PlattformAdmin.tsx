@@ -1,6 +1,4 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { Activity } from 'lucide-react'
 import { backend, funktionsFehler } from '../lib/backend'
 import { useAuth } from '../contexts/AuthContext'
 import { UnternehmenForm } from '../components/UnternehmenForm'
@@ -122,14 +120,9 @@ export function PlattformAdmin() {
             Nutzer, Chats, Dokumente).
           </p>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-2">
-          <Link to="/plattform-admin/server" className="btn-secondary inline-flex items-center gap-1.5">
-            <Activity className="h-4 w-4" /> Serverzustand
-          </Link>
-          <button onClick={() => setFormOffen((v) => !v)} className="btn-primary">
-            {formOffen ? 'Abbrechen' : '+ Firma anlegen'}
-          </button>
-        </div>
+        <button onClick={() => setFormOffen((v) => !v)} className="btn-primary flex-shrink-0">
+          {formOffen ? 'Abbrechen' : '+ Firma anlegen'}
+        </button>
       </div>
 
       {fehler && <p className="banner-error mb-4">Fehler: {fehler}</p>}

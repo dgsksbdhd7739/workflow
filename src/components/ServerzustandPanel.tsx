@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, CheckCircle2, RefreshCw, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronDown, RefreshCw, Server, XCircle } from 'lucide-react'
 import { backend } from '../lib/backend'
-import { useAuth } from '../contexts/AuthContext'
-import { VerlaufDiagramm, type Serie } from '../components/VerlaufDiagramm'
+import { VerlaufDiagramm, type Serie } from './VerlaufDiagramm'
 import {
   AMPEL_TEXT,
   type Ampel,
@@ -106,8 +104,13 @@ function hinweiseErmitteln(z: Zustand) {
   return liste
 }
 
-export function Serverzustand() {
-  const { istPlattformAdmin } = useAuth()
+/**
+ * Serverzustand direkt im Dashboard des Plattform-Admins: Hinweise,
+ * Auslastung und Verlaufskurven sofort sichtbar; Dienste, Sicherung,
+ * Speicher, Nutzung, Sicherheit, Laufzeit und Messwerttabelle hinter "Details".
+ */
+export function ServerzustandPanel() {
+  const [detailsOffen, setDetailsOffen] = useState(false)
   const [zeitraum, setZeitraum] = useState<Zeitraum>('24h')
   const [zustand, setZustand] = useState<Zustand | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -126,13 +129,12 @@ export function Serverzustand() {
   }, [zeitraum])
 
   useEffect(() => {
-    if (!istPlattformAdmin) return
     laden()
     const zeitgeber = setInterval(() => {
       if (document.visibilityState === 'visible') laden()
     }, 60_000)
     return () => clearInterval(zeitgeber)
-  }, [istPlattformAdmin, laden])
+  }, [laden])
 
   const verlauf = useMemo(() => {
     if (!zustand) return null
@@ -154,28 +156,19 @@ export function Serverzustand() {
     }
   }, [zustand, zeitraum])
 
-  if (!istPlattformAdmin) {
-    return (
-      <div className="page">
-        <p className="text-sm text-text-muted">Kein Zugriff — dieser Bereich ist dem WorkFlow-Betreiber vorbehalten.</p>
-      </div>
-    )
-  }
-
   const s = zustand?.server
   const hinweise = zustand ? hinweiseErmitteln(zustand) : []
   const einzel: Serie[] = [{ name: 'Wert', ...SERIE_A, flaeche: FLAECHE }]
 
   return (
-    <div className="page">
-      <Link to="/plattform-admin" className="mb-2 inline-flex items-center gap-1 text-xs text-text-muted hover:text-text">
-        <ArrowLeft className="h-3.5 w-3.5" /> Plattform-Verwaltung
-      </Link>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <section className="mb-6">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-text">Serverzustand</h1>
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-text">
+            <Server className="h-4 w-4 text-brand" strokeWidth={2.25} /> Serverzustand
+          </h2>
           <p className="text-xs text-text-muted">
-            STRATO-Server mit Backend, Datenbank und Dateien. {zustand && <>Stand {zeitpunkt(zustand.erfasst_am)}, aktualisiert sich jede Minute.</>}
+            {zustand ? <>Stand {zeitpunkt(zustand.erfasst_am)}, aktualisiert sich jede Minute.</> : 'STRATO-Server mit Backend, Datenbank und Dateien.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -249,7 +242,7 @@ export function Serverzustand() {
             />
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <VerlaufDiagramm titel="CPU-Auslastung" serien={einzel} punkte={verlauf.cpu} rasterMs={verlauf.rasterMs} vonMs={verlauf.von} bisMs={verlauf.bis} yMax={100} formatY={prozentText} />
             <VerlaufDiagramm titel="Arbeitsspeicher" serien={einzel} punkte={verlauf.ram} rasterMs={verlauf.rasterMs} vonMs={verlauf.von} bisMs={verlauf.bis} yMax={100} formatY={prozentText} />
             <VerlaufDiagramm
@@ -267,7 +260,19 @@ export function Serverzustand() {
             <VerlaufDiagramm titel="Festplatte" serien={einzel} punkte={verlauf.platte} rasterMs={verlauf.rasterMs} vonMs={verlauf.von} bisMs={verlauf.bis} yMax={100} formatY={prozentText} />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <button
+            type="button"
+            onClick={() => setDetailsOffen((v) => !v)}
+            aria-expanded={detailsOffen}
+            className="btn-secondary w-full justify-center text-sm"
+          >
+            <ChevronDown className={`h-4 w-4 transition-transform ${detailsOffen ? 'rotate-180' : ''}`} />
+            {detailsOffen ? 'Details ausblenden' : 'Details: Dienste, Sicherung, Speicher, Nutzung, Laufzeit'}
+          </button>
+
+          {detailsOffen && (
+          <>
+          <div className="grid gap-4 sm:grid-cols-2">
             <Kachel titel="Dienste">
               {zustand.dienste ? (
                 zustand.dienste.map((d) => (
@@ -348,8 +353,10 @@ export function Serverzustand() {
               </table>
             </div>
           </details>
+          </>
+          )}
         </div>
       )}
-    </div>
+    </section>
   )
 }

@@ -56,6 +56,8 @@ export interface PlattformUnternehmenUebersicht {
   max_nutzer: number | null
   nutzer_anzahl: number
   erstellt_am: string
+  // Gesetzt = Firma stillgelegt (kein Login, Daten bleiben)
+  stillgelegt_am: string | null
 }
 
 export interface ChatNachricht {

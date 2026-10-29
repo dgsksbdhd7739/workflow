@@ -76,6 +76,7 @@ export async function sitzungErneuern(
         and s.beendet_am is null
         and s.laeuft_ab_am > now()
         and (u.banned_until is null or u.banned_until <= now())
+        and not public.firma_stillgelegt(u.id)
       for update of s`,
     [hash, KULANZ_SEKUNDEN],
   )
@@ -119,7 +120,8 @@ export async function sitzungIstAktiv(v: Verbindung, sitzungId: string, userId: 
        join auth.users u on u.id = s.user_id
       where s.id = $1 and s.user_id = $2
         and s.beendet_am is null and s.laeuft_ab_am > now()
-        and (u.banned_until is null or u.banned_until <= now())`,
+        and (u.banned_until is null or u.banned_until <= now())
+        and not public.firma_stillgelegt(u.id)`,
     [sitzungId, userId],
   )
   return rowCount === 1

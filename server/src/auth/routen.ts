@@ -63,6 +63,8 @@ async function codeVerbrauchen(v: Verbindung, faktor: Faktor, code: unknown) {
   ])
 }
 
+const FIRMA_STILLGELEGT = 'Der Zugang deiner Firma ist stillgelegt. Bitte wende dich an den WorkFlow-Betreiber.'
+
 export function authRouten(app: FastifyInstance, db: Datenbank, konf: Konfiguration) {
   const angemeldet = erfordertAnmeldung(db, konf)
   const begrenzt = { config: { rateLimit: { max: konf.anmeldeVersucheProMinute, timeWindow: '1 minute' } } }
@@ -73,8 +75,9 @@ export function authRouten(app: FastifyInstance, db: Datenbank, konf: Konfigurat
     const email = text(req.body, 'email').trim()
     const passwort = text(req.body, 'passwort')
     return db.alsDienst(async (v) => {
-      const { rows } = await v.query<{ id: string; email: string; encrypted_password: string | null; gesperrt: boolean }>(
-        `select id, email, encrypted_password, coalesce(banned_until > now(), false) as gesperrt
+      const { rows } = await v.query<{ id: string; email: string; encrypted_password: string | null; gesperrt: boolean; stillgelegt: boolean }>(
+        `select id, email, encrypted_password, coalesce(banned_until > now(), false) as gesperrt,
+                public.firma_stillgelegt(id) as stillgelegt
            from auth.users where lower(email) = lower($1)`,
         [email],
       )
@@ -83,6 +86,7 @@ export function authRouten(app: FastifyInstance, db: Datenbank, konf: Konfigurat
         throw new AnfrageFehler(400, FALSCHE_ANMELDEDATEN, 'anmeldedaten_falsch')
       }
       if (user.gesperrt) throw new AnfrageFehler(403, 'Dieses Konto ist deaktiviert.', 'konto_gesperrt')
+      if (user.stillgelegt) throw new AnfrageFehler(403, FIRMA_STILLGELEGT, 'firma_stillgelegt')
 
       const faktoren = (await faktorenVon(v, user.id)).filter((f) => f.status === 'verified')
       if (faktoren.length > 0) {
@@ -106,7 +110,7 @@ export function authRouten(app: FastifyInstance, db: Datenbank, konf: Konfigurat
     }
     return db.alsDienst(async (v) => {
       const { rows } = await v.query<{ email: string; gesperrt: boolean }>(
-        'select email, coalesce(banned_until > now(), false) as gesperrt from auth.users where id = $1',
+        'select email, coalesce(banned_until > now(), false) or public.firma_stillgelegt(id) as gesperrt from auth.users where id = $1',
         [userId],
       )
       if (!rows[0] || rows[0].gesperrt) throw new AnfrageFehler(403, 'Dieses Konto ist deaktiviert.', 'konto_gesperrt')

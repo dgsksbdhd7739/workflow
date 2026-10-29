@@ -1,4 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { rm } from 'node:fs/promises'
+import path from 'node:path'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { Datenbank, Verbindung } from '../datenbank.ts'
 import type { Konfiguration } from '../konfiguration.ts'
@@ -227,4 +229,61 @@ export function funktionsRouten(app: FastifyInstance, db: Datenbank, konf: Konfi
       return { unternehmen_id: unternehmenId, admin_user_id: adminId, admin_password: adminPasswort }
     })
   })
+
+  /** Nur Plattform-Admins; die eigene Firma ist ausgenommen (sonst sperrt man sich selbst aus). */
+  async function fremdeFirmaAlsPlattformAdmin(v: Verbindung, aufruferId: string, unternehmenId: string) {
+    const { rowCount } = await v.query('select 1 from public.plattform_admins where user_id = $1', [aufruferId])
+    if (!rowCount) throw new AnfrageFehler(403, 'Nur für die Plattform-Verwaltung.')
+    const ich = await aufruferProfil(v, aufruferId)
+    if (ich.unternehmen_id === unternehmenId) throw new AnfrageFehler(400, 'Die eigene Firma kann nicht stillgelegt oder gelöscht werden.')
+    const { rows } = await v.query<{ name: string }>('select name from public.unternehmen where id = $1 for update', [unternehmenId])
+    if (!rows[0]) throw new AnfrageFehler(404, 'Firma nicht gefunden.')
+    return rows[0]
+  }
+
+  // Firma stilllegen bzw. wieder freigeben: Daten bleiben, Anmeldung und laufende Sitzungen nicht.
+  app.post<{ Body: Koerper }>('/api/funktionen/unternehmen-stilllegen', { preHandler: angemeldet }, async (req) => {
+    const nutzer = nutzerVon(req)
+    const unternehmenId = textFeld(req.body, 'unternehmen_id')
+    const stilllegen = req.body?.stilllegen === true
+    if (!unternehmenId) throw new AnfrageFehler(400, 'unternehmen_id ist erforderlich.')
+    return ausfuehren(async (v) => {
+      await fremdeFirmaAlsPlattformAdmin(v, nutzer.sub, unternehmenId)
+      await v.query('update public.unternehmen set stillgelegt_am = case when $2 then now() else null end where id = $1', [
+        unternehmenId,
+        stilllegen,
+      ])
+      if (stilllegen) {
+        await v.query(
+          `update auth.sitzungen set beendet_am = now()
+            where beendet_am is null and user_id in (select id from public.profiles where unternehmen_id = $1)`,
+          [unternehmenId],
+        )
+      }
+      return { ok: true }
+    })
+  })
+
+  // Firma endgueltig loeschen: alle Daten, Logins und Dateien. Zur Sicherheit
+  // muss der Firmenname exakt mitgeschickt werden.
+  app.post<{ Body: Koerper }>('/api/funktionen/unternehmen-loeschen', { preHandler: angemeldet }, async (req) => {
+    const nutzer = nutzerVon(req)
+    const unternehmenId = textFeld(req.body, 'unternehmen_id')
+    const bestaetigung = textFeld(req.body, 'bestaetigung')
+    if (!unternehmenId) throw new AnfrageFehler(400, 'unternehmen_id ist erforderlich.')
+    const dateien = await ausfuehren(async (v) => {
+      const firma = await fremdeFirmaAlsPlattformAdmin(v, nutzer.sub, unternehmenId)
+      if (bestaetigung !== firma.name.trim()) throw new AnfrageFehler(400, 'Der eingegebene Firmenname stimmt nicht überein.')
+      const { rows } = await v.query<{ bucket_id: string; name: string }>('select * from private.unternehmen_loeschen($1)', [unternehmenId])
+      return rows
+    })
+    // Erst nach erfolgreicher Transaktion von der Platte; fehlende Dateien sind kein Fehler.
+    const basis = path.resolve(konf.dateienVerzeichnis)
+    for (const d of dateien) {
+      const ziel = path.resolve(basis, d.bucket_id, ...d.name.split('/'))
+      if (ziel.startsWith(basis + path.sep)) await rm(ziel, { force: true }).catch(() => {})
+    }
+    return { ok: true, dateien: dateien.length }
+  })
+
 }

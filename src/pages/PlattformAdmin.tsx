@@ -20,7 +20,7 @@ function PaketAuswahl({ wert, onChange }: { wert: Paket; onChange: (p: Paket) =>
 }
 
 export function PlattformAdmin() {
-  const { istPlattformAdmin } = useAuth()
+  const { istPlattformAdmin, unternehmenId: eigeneFirmaId } = useAuth()
   const [firmen, setFirmen] = useState<PlattformUnternehmenUebersicht[]>([])
   const [loading, setLoading] = useState(true)
   const [formOffen, setFormOffen] = useState(false)
@@ -36,6 +36,8 @@ export function PlattformAdmin() {
   const [limitEingabe, setLimitEingabe] = useState('')
   const [paketEingabe, setPaketEingabe] = useState<Paket>('team')
   const [limitSpeichert, setLimitSpeichert] = useState(false)
+  const [loeschName, setLoeschName] = useState('')
+  const [firmaArbeitet, setFirmaArbeitet] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -81,6 +83,7 @@ export function PlattformAdmin() {
       return
     }
     setBearbeiteFirma(f.id)
+    setLoeschName('')
     setLimitEingabe(f.max_nutzer != null ? String(f.max_nutzer) : '')
     setPaketEingabe(f.paket)
   }
@@ -99,6 +102,39 @@ export function PlattformAdmin() {
       setFehler(error.message)
       return
     }
+    load()
+  }
+
+  const stilllegenUmschalten = async (f: PlattformUnternehmenUebersicht) => {
+    const stilllegen = !f.stillgelegt_am
+    if (
+      stilllegen &&
+      !window.confirm(`„${f.name}“ stilllegen? Alle Nutzer dieser Firma werden sofort abgemeldet und können sich nicht mehr anmelden. Die Daten bleiben erhalten.`)
+    )
+      return
+    setFehler(null)
+    setFirmaArbeitet(true)
+    const { error } = await backend.funktion('unternehmen-stilllegen', { unternehmen_id: f.id, stilllegen })
+    setFirmaArbeitet(false)
+    if (error) {
+      setFehler(funktionsFehler(error) ?? 'Aktion fehlgeschlagen.')
+      return
+    }
+    load()
+  }
+
+  const firmaLoeschen = async (f: PlattformUnternehmenUebersicht) => {
+    if (!window.confirm(`„${f.name}“ endgültig löschen? Alle Projekte, Pläne, Aufgaben, Dateien und Zugänge dieser Firma werden unwiderruflich entfernt.`)) return
+    setFehler(null)
+    setFirmaArbeitet(true)
+    const { error } = await backend.funktion('unternehmen-loeschen', { unternehmen_id: f.id, bestaetigung: loeschName.trim() })
+    setFirmaArbeitet(false)
+    if (error) {
+      setFehler(funktionsFehler(error) ?? 'Löschen fehlgeschlagen.')
+      return
+    }
+    setBearbeiteFirma(null)
+    setLoeschName('')
     load()
   }
 
@@ -211,6 +247,11 @@ export function PlattformAdmin() {
                     <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand-text">
                       {PAKETE[f.paket]?.label ?? f.paket}
                     </span>
+                    {f.stillgelegt_am && (
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/50 dark:text-red-300">
+                        Stillgelegt seit {formatDatum(f.stillgelegt_am)}
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-text-subtle">Angelegt am {formatDatum(f.erstellt_am)}</div>
                 </div>
@@ -261,6 +302,35 @@ export function PlattformAdmin() {
                     <label className="field-label">Firmendaten (Adresse, Kontakt, Logo)</label>
                     <UnternehmenForm unternehmenId={f.id} onGespeichert={load} />
                   </div>
+
+                  {f.id === eigeneFirmaId ? (
+                    <p className="text-xs text-text-subtle">Die eigene Firma kann nicht stillgelegt oder gelöscht werden.</p>
+                  ) : (
+                    <div className="space-y-3 rounded-lg border border-red-200 p-3 dark:border-red-900/60">
+                      <p className="text-sm font-medium text-red-700 dark:text-red-400">Gefahrenbereich</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button onClick={() => stilllegenUmschalten(f)} disabled={firmaArbeitet} className="btn-secondary text-xs">
+                          {f.stillgelegt_am ? 'Firma wieder freigeben' : 'Firma stilllegen'}
+                        </button>
+                        <span className="text-xs text-text-subtle">
+                          {f.stillgelegt_am ? 'Nutzer können sich danach wieder anmelden.' : 'Kein Login mehr möglich, Daten bleiben erhalten.'}
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="field-label">Zum endgültigen Löschen den Firmennamen „{f.name}“ eingeben</label>
+                        <div className="flex gap-2">
+                          <input value={loeschName} onChange={(e) => setLoeschName(e.target.value)} className="field-input" placeholder={f.name} />
+                          <button
+                            onClick={() => firmaLoeschen(f)}
+                            disabled={firmaArbeitet || loeschName.trim() !== f.name.trim()}
+                            className="btn-secondary flex-shrink-0 text-xs text-red-600 disabled:opacity-40 dark:text-red-400"
+                          >
+                            Firma löschen
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </li>

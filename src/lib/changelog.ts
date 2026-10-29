@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.12.0',
+    datum: '2026-10-30',
+    aenderungen: [
+      'Plattform-Verwaltung: Firmen lassen sich stilllegen (alle Nutzer werden sofort abgemeldet und können sich nicht mehr anmelden, die Daten bleiben erhalten) und wieder freigeben.',
+      'Firmen lassen sich endgültig löschen – mit allen Projekten, Plänen, Aufgaben, Dateien und Zugängen. Zur Sicherheit muss dafür der Firmenname eingegeben werden; die eigene Firma ist ausgenommen.',
+    ],
+  },
+  {
     version: '2.11.1',
     datum: '2026-10-30',
     aenderungen: ['Dashboard: Der Serverzustand zeigt nur noch Prozessor, Arbeitsspeicher und Festplatte; die Verlaufskurven liegen jetzt ebenfalls unter „Details“.'],

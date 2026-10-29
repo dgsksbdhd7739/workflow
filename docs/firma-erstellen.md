@@ -1,16 +1,16 @@
 # Neue Firma anlegen
 
-WorkFlow ist mandantenfähig: mehrere Firmen können dieselbe App nutzen, ohne dass sie gegenseitig ihre Daten sehen (Projekte, Aufgaben, Nutzer, Statusvorlagen etc. sind strikt pro Firma getrennt, siehe Migration `supabase/migrations/0033_mandantentrennung.sql`).
+WorkFlow ist mandantenfähig: mehrere Firmen können dieselbe App nutzen, ohne dass sie gegenseitig ihre Daten sehen (Projekte, Aufgaben, Nutzer, Statusvorlagen etc. sind strikt pro Firma getrennt, umgesetzt per Row Level Security, siehe [server/db/migrationen/0001_basis.sql](../server/db/migrationen/0001_basis.sql)).
 
-Es gibt bewusst **keine Selbstregistrierung** — eine neue Firma entsteht nur über das Skript unten oder über die **Plattform-Verwaltung** in der App (`/plattform-admin`, nur für Einträge in `plattform_admins` sichtbar, siehe Migration `0053_plattform_admin.sql`). Kein normaler Nutzer, auch kein Admin einer bestehenden Firma, kann selbst eine neue Firma anlegen oder eine fremde sehen.
+Es gibt bewusst **keine Selbstregistrierung** — eine neue Firma entsteht nur über das Skript unten oder über die **Plattform-Verwaltung** in der App (`/plattform-admin`, nur für Einträge in `plattform_admins` sichtbar). Kein normaler Nutzer, auch kein Admin einer bestehenden Firma, kann selbst eine neue Firma anlegen oder eine fremde sehen.
 
 ## Plattform-Verwaltung (In-App)
 
 - **Firma anlegen:** Name, Admin-E-Mail, **Paket** (Starter/Team/Business) und Nutzerlimit (vorbelegt mit dem Standard des Pakets, anpassbar). Das Passwort wird generiert und einmalig angezeigt.
 - **Firma bearbeiten:** *Bearbeiten* an der Firma → Paket und Nutzerlimit ändern (leer = unbegrenzt) sowie Firmendaten (Adresse, Kontakt, Logo) pflegen.
-- Paket (`unternehmen.paket`) und Nutzerlimit (`unternehmen.max_nutzer`) kann nur ein Plattform-Admin ändern; ein DB-Trigger blockiert Änderungen durch Firmen-Admins (Migrationen `0055`, `0059`).
+- Paket (`unternehmen.paket`) und Nutzerlimit (`unternehmen.max_nutzer`) kann nur ein Plattform-Admin ändern; ein DB-Trigger blockiert Änderungen durch Firmen-Admins.
 
-## Pakete (Migration `0059_pakete.sql`, `src/lib/pakete.ts`)
+## Pakete (`paket_erlaubt_fuer()` in der Datenbank, `src/lib/pakete.ts`)
 
 | | Starter | Team | Business |
 |---|---|---|---|
@@ -28,7 +28,7 @@ Es gibt bewusst **keine Selbstregistrierung** — eine neue Firma entsteht nur �
 
 ## Voraussetzung
 
-`.env` im Projektroot muss `VITE_SUPABASE_URL` und `PROVISION_SECRET` enthalten (siehe `.env.example`).
+`.env` im Projektroot muss `PROVISION_SECRET` enthalten (gleicher Wert wie `PROVISION_SECRET` in `/etc/workflow/server.env` auf dem Server) und optional `VITE_API_URL` (Standard: `https://217-154-200-72.sslip.io`), siehe `.env.example`.
 
 ## Ablauf
 
@@ -43,7 +43,7 @@ node scripts/create-unternehmen.mjs "Name der Firma GmbH" admin@firma-des-kunden
 Das Skript legt an:
 
 1. eine neue Zeile in `unternehmen`,
-2. einen Auth-Account mit zufällig generiertem Passwort,
+2. einen Login (`auth.users`) mit zufällig generiertem Passwort,
 3. das zugehörige Profil mit Rolle `admin` und Zuordnung zur neuen Firma.
 
 Ausgabe:
@@ -64,9 +64,9 @@ Admin-Login:
 
 ## Technischer Hintergrund
 
-- Edge-Function: `supabase/functions/create-unternehmen/` — abgesichert über ein Shared Secret (`x-provision-secret`-Header), kein Login nötig, gleiches Muster wie `publish-app-update`.
-- `handle_new_user()` (DB-Trigger) liest `unternehmen_id` aus den `user_metadata` des neuen Auth-Accounts und ordnet das Profil entsprechend zu, statt wie früher jeden neuen Nutzer hart der ältesten Firma zuzuordnen.
-- Deployment der Function bei Änderungen: `npx supabase functions deploy create-unternehmen --no-verify-jwt`.
+- Backend-Funktion: `POST /api/funktionen/create-unternehmen` in [server/src/funktionen/routen.ts](../server/src/funktionen/routen.ts) — entweder als angemeldeter Plattform-Admin (In-App) oder ohne Login über ein Shared Secret (`x-provision-secret`-Header, Skript). Firma, Login und Admin-Rolle entstehen in einer Transaktion.
+- `handle_new_user()` (DB-Trigger auf `auth.users`) liest `unternehmen_id` aus `raw_user_meta_data` des neuen Logins und ordnet das Profil entsprechend zu, statt wie früher jeden neuen Nutzer hart der ältesten Firma zuzuordnen.
+- Deployment bei Änderungen: `npm run deploy-server`.
 
 ## Was noch fehlt
 

@@ -11,6 +11,18 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.0.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'WorkFlow läuft jetzt vollständig auf unserem eigenen Server in Deutschland: Datenbank, Anmeldung und Dateien liegen nicht mehr bei einem externen Cloud-Anbieter. Alle Projekte, Pläne, Fotos und Zugangsdaten wurden übernommen.',
+      'Einmalig neu anmelden: Nach dem Umzug ist eine neue Anmeldung nötig – mit dem bisherigen Passwort und, falls eingerichtet, dem Code aus der Authenticator-App.',
+      'Zwei-Faktor-Anmeldung noch sicherer: Ohne Code gibt es keinerlei Zugriff, und jeder Code gilt nur ein einziges Mal.',
+      'Abmelden auf anderen Geräten, Passwort-Änderungen und das Deaktivieren von Nutzern wirken jetzt sofort.',
+      'Eine geänderte E-Mail-Adresse gilt ab sofort für die Anmeldung, ohne Bestätigungslink.',
+      'Gebäude im Projekt lassen sich jetzt tatsächlich anlegen und öffnen.',
+    ],
+  },
+  {
     version: '1.10.3',
     datum: '2026-10-28',
     aenderungen: [

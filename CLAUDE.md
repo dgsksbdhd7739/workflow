@@ -9,7 +9,7 @@ WorkFlow — Projekt-Management-App für Bau-/Handwerksbetriebe: Aufgabenmanagem
 ## Tech-Stack
 
 - **Frontend:** React + TypeScript + Vite, Tailwind CSS, React Router.
-- **Backend:** Supabase (Postgres, Auth, Storage, Realtime) — Migrationen unter `supabase/migrations/`, fortlaufend nummeriert.
+- **Backend:** eigenes Node-Backend `server/` (Fastify) + PostgreSQL 17 auf dem STRATO-VPS (seit 2.0.0, vorher Supabase) — Migrationen unter `server/db/migrationen/`, fortlaufend nummeriert. Frontend greift nur über `src/lib/backend.ts` zu.
 - **Android:** Capacitor (`android/`), Live-Updates über Capgo (`src/lib/liveUpdate.ts`).
 - **Windows:** Tauri (`src-tauri/`).
 
@@ -17,8 +17,8 @@ WorkFlow — Projekt-Management-App für Bau-/Handwerksbetriebe: Aufgabenmanagem
 
 - Deutsche Bezeichner im Code durchgängig (Variablen, Funktionen, DB-Tabellen/-Spalten, RLS-Policy-Namen) — Konvention im gesamten Projekt, nicht mischen.
 - Seiten unter `src/pages`, wiederverwendbare Komponenten unter `src/components`, Domain-/Hilfslogik unter `src/lib`.
-- DB-Terminologie folgt der UI: `projekte`/`projekt_id`, `aufgaben`/`aufgabe_id` (siehe Migration `0035_projekt_aufgabe_umbenennung.sql`).
-- Neue Tabelle mit Unternehmens- oder Projektbezug braucht immer eine passende RLS-Policy (`unternehmen_id = current_unternehmen_id()` bzw. `projekt_im_eigenen_unternehmen(...)`, siehe `0033_mandantentrennung.sql` als Referenz) — sonst Datenleck zwischen Firmen.
+- DB-Terminologie folgt der UI: `projekte`/`projekt_id`, `aufgaben`/`aufgabe_id`.
+- Neue Tabelle mit Unternehmens- oder Projektbezug braucht immer eine passende RLS-Policy (`unternehmen_id = current_unternehmen_id()` bzw. `projekt_im_eigenen_unternehmen(...)`, Beispiele in `server/db/migrationen/0001_basis.sql` und `0004_gebaeude.sql`) — ohne aktives RLS ist die Tabelle über die API gar nicht erreichbar. Details zur Backend-Architektur: Agents.md.
 - Tabellen-/Spaltenumbenennungen sind reine Metadaten-Operationen (`ALTER TABLE ... RENAME`) und aktualisieren FKs/Indizes/RLS-Policies automatisch; Funktionskörper (SQL/PLpgSQL) referenzieren Namen dagegen als Text und müssen bei einer Umbenennung manuell nachgezogen werden.
 
 ## Verbindliche Regeln
@@ -30,13 +30,13 @@ WorkFlow — Projekt-Management-App für Bau-/Handwerksbetriebe: Aufgabenmanagem
 - **APK-Name:** Jede generierte Release-APK heißt `WorkFlow-v{versionName}.apk` (siehe `landing/index.html`, Download-Link).
 - **Doku-Pflicht pro Arbeitspaket** (siehe Agents.md für den vollen Ablauf): betroffene READMEs/docs und bei nutzersichtbaren Änderungen der in-App-Changelog (`src/lib/changelog.ts`) im selben Arbeitspaket aktualisieren — keine Abschlussmeldung ohne synchronen Stand.
 - **Backup-Integrität:** Vor jedem finalen Projekt-Backup Kompilierbarkeit (`npm run build`) und saubere Imports/Paketstrukturen prüfen.
-- **Vier getrennte Deploy-Pfade, alle manuell** (kein CI/CD) — siehe Agents.md/Deploy-Pipeline-Notizen: Web-Live-Update, Android-APK-Rebuild, Root-SPA (migriert auf eigenen STRATO-VPS, `npm run deploy-vps`), Landing-Vercel-Projekt (bleibt vorerst auf Vercel, unkritisch da noch nicht öffentlich beworben).
+- **Fünf getrennte Deploy-Pfade, alle manuell** (kein CI/CD) — siehe Agents.md: Backend (`npm run deploy-server`, inkl. DB-Migrationen), Web-Live-Update für Android (`node scripts/publish-update.mjs`, Dateien auf dem VPS), Android-APK-Rebuild, Root-SPA (`npm run deploy-vps`), Landing-Vercel-Projekt (bleibt vorerst auf Vercel, unkritisch da noch nicht öffentlich beworben).
 
 ## Bekannter Sonderfall: Login/Backend
 
-- Multi-Tenant-Provisionierung: `handle_new_user()` hängt neue Accounts an das Unternehmen aus `raw_user_meta_data.unternehmen_id` (gesetzt von der `create-user`-Edge-Function); ohne diese Angabe fällt es auf das älteste Unternehmen zurück.
-- `projekte` (früher `baustellen`) braucht eine eigene, nicht über `kunde_hat_zugriff()` verschachtelte Lese-Policy: Der Supabase-Client hängt nach jedem Insert `select().single()` an, wodurch Postgres zusätzlich zur Insert- auch die Select-Policy für die *gerade eingefügte* Zeile prüft — eine Unterabfrage zurück in dieselbe Tabelle sieht diese Zeile innerhalb desselben Kommandos noch nicht (siehe `0034_baustellen_lesen_ohne_selbstreferenz.sql`, war ein echter Produktions-Bug).
-- Gelegentlich einmaliger `PGRST303 "JWT issued at future"`-Fehler direkt nach Login beobachtet (nicht reproduzierbar, keine Folgefehler) — vermutlich ein Timing-Artefakt beim ersten Request nach Token-Ausstellung, kein Schema-/Code-Problem.
+- Multi-Tenant-Provisionierung: `handle_new_user()` (Trigger auf `auth.users`) hängt neue Logins an das Unternehmen aus `raw_user_meta_data.unternehmen_id` (gesetzt von `/api/funktionen/create-user` bzw. `create-unternehmen`); ohne diese Angabe fällt es auf das älteste Unternehmen zurück.
+- `projekte` braucht eine eigene, nicht über `kunde_hat_zugriff()` verschachtelte Lese-Policy: Ein `insert ... returning` (Daten-API mit `.select()` nach `.insert()`) prüft zusätzlich die Select-Policy für die *gerade eingefügte* Zeile — eine Unterabfrage zurück in dieselbe Tabelle sieht diese Zeile innerhalb desselben Kommandos noch nicht (früherer Produktions-Bug, Supabase-Migration 0034).
+- Verwaltungsfunktionen (`server/src/funktionen/`) dürfen Ziel-Nutzer nur in der Firma des aufrufenden Admins anfassen (`nutzerDerFirma()`) — die alten Edge Functions hatten diese Prüfung nicht.
 
 ## Skill
 

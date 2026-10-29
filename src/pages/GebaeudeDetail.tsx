@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ClipboardList, Layers, Map as MapIcon, MapPin, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Eye, EyeOff, Layers, Map as MapIcon, MapPin, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { backend } from '../lib/backend'
 import { STATUS_FARBE, STATUS_TEXT, gebaeudeAuswerten, geschossName, type BereichAuswertung, type BereichStatus } from '../lib/gebaeude3d'
@@ -42,12 +42,37 @@ export function GebaeudeDetail() {
 
   // Assistent und Formulare
   const [anzahlUG, setAnzahlUG] = useState('0')
-  const [anzahlOG, setAnzahlOG] = useState('3')
-  const [wohnungenJe, setWohnungenJe] = useState('4')
+  const [anzahlOG, setAnzahlOG] = useState('0')
+  const [wohnungenJe, setWohnungenJe] = useState('0')
   const [neueEinheit, setNeueEinheit] = useState('')
   const [neueAufgabe, setNeueAufgabe] = useState('')
 
   const kannBearbeiten = role === 'admin' || role === 'planer'
+
+  // Anzeige: Planbild fuers ganze Gebaeude bzw. je Etage aus-/einblenden, Wandhoehe.
+  // Nur eine Ansichtseinstellung je Geraet (localStorage), keine Projektdaten.
+  const ansichtSchluessel = `workflow.gebaeudeansicht.${gebaeudeId}`
+  const [ansicht, setAnsicht] = useState<{ planAus: boolean; etagenAus: string[]; waendeHalb: boolean }>(() => {
+    try {
+      return { planAus: false, etagenAus: [], waendeHalb: false, ...JSON.parse(localStorage.getItem(ansichtSchluessel) ?? '{}') }
+    } catch {
+      return { planAus: false, etagenAus: [], waendeHalb: false }
+    }
+  })
+  const ansichtAendern = (aenderung: Partial<typeof ansicht>) => {
+    setAnsicht((alt) => {
+      const neu = { ...alt, ...aenderung }
+      try {
+        localStorage.setItem(ansichtSchluessel, JSON.stringify(neu))
+      } catch {
+        // ohne Speicher gilt die Einstellung bis zum Neuladen
+      }
+      return neu
+    })
+  }
+  const planSichtbar = (id: string) => !ansicht.planAus && !ansicht.etagenAus.includes(id)
+  const etagenPlanUmschalten = (id: string) =>
+    ansichtAendern({ etagenAus: ansicht.etagenAus.includes(id) ? ansicht.etagenAus.filter((x) => x !== id) : [...ansicht.etagenAus, id] })
 
   const laden = useCallback(async () => {
     if (!projektId || !gebaeudeId) return
@@ -240,6 +265,8 @@ export function GebaeudeDetail() {
               einheitId={einheitId}
               onGeschoss={waehleGeschoss}
               onEinheit={setEinheitId}
+              planSichtbar={planSichtbar}
+              waendeHalb={ansicht.waendeHalb}
             />
           </Suspense>
           <div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap gap-x-3 gap-y-1 rounded-lg bg-surface/90 px-2.5 py-1.5 text-[11px] text-text-muted shadow-sm">
@@ -247,6 +274,26 @@ export function GebaeudeDetail() {
               <span key={s} className="flex items-center gap-1"><Statuspunkt status={s} /> {STATUS_TEXT[s]}</span>
             ))}
           </div>
+          {geschosse.some((g) => g.plan_bild_pfad || g.waende) && (
+            <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => ansichtAendern({ planAus: !ansicht.planAus })}
+                className="btn-secondary px-2 py-1 text-xs"
+                aria-pressed={!ansicht.planAus}
+              >
+                {ansicht.planAus ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                {ansicht.planAus ? 'Plan einblenden' : 'Plan ausblenden'}
+              </button>
+              <button
+                type="button"
+                onClick={() => ansichtAendern({ waendeHalb: !ansicht.waendeHalb })}
+                className="btn-secondary px-2 py-1 text-xs"
+              >
+                Wände: {ansicht.waendeHalb ? 'halbhoch' : 'geschosshoch'}
+              </button>
+            </div>
+          )}
           <p className="pointer-events-none absolute right-3 top-3 rounded bg-surface/90 px-2 py-1 text-[11px] text-text-subtle shadow-sm">
             Ziehen: drehen · Rechtsklick/2 Finger: verschieben · Rad/Pinch: zoomen · Etage anklicken
           </p>
@@ -287,17 +334,29 @@ export function GebaeudeDetail() {
                   const anzahl = einheiten.filter((e) => e.geschoss_id === g.id).length
                   const aktiv = g.id === geschossId
                   return (
-                    <li key={g.id}>
+                    <li key={g.id} className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => waehleGeschoss(aktiv ? null : g.id)}
-                        className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors ${aktiv ? 'bg-brand-soft text-brand' : 'hover:bg-surface-hover'}`}
+                        className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors ${aktiv ? 'bg-brand-soft text-brand' : 'hover:bg-surface-hover'}`}
                       >
                         <Statuspunkt status={a?.status ?? 'leer'} />
                         <span className="w-14 font-medium">{g.name}</span>
                         <span className="flex-1 text-xs text-text-muted">{anzahl} Einheit{anzahl === 1 ? '' : 'en'}</span>
                         <Fortschritt a={a} />
                       </button>
+                      {g.plan_bild_pfad && (
+                        <button
+                          type="button"
+                          onClick={() => etagenPlanUmschalten(g.id)}
+                          disabled={ansicht.planAus}
+                          className="btn-ghost shrink-0 p-1.5 disabled:opacity-40"
+                          aria-label={planSichtbar(g.id) ? `Plan von ${g.name} ausblenden` : `Plan von ${g.name} einblenden`}
+                          title={planSichtbar(g.id) ? 'Plan ausblenden' : 'Plan einblenden'}
+                        >
+                          {planSichtbar(g.id) ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5 text-text-subtle" />}
+                        </button>
+                      )}
                     </li>
                   )
                 })}

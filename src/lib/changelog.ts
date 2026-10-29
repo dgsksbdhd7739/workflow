@@ -11,6 +11,18 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.8.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'Wände 1:1 aus dem Plan: Außen- und Innenwände werden aus den gezeichneten Wandflächen, Wandkanten und Schraffuren aufgebaut, geschosshoch.',
+      'Fenster werden an der Fassade erkannt und als rechteckige Öffnung mit Brüstung (0,90 m), Glas und Sturz dargestellt; Türen sind offene Wandöffnungen mit Sturz (Türhöhe 2,01 m nach DIN 18101).',
+      'Flure/Gänge werden erkannt, gelb hervorgehoben und beschriftet.',
+      'Plan ein- und ausblenden: für das ganze Gebäude (Schalter in der 3D-Ansicht) oder je Etage (Auge in der Etagenliste). Wände wahlweise geschosshoch oder halbhoch.',
+      'Geschoss-Assistent startet mit 0 Obergeschossen und 0 Wohnungen je Etage.',
+      'Für bereits aufgebaute Gebäude einmal „Aus Plänen aufbauen“ ausführen.',
+    ],
+  },
+  {
     version: '2.7.0',
     datum: '2026-10-29',
     aenderungen: [

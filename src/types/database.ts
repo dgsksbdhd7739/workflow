@@ -178,9 +178,12 @@ export interface Geschoss {
   plan_bild_lage: { x: number; z: number; breite: number; tiefe: number; blatt_x?: number; blatt_z?: number } | null
   massstab: number | null
   // Raeume 1:1 aus dem Plan; einheit = Name der Einheit auf diesem Geschoss
-  raeume: { punkte: [number, number][]; nr: string | null; einheit: string | null; flaeche: number }[] | null
+  raeume: { punkte: [number, number][]; nr: string | null; einheit: string | null; flaeche: number; typ?: 'flur' | null }[] | null
   // Tueren aus dem Plan: Mitte, lichte Breite, Richtung der Wand (0 = entlang x, 90 = entlang z)
-  tueren: { x: number; z: number; breite: number; winkel: 0 | 90 }[] | null
+  tueren: { x: number; z: number; breite: number; tiefe?: number; winkel: 0 | 90 }[] | null
+  // Seit 2.8.0: Waende 1:1 als Rasterrechtecke (Oeffnungen sind Luecken) und Fenster in der Aussenwand
+  waende: { aufloesung: number; x0: number; z0: number; rechtecke: number[] } | null
+  fenster: { x: number; z: number; breite: number; tiefe?: number; winkel: 0 | 90 }[] | null
   erstellt_am: string
 }
 

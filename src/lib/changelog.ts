@@ -11,6 +11,14 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.5.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'Räume 1:1 aus dem Plan: „Aus Plänen aufbauen“ liest jetzt auch alle Räume mit ihren Wänden aus. Die gewählte Etage zeigt die Wände maßstabsgetreu, die Räume sind in der Farbe ihres Zimmers bzw. ihrer Wohnung eingefärbt und anklickbar.',
+      'Für bereits aufgebaute Gebäude einmal erneut „Aus Plänen aufbauen“ ausführen, damit die Räume ergänzt werden (vorhandene Etagen, Zimmer und Aufgaben bleiben erhalten).',
+    ],
+  },
+  {
     version: '2.4.0',
     datum: '2026-10-29',
     aenderungen: [

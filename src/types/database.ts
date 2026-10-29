@@ -176,6 +176,8 @@ export interface Geschoss {
   plan_bild_pfad: string | null
   plan_bild_lage: { x: number; z: number; breite: number; tiefe: number } | null
   massstab: number | null
+  // Raeume 1:1 aus dem Plan; einheit = Name der Einheit auf diesem Geschoss
+  raeume: { punkte: [number, number][]; nr: string | null; einheit: string | null; flaeche: number }[] | null
   erstellt_am: string
 }
 

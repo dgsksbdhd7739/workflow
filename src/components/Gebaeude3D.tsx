@@ -11,7 +11,7 @@ import { Edges, OrbitControls } from '@react-three/drei'
 import type { Einheit, Gebaeude, Geschoss } from '../types/database'
 import { type GebaeudeAuswertung, STATUS_FARBE, STATUS_TEXT, einheitenAufteilen } from '../lib/gebaeude3d'
 import { Schild3D } from './Schild3D'
-import { useGrundrissTextur, useUmrissGeometrie } from './umriss3d'
+import { useFlaechenGeometrie, useGrundrissTextur, useUmrissGeometrie, useWandGeometrie } from './umriss3d'
 
 interface Props {
   gebaeude: Gebaeude
@@ -54,6 +54,45 @@ function Koerper({ umriss, breite, tiefe, hoehe, children, anklickbar = true, ..
     <mesh position={[0, hoehe / 2, 0]} raycast={raycast} {...ereignisse}>
       <boxGeometry args={[breite, hoehe, tiefe]} />
       {children}
+    </mesh>
+  )
+}
+
+type RaumDaten = NonNullable<Geschoss['raeume']>[number]
+
+/** Bodenflaeche eines Raums; mit Einheit in deren Statusfarbe und anklickbar. */
+function RaumBoden({ raum, farbe, aktiv, onClick }: { raum: RaumDaten; farbe: string | null; aktiv: boolean; onClick?: () => void }) {
+  const geometrie = useFlaechenGeometrie(raum.punkte)
+  return (
+    <mesh
+      geometry={geometrie}
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, DECKE + 0.05, 0]}
+      raycast={onClick ? undefined : () => null}
+      onClick={(ev) => {
+        if (!onClick) return
+        ev.stopPropagation()
+        onClick()
+      }}
+    >
+      <meshBasicMaterial
+        color={aktiv ? '#4f46e5' : (farbe ?? '#ffffff')}
+        transparent
+        opacity={farbe || aktiv ? 0.55 : 0.12}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  )
+}
+
+/** Waende 1:1 aus dem Plan (Umriss minus Raeume), halbhoch fuer den Blick hinein. */
+function Waende({ g, hoehe }: { g: Geschoss; hoehe: number }) {
+  const geometrie = useWandGeometrie(g.grundriss, g.raeume, hoehe)
+  if (!geometrie) return null
+  return (
+    <mesh geometry={geometrie} position={[0, DECKE, 0]} raycast={() => null}>
+      <meshStandardMaterial color="#cbd5e1" />
     </mesh>
   )
 }
@@ -147,6 +186,24 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
                 <Edges color="#64748b" />
               </Koerper>
               <Planboden g={g} />
+              {g.raeume?.length ? (
+                <>
+                  <Waende g={g} hoehe={Math.min(1.4, (h - DECKE) * 0.45)} />
+                  {g.raeume.map((raum, i) => {
+                    const e = raum.einheit ? einheitenDesGeschosses.find((x) => x.name === raum.einheit) : undefined
+                    const st = e ? (auswertung.einheit.get(e.id)?.status ?? 'leer') : null
+                    return (
+                      <RaumBoden
+                        key={i}
+                        raum={raum}
+                        farbe={st && st !== 'leer' ? STATUS_FARBE[st] : e ? '#cbd5e1' : null}
+                        aktiv={!!e && einheitId === e.id}
+                        onClick={e ? () => onEinheit(einheitId === e.id ? null : e.id) : undefined}
+                      />
+                    )
+                  })}
+                </>
+              ) : null}
               {einheitenDesGeschosses.map((e) => {
                 // Lage aus dem Plan (Nummer im Grundriss), sonst automatisch verteilt
                 const r =
@@ -157,6 +214,19 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
                 const st = auswertung.einheit.get(e.id)?.status ?? 'leer'
                 const aktiv = einheitId === e.id
                 const hoehe = e.lage_x != null ? (h - DECKE) * 0.35 : (h - DECKE) * 0.55
+                if (g.raeume?.length) {
+                  return (
+                    <Schild3D
+                      key={e.id}
+                      position={[r.x, DECKE + Math.min(1.4, (h - DECKE) * 0.45) + einheitSchild, r.z]}
+                      titel={e.name}
+                      untertitel={STATUS_TEXT[st]}
+                      aktiv={aktiv}
+                      hoehe={einheitSchild}
+                      onClick={() => onEinheit(aktiv ? null : e.id)}
+                    />
+                  )
+                }
                 return (
                   <group key={e.id} position={[r.x, DECKE + hoehe / 2, r.z]}>
                     <mesh

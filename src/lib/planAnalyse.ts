@@ -33,10 +33,24 @@ export interface SeitenAnalyse {
   umriss: Punkt[] | null
   flaecheM2: number
   einheiten: { name: string; x: number; z: number }[]
+  raeume: Raum[]
+}
+
+/** Raum aus dem Grundriss: Flaeche zwischen den Waenden, 1:1 in Metern. */
+export interface Raum {
+  punkte: Punkt[]
+  // Raumnummer aus dem Raumstempel (z. B. "301.20") und Einheit in Klammern ("301")
+  nr: string | null
+  einheit: string | null
+  flaeche: number
 }
 
 const PT_IN_M = 0.0254 / 72
 const MASKE_M_PRO_PX = 0.1
+// Raeume brauchen feinere Aufloesung: Trockenbauwaende sind nur ~10 cm dick
+const RAUM_M_PRO_PX = 0.05
+// Tueroeffnungen bis ca. 1 m schliessen, damit Raeume nicht ineinanderlaufen
+const TUER_M = 0.6
 const BILD_M_PRO_PX = 0.05
 // Fenster und Tueren in Aussenwaenden ueberbruecken: erst bis ca. 2,4 m, bei
 // zu wenig geschlossener Flaeche schrittweise groessere Luecken
@@ -156,7 +170,18 @@ function grauwert(stil: unknown): number | null {
  * der alle anderen Zeichenbefehle (Linien, Texte, Bilder, farbige Flaechen)
  * verschluckt.
  */
-async function wandMaske(seite: PDFPageProxy, pxProPt: number) {
+// Wandkanten sind in CAD-Plaenen mit dickeren Stiften gezeichnet als Moebel,
+// Bemassung und Schraffur (dort 0,18-0,25 pt); Trockenbauwaende sind oft nur
+// so gezeichnet und nicht grau gefuellt.
+const WANDLINIE_MIN_PT = 0.27
+
+/**
+ * mitLinien: zusaetzlich dunkle, neutrale Linien ab WANDLINIE_MIN_PT (fuer die
+ * Raumerkennung). Die echte Linienbreite wird beim Setzen von lineWidth
+ * mitgelesen -- beim Strich selbst hat pdfjs duenne Linien bereits auf 1 Pixel
+ * verbreitert (erkennbar daran, dass Breite x Massstab genau 1 ergibt).
+ */
+async function wandMaske(seite: PDFPageProxy, pxProPt: number, mitLinien = false) {
   const viewport = seite.getViewport({ scale: pxProPt })
   const canvas = document.createElement('canvas')
   canvas.width = Math.ceil(viewport.width)
@@ -168,8 +193,26 @@ async function wandMaske(seite: PDFPageProxy, pxProPt: number) {
     const g = grauwert(ctx.fillStyle)
     return g !== null && g >= 77 && g <= 217
   }
+  let linienPt = 0
+  const geraetMassstab = () => {
+    const m = ctx.getTransform()
+    return Math.sqrt(Math.abs(m.a * m.d - m.b * m.c))
+  }
+  const istWandlinie = () => {
+    const g = grauwert(ctx.strokeStyle)
+    return mitLinien && g !== null && g <= 153 && linienPt >= WANDLINIE_MIN_PT
+  }
   const filter = new Proxy(ctx, {
     get(ziel, name) {
+      if (name === 'stroke') {
+        return (...args: unknown[]) => {
+          if (!istWandlinie()) return
+          const vorher = ziel.strokeStyle
+          ziel.strokeStyle = '#000000'
+          ;(ziel.stroke as (...a: unknown[]) => void).apply(ziel, args)
+          ziel.strokeStyle = vorher
+        }
+      }
       if (name === 'fill' || name === 'fillRect') {
         return (...args: unknown[]) => {
           if (!istWand()) return
@@ -179,13 +222,17 @@ async function wandMaske(seite: PDFPageProxy, pxProPt: number) {
           ziel.fillStyle = vorher
         }
       }
-      if (['stroke', 'fillText', 'strokeText', 'drawImage', 'putImageData', 'strokeRect'].includes(name as string)) {
+      if (['fillText', 'strokeText', 'drawImage', 'putImageData', 'strokeRect'].includes(name as string)) {
         return () => {}
       }
       const wert = Reflect.get(ziel, name)
       return typeof wert === 'function' ? wert.bind(ziel) : wert
     },
     set(ziel, name, wert) {
+      if (name === 'lineWidth' && typeof wert === 'number') {
+        const geraetBreite = wert * geraetMassstab()
+        if (Math.abs(geraetBreite - 1) > 1e-6) linienPt = geraetBreite / pxProPt
+      }
       return Reflect.set(ziel, name, wert)
     },
   })
@@ -286,10 +333,14 @@ function hauptflaeche(wand: Uint8Array, w: number, h: number) {
   return { flaeche, pixel: besteGroesse }
 }
 
-/** Aussenkontur einer Pixelflaeche als Polygon (Ecken der Pixelraender, rechte Hand an der Flaeche). */
-function kontur(f: Uint8Array, w: number, h: number): Punkt[] {
-  const innen = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && f[y * w + x] === 1
-  const startIndex = f.indexOf(1)
+/**
+ * Aussenkontur einer Pixelflaeche als Polygon (Ecken der Pixelraender, rechte
+ * Hand an der Flaeche). f enthaelt je Pixel eine Marke; verfolgt wird die
+ * Flaeche mit Marke "wert", beginnend beim ersten Pixel in Zeilenreihenfolge.
+ */
+function kontur(f: ArrayLike<number> & { indexOf(w: number, ab?: number): number }, w: number, h: number, wert = 1, ab = 0): Punkt[] {
+  const innen = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && f[y * w + x] === wert
+  const startIndex = f.indexOf(wert, ab)
   if (startIndex < 0) return []
   const sx = startIndex % w
   const sy = Math.floor(startIndex / w)
@@ -321,6 +372,49 @@ function kontur(f: Uint8Array, w: number, h: number): Punkt[] {
     dy = ndy
   }
   return punkte
+}
+
+/**
+ * Raeume: freie Flaechen zwischen den (an Tueren geschlossenen) Waenden,
+ * nur innerhalb des Gebaeudes (dort sind auch die Fenster geschlossen, sonst
+ * liefe jedes Zimmer ueber sein Fenster nach draussen).
+ */
+function raeumeErmitteln(wand: Uint8Array, w: number, h: number, fensterMeter: number): { punkte: Punkt[]; pixel: number }[] {
+  const rf = Math.round(fensterMeter / RAUM_M_PRO_PX)
+  const { flaeche: gebaeude } = hauptflaeche(morph(morph(wand, w, h, rf, 'dilatieren'), w, h, rf, 'erodieren'), w, h)
+  const r = Math.round(TUER_M / RAUM_M_PRO_PX)
+  const zu = morph(morph(wand, w, h, r, 'dilatieren'), w, h, r, 'erodieren')
+  for (let i = 0; i < zu.length; i++) if (!gebaeude[i]) zu[i] = 1
+  const marke = new Int32Array(zu.length)
+  const warteschlange = new Int32Array(zu.length)
+  const minPixel = 1.5 / RAUM_M_PRO_PX ** 2
+  const maxPixel = 400 / RAUM_M_PRO_PX ** 2
+  const ergebnis: { punkte: Punkt[]; pixel: number }[] = []
+  let nummer = 0
+  for (let start = 0; start < zu.length; start++) {
+    if (zu[start] || marke[start]) continue
+    nummer++
+    let kopf = 0
+    let ende = 0
+    let amRand = false
+    marke[start] = nummer
+    warteschlange[ende++] = start
+    while (kopf < ende) {
+      const i = warteschlange[kopf++]
+      const x = i % w
+      if (x === 0 || x === w - 1 || i < w || i >= zu.length - w) amRand = true
+      for (const n of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) {
+        if (n >= 0 && n < zu.length && !zu[n] && !marke[n]) {
+          marke[n] = nummer
+          warteschlange[ende++] = n
+        }
+      }
+    }
+    if (amRand || ende < minPixel || ende > maxPixel) continue
+    const punkte = vereinfachen(kontur(marke, w, h, nummer, start), 2).map(([x, y]): Punkt => [x * RAUM_M_PRO_PX, y * RAUM_M_PRO_PX])
+    if (punkte.length >= 3) ergebnis.push({ punkte, pixel: ende })
+  }
+  return ergebnis
 }
 
 function vereinfachen(punkte: Punkt[], toleranz: number): Punkt[] {
@@ -437,7 +531,9 @@ export async function seiteAnalysieren(seite: PDFPageProxy, planName: string | n
   const { maske, breite, hoehe } = await wandMaske(seite, mProPt / MASKE_M_PRO_PX)
   let umriss: Punkt[] | null = null
   let flaecheM2 = 0
+  let fensterMeter = SCHLIESSEN_M[0]
   for (const meter of SCHLIESSEN_M) {
+    fensterMeter = meter
     const r = Math.round(meter / MASKE_M_PRO_PX)
     const geschlossen = morph(morph(maske, breite, hoehe, r, 'dilatieren'), breite, hoehe, r, 'erodieren')
     const { flaeche: haupt, pixel } = hauptflaeche(geschlossen, breite, hoehe)
@@ -473,6 +569,23 @@ export async function seiteAnalysieren(seite: PDFPageProxy, planName: string | n
     .map((e) => ({ name: e.name, x: e.x / e.n, z: e.z / e.n }))
     .sort((a, b) => a.name.localeCompare(b.name, 'de', { numeric: true }))
 
+  // Raeume 1:1 aus den Waenden; Raumstempel "301.20 (301)" geben Nummer und Einheit
+  const fein = await wandMaske(seite, mProPt / RAUM_M_PRO_PX, true)
+  const stempel = texte
+    .map((t) => ({ t, m: t.str.match(/^(\d{1,4}[.,]\d{1,3}[a-z]?)(?:\s*\(\s*([\w.-]+)\s*\))?$/i) }))
+    .filter((x): x is { t: Text; m: RegExpMatchArray } => !!x.m)
+    .map(({ t, m }) => ({ p: [t.x * mProPt, t.y * mProPt] as Punkt, nr: m[1], einheit: m[2] ?? null }))
+  const raeume: Raum[] = raeumeErmitteln(fein.maske, fein.breite, fein.hoehe, fensterMeter).map(({ punkte, pixel }) => {
+    const drin = stempel.filter((s) => punktInPolygon(s.p, punkte))
+    const bester = drin.find((s) => s.einheit) ?? drin[0]
+    return {
+      punkte,
+      nr: bester?.nr ?? null,
+      einheit: bester?.einheit ?? null,
+      flaeche: Math.round(pixel * RAUM_M_PRO_PX * RAUM_M_PRO_PX * 10) / 10,
+    }
+  })
+
   return {
     seite: seite.pageNumber,
     ebene: ebeneTreffer?.ebene ?? null,
@@ -485,6 +598,7 @@ export async function seiteAnalysieren(seite: PDFPageProxy, planName: string | n
     umriss,
     flaecheM2,
     einheiten,
+    raeume,
   }
 }
 
@@ -493,6 +607,7 @@ export interface Etage {
   umriss: Punkt[] | null
   umrissUebernommen: boolean
   einheiten: { name: string; x: number; z: number }[]
+  raeume: Raum[]
   // Gebaeudekoordinaten + blattVersatz = Blatt-Meter dieser Etage (fuer grundrissBild)
   blattVersatz: { x: number; z: number }
 }
@@ -548,11 +663,42 @@ export function gebaeudeZusammensetzen(analysen: (SeitenAnalyse & { ebene: numbe
       umriss = darunter.umriss
       uebernommen = true
     }
+    // Nur Raeume innerhalb des Gebaeudes (Schwerpunkt im Umriss)
+    const raeume = a.raeume
+      .map((raum) => ({ ...raum, punkte: raum.punkte.map(schieben) }))
+      .filter((raum) => {
+        if (!umriss) return true
+        const sx = raum.punkte.reduce((s, q) => s + q[0], 0) / raum.punkte.length
+        const sz = raum.punkte.reduce((s, q) => s + q[1], 0) / raum.punkte.length
+        return abstandZumPolygon([sx, sz], umriss) < 0.5
+      })
+    // Einheiten, die nur ueber Raumstempel bekannt sind, in die Mitte ihrer Raeume
+    for (const name of new Set(raeume.map((x) => x.einheit).filter((x): x is string => !!x))) {
+      if (einheiten.some((e) => e.name === name)) continue
+      const punkte = raeume.filter((x) => x.einheit === name).flatMap((x) => x.punkte)
+      einheiten.push({
+        name,
+        x: punkte.reduce((s, q) => s + q[0], 0) / punkte.length,
+        z: punkte.reduce((s, q) => s + q[1], 0) / punkte.length,
+      })
+    }
+    // Raumstempel stehen oft ausserhalb in Beschriftungskaesten: Raeume ohne
+    // Einheit dem naechsten Einheiten-Schild zuordnen (Flure/Hallen > 80 m2 nicht)
+    for (const raum of raeume) {
+      if (raum.einheit || raum.flaeche > 80) continue
+      let bester: { name: string; d: number } | null = null
+      for (const e of einheiten) {
+        const d = abstandZumPolygon([e.x, e.z], raum.punkte)
+        if (d <= 4 && (!bester || d < bester.d)) bester = { name: e.name, d }
+      }
+      if (bester) raum.einheit = bester.name
+    }
     etagen.push({
       ebene: a.ebene,
       umriss,
       umrissUebernommen: uebernommen,
       einheiten,
+      raeume,
       blattVersatz: { x: -dx, z: -dz },
     })
   }
@@ -575,6 +721,7 @@ export function gebaeudeZusammensetzen(analysen: (SeitenAnalyse & { ebene: numbe
         const [px, pz] = zentrieren([x.x, x.z])
         return { name: x.name, x: px, z: pz }
       }),
+      raeume: e.raeume.map((x) => ({ ...x, punkte: x.punkte.map(zentrieren) })),
     })),
   }
 }

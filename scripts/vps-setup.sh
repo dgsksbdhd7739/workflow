@@ -56,6 +56,42 @@ location = /workflow.apk {
     add_header Content-Disposition 'attachment; filename="WorkFlow-v1.5.0.apk"';
 }
 
+# Backend (server/, systemd-Dienst workflow-server). Uploads bis 100 MB wie im Backend.
+location /api/ {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    client_max_body_size 100m;
+    proxy_request_buffering off;
+    proxy_read_timeout 300s;
+}
+
+# Chat-Echtzeit (WebSocket).
+location = /api/live {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout 1h;
+}
+
+# Live-Update-Bundles der Android-App (scripts/publish-update.mjs). Das Manifest
+# fragt die App per fetch() aus dem WebView ab (Ursprung capacitor://localhost),
+# daher CORS; nie cachen, sonst sehen Geraete neue Versionen verspaetet.
+location /updates/ {
+    alias /var/www/updates/;
+    add_header Access-Control-Allow-Origin "*";
+    location = /updates/latest.json {
+        alias /var/www/updates/latest.json;
+        add_header Access-Control-Allow-Origin "*";
+        add_header Cache-Control "no-store";
+    }
+}
+
 # SPA-Fallback fuer React-Router.
 location / { try_files $uri $uri/ /index.html; }
 EOF
@@ -163,5 +199,63 @@ WantedBy=timers.target
 EOF
 systemctl daemon-reload
 systemctl enable --now workflow-backup.timer
+
+echo "== Node.js 24 (Backend)"
+if ! node --version 2>/dev/null | grep -q '^v24\.'; then
+  curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+  apt-get -y -q install nodejs
+fi
+
+echo "== Backend-Dienst workflow-server"
+# Eigener Systembenutzer ohne Login; darf nur die Dateiablage beschreiben.
+id workflow >/dev/null 2>&1 || useradd --system --home /opt/workflow --shell /usr/sbin/nologin workflow
+mkdir -p /opt/workflow/server /var/www/updates
+chmod 711 /var/lib/workflow
+chown -R workflow:workflow /var/lib/workflow/dateien
+chown www-data:www-data /var/www/updates
+mkdir -p /etc/workflow
+if [ ! -f /etc/workflow/server.env ]; then
+  PW=$(openssl rand -hex 24)
+  sudo -u postgres psql -qc "do \$\$ begin if not exists (select 1 from pg_roles where rolname = 'workflow_api') then create role workflow_api login noinherit; end if; end \$\$"
+  sudo -u postgres psql -qc "alter role workflow_api password '$PW'"
+  cat > /etc/workflow/server.env <<EOF
+DATABASE_URL=postgresql://workflow_api:$PW@127.0.0.1:5432/workflow
+JWT_SECRET=$(openssl rand -hex 48)
+PORT=3000
+ERLAUBTE_URSPRUENGE=https://$SSLIP,https://app.workflow-app.de,capacitor://localhost,https://localhost,http://localhost,tauri://localhost,http://tauri.localhost
+EOF
+fi
+chown root:workflow /etc/workflow /etc/workflow/*
+chmod 750 /etc/workflow
+chmod 640 /etc/workflow/*
+
+cat > /etc/systemd/system/workflow-server.service <<'EOF'
+[Unit]
+Description=WorkFlow Backend (server/)
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=workflow
+Group=workflow
+WorkingDirectory=/opt/workflow/server
+EnvironmentFile=/etc/workflow/server.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node src/index.ts
+Restart=always
+RestartSec=3
+# Haertung: nur die Dateiablage ist beschreibbar.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/workflow/dateien
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable workflow-server
+# Gestartet wird der Dienst vom ersten "npm run deploy-server" (Code + Migrationen).
 
 echo "== Fertig"

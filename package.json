@@ -11,7 +11,8 @@
     "tauri": "tauri",
     "android": "cap sync android && cap open android",
     "publish-update": "node scripts/publish-update.mjs",
-    "deploy-vps": "node scripts/deploy-vps.mjs"
+    "deploy-vps": "node scripts/deploy-vps.mjs",
+    "deploy-server": "node scripts/deploy-server.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",

@@ -13,7 +13,7 @@ import type { Einheit, Gebaeude, Geschoss } from '../types/database'
 import { type GebaeudeAuswertung, STATUS_FARBE, STATUS_TEXT, einheitenAufteilen } from '../lib/gebaeude3d'
 import { Schild3D } from './Schild3D'
 import { PlanSchaerfe3D } from './PlanSchaerfe3D'
-import { TUER_HOEHE, useFlaechenGeometrie, useGrundrissTextur, useRasterWaende, useTuerGeometrie, useUmrissGeometrie, useWandGeometrie } from './umriss3d'
+import { useFlaechenGeometrie, useGrundrissTextur, useRasterWaende, useUmrissGeometrie, useWandGeometrie } from './umriss3d'
 
 interface Props {
   gebaeude: Gebaeude
@@ -104,10 +104,9 @@ function RaumBoden({ raum, farbe, aktiv, ohnePlan = false, onClick }: { raum: Ra
 
 /** Waende 1:1 aus dem Plan (Umriss minus Raeume), halbhoch fuer den Blick hinein. */
 function Waende({ g, hoehe }: { g: Geschoss; hoehe: number }) {
-  const raster = useRasterWaende(g.waende, g.tueren, g.fenster, hoehe)
+  const raster = useRasterWaende(g.waende, g.fenster, hoehe)
   // Aeltere Aufbauten ohne Wandraster: Waende aus den Raumkanten
   const geometrie = useWandGeometrie(raster ? null : g.grundriss, raster ? null : g.raeume, hoehe, g.tueren)
-  const tueren = useTuerGeometrie(g.tueren, Math.min(TUER_HOEHE, hoehe) * 0.97)
   if (raster?.wand) {
     return (
       <>
@@ -119,26 +118,14 @@ function Waende({ g, hoehe }: { g: Geschoss; hoehe: number }) {
             <meshStandardMaterial color="#7dd3fc" transparent opacity={0.45} side={DoubleSide} depthWrite={false} />
           </mesh>
         )}
-        {tueren && (
-          <mesh geometry={tueren} position={[0, DECKE, 0]} raycast={() => null}>
-            <meshStandardMaterial color="#b45309" />
-          </mesh>
-        )}
       </>
     )
   }
   if (!geometrie) return null
   return (
-    <>
-      <mesh geometry={geometrie} position={[0, DECKE, 0]} raycast={() => null}>
-        <meshStandardMaterial color="#cbd5e1" />
-      </mesh>
-      {tueren && (
-        <mesh geometry={tueren} position={[0, DECKE, 0]} raycast={() => null}>
-          <meshStandardMaterial color="#b45309" />
-        </mesh>
-      )}
-    </>
+    <mesh geometry={geometrie} position={[0, DECKE, 0]} raycast={() => null}>
+      <meshStandardMaterial color="#cbd5e1" />
+    </mesh>
   )
 }
 

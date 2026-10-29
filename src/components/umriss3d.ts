@@ -10,10 +10,9 @@ type Polygon = [number, number][]
 type TuerDaten = { x: number; z: number; breite: number; tiefe?: number; winkel: 0 | 90 }
 type WandRaster = { aufloesung: number; x0: number; z0: number; rechtecke: number[] }
 
-// Bauteilhoehen: Tuer-Rohbaurichtmass nach DIN 18101 (2,01 m), Fensterbruestung
+// Bauteilhoehen: Fensterbruestung
 // 0,90 m (Aufenthaltsraeume, je nach Landesbauordnung 0,80-0,90 m), Fenstersturz
-// auf Hoehe der hohen Tuer (2,135 m).
-export const TUER_HOEHE = 2.01
+// 2,135 m (Hoehe der hohen Normtuer nach DIN 18101).
 export const BRUESTUNG = 0.9
 export const FENSTER_STURZ = 2.135
 
@@ -55,10 +54,10 @@ function oeffnungsFlaeche(t: TuerDaten) {
 
 /**
  * Waende 1:1 aus dem Wandraster des Plans (y = 0 bis hoehe). Tueroeffnungen
- * sind im Raster schon frei und bekommen nur einen Sturz; Fenster bekommen
- * Bruestung und Sturz, dazwischen Glas. Liefert Wand- und Glasgeometrie.
+ * sind im Raster frei und bleiben ein offenes Loch in der Wand (kein Tuerblatt,
+ * kein Sturz); Fenster bekommen Bruestung und Sturz, dazwischen Glas.
  */
-export function useRasterWaende(raster: WandRaster | null | undefined, tueren: TuerDaten[] | null | undefined, fenster: TuerDaten[] | null | undefined, hoehe: number) {
+export function useRasterWaende(raster: WandRaster | null | undefined, fenster: TuerDaten[] | null | undefined, hoehe: number) {
   const ergebnis = useMemo(() => {
     if (!raster?.rechtecke.length) return null
     const wand = quaderSammler()
@@ -68,10 +67,6 @@ export function useRasterWaende(raster: WandRaster | null | undefined, tueren: T
       const x = x0 + rechtecke[i] * a
       const z = z0 + rechtecke[i + 1] * a
       wand.quader(x, 0, z, x + rechtecke[i + 2] * a, hoehe, z + rechtecke[i + 3] * a)
-    }
-    for (const t of tueren ?? []) {
-      const f = oeffnungsFlaeche(t)
-      if (hoehe > TUER_HOEHE) wand.quader(f.x0, TUER_HOEHE, f.z0, f.x1, hoehe, f.z1)
     }
     for (const t of fenster ?? []) {
       const f = oeffnungsFlaeche(t)
@@ -85,7 +80,7 @@ export function useRasterWaende(raster: WandRaster | null | undefined, tueren: T
       }
     }
     return { wand: wand.geometrie(), glas: glas.geometrie() }
-  }, [raster, tueren, fenster, hoehe])
+  }, [raster, fenster, hoehe])
   useEffect(
     () => () => {
       ergebnis?.wand?.dispose()
@@ -151,29 +146,6 @@ export function useWandGeometrie(
     teile.forEach((t) => t.dispose())
     return gesamt
   }, [umriss, raeume, hoehe, tueren])
-  useEffect(() => () => geometrie?.dispose(), [geometrie])
-  return geometrie
-}
-
-/** Tuerblaetter (leicht geoeffnet) als ein zusammengefasster Koerper, y = 0 bis hoehe. */
-export function useTuerGeometrie(tueren: TuerDaten[] | null | undefined, hoehe: number) {
-  const geometrie = useMemo(() => {
-    if (!tueren?.length) return null
-    const teile = tueren.map((t) => {
-      const blatt = Math.max(t.breite - 0.08, 0.4)
-      const box = new BoxGeometry(blatt, hoehe, 0.05)
-      // Drehpunkt an einem Ende der Oeffnung, Blatt um 30 Grad aufgeschwenkt
-      box.translate(blatt / 2, hoehe / 2, 0)
-      box.rotateY((t.winkel === 90 ? -Math.PI / 2 : 0) - Math.PI / 6)
-      const ux = t.winkel === 0 ? 1 : 0
-      const uz = t.winkel === 0 ? 0 : 1
-      box.translate(t.x - (ux * t.breite) / 2, 0, t.z - (uz * t.breite) / 2)
-      return box
-    })
-    const gesamt = mergeGeometries(teile)
-    teile.forEach((t) => t.dispose())
-    return gesamt
-  }, [tueren, hoehe])
   useEffect(() => () => geometrie?.dispose(), [geometrie])
   return geometrie
 }

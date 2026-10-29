@@ -11,6 +11,11 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.8.1',
+    datum: '2026-10-29',
+    aenderungen: ['Türen werden in der 3D-Ansicht nicht mehr als Türblatt gezeichnet – an ihrer Stelle ist einfach eine offene Wandöffnung.'],
+  },
+  {
     version: '2.8.0',
     datum: '2026-10-29',
     aenderungen: [

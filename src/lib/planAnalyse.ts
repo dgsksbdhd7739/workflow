@@ -34,6 +34,15 @@ export interface SeitenAnalyse {
   flaecheM2: number
   einheiten: { name: string; x: number; z: number }[]
   raeume: Raum[]
+  tueren: Tuer[]
+}
+
+/** Tuer: Oeffnung in einer Wand zwischen zwei Raeumen (Mitte, lichte Breite, Wandrichtung in Grad). */
+export interface Tuer {
+  x: number
+  z: number
+  breite: number
+  winkel: 0 | 90
 }
 
 /** Raum aus dem Grundriss: Flaeche zwischen den Waenden, 1:1 in Metern. */
@@ -51,7 +60,9 @@ const MASKE_M_PRO_PX = 0.1
 const RAUM_M_PRO_PX = 0.05
 // Tueroeffnungen bis ca. 1 m schliessen, damit Raeume nicht ineinanderlaufen
 const TUER_M = 0.6
-const BILD_M_PRO_PX = 0.05
+// 1,25 cm pro Pixel: Plantexte (1:50, ~10 cm hoch) bleiben beim Heranzoomen lesbar
+const BILD_M_PRO_PX = 0.0125
+const BILD_MAX_PX = 8192
 // Fenster und Tueren in Aussenwaenden ueberbruecken: erst bis ca. 2,4 m, bei
 // zu wenig geschlossener Flaeche schrittweise groessere Luecken
 const SCHLIESSEN_M = [1.2, 2, 3]
@@ -379,11 +390,19 @@ function kontur(f: ArrayLike<number> & { indexOf(w: number, ab?: number): number
  * nur innerhalb des Gebaeudes (dort sind auch die Fenster geschlossen, sonst
  * liefe jedes Zimmer ueber sein Fenster nach draussen).
  */
-function raeumeErmitteln(wand: Uint8Array, w: number, h: number, fensterMeter: number): { punkte: Punkt[]; pixel: number }[] {
+function raeumeErmitteln(
+  wand: Uint8Array,
+  w: number,
+  h: number,
+  fensterMeter: number,
+): { raeume: { punkte: Punkt[]; pixel: number }[]; tueren: Tuer[] } {
   const rf = Math.round(fensterMeter / RAUM_M_PRO_PX)
   const { flaeche: gebaeude } = hauptflaeche(morph(morph(wand, w, h, rf, 'dilatieren'), w, h, rf, 'erodieren'), w, h)
   const r = Math.round(TUER_M / RAUM_M_PRO_PX)
   const zu = morph(morph(wand, w, h, r, 'dilatieren'), w, h, r, 'erodieren')
+  // Was das Schliessen in der Wand ergaenzt hat, sind die Oeffnungen (Tueren, Durchgaenge)
+  const oeffnung = new Uint8Array(zu.length)
+  for (let i = 0; i < zu.length; i++) oeffnung[i] = zu[i] && !wand[i] && gebaeude[i] ? 1 : 0
   for (let i = 0; i < zu.length; i++) if (!gebaeude[i]) zu[i] = 1
   const marke = new Int32Array(zu.length)
   const warteschlange = new Int32Array(zu.length)
@@ -414,7 +433,53 @@ function raeumeErmitteln(wand: Uint8Array, w: number, h: number, fensterMeter: n
     const punkte = vereinfachen(kontur(marke, w, h, nummer, start), 2).map(([x, y]): Punkt => [x * RAUM_M_PRO_PX, y * RAUM_M_PRO_PX])
     if (punkte.length >= 3) ergebnis.push({ punkte, pixel: ende })
   }
-  return ergebnis
+
+  // Tueren: Oeffnungen von 0,6-1,5 m Breite in einer Wand (hoechstens 60 cm
+  // dick), auf deren beiden Seiten verschiedene freie Flaechen liegen. Fenster
+  // fuehren nach draussen und fallen damit heraus.
+  const tueren: Tuer[] = []
+  const gesehen = new Uint8Array(zu.length)
+  const freieMarke = (x: number, y: number) => {
+    const xi = Math.round(x)
+    const yi = Math.round(y)
+    return xi >= 0 && yi >= 0 && xi < w && yi < h ? marke[yi * w + xi] : 0
+  }
+  for (let start = 0; start < oeffnung.length; start++) {
+    if (!oeffnung[start] || gesehen[start]) continue
+    let kopf = 0
+    let ende = 0
+    let minX = w, maxX = 0, minY = h, maxY = 0, summeX = 0, summeY = 0
+    gesehen[start] = 1
+    warteschlange[ende++] = start
+    while (kopf < ende) {
+      const i = warteschlange[kopf++]
+      const x = i % w
+      const y = (i - x) / w
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y)
+      summeX += x
+      summeY += y
+      for (const n of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w]) {
+        if (n >= 0 && n < oeffnung.length && oeffnung[n] && !gesehen[n]) {
+          gesehen[n] = 1
+          warteschlange[ende++] = n
+        }
+      }
+    }
+    const bx = (maxX - minX + 1) * RAUM_M_PRO_PX
+    const bz = (maxY - minY + 1) * RAUM_M_PRO_PX
+    const lang = Math.max(bx, bz)
+    const kurz = Math.min(bx, bz)
+    if (lang < 0.6 || lang > 1.5 || kurz > 0.6) continue
+    const cx = summeX / ende
+    const cy = summeY / ende
+    const waagerecht = bx >= bz
+    const d = (kurz / 2 + 0.35) / RAUM_M_PRO_PX
+    const a = waagerecht ? freieMarke(cx, cy - d) : freieMarke(cx - d, cy)
+    const b = waagerecht ? freieMarke(cx, cy + d) : freieMarke(cx + d, cy)
+    if (!a || !b || a === b) continue
+    tueren.push({ x: cx * RAUM_M_PRO_PX, z: cy * RAUM_M_PRO_PX, breite: Math.round(lang * 100) / 100, winkel: waagerecht ? 0 : 90 })
+  }
+  return { raeume: ergebnis, tueren }
 }
 
 function vereinfachen(punkte: Punkt[], toleranz: number): Punkt[] {
@@ -496,8 +561,8 @@ export async function grundrissBild(seite: PDFPageProxy, massstab: number, umris
   let mProPx = BILD_M_PRO_PX
   const breiteM = g.maxX - g.minX + 2 * rand
   const tiefeM = g.maxZ - g.minZ + 2 * rand
-  // Texturen ueber 4096 px sind auf vielen Handys nicht darstellbar
-  mProPx = Math.max(mProPx, breiteM / 4096, tiefeM / 4096)
+  // Groesser kann kaum eine Grafikkarte; Geraete mit kleinerem Limit verkleinert three.js selbst
+  mProPx = Math.max(mProPx, breiteM / BILD_MAX_PX, tiefeM / BILD_MAX_PX)
   const pxProPt = mProPt / mProPx
   const lage: Lage = { x: g.minX - rand, z: g.minZ - rand, breite: breiteM, tiefe: tiefeM }
   const viewport = seite.getViewport({ scale: pxProPt, offsetX: -lage.x / mProPx, offsetY: -lage.z / mProPx })
@@ -575,7 +640,9 @@ export async function seiteAnalysieren(seite: PDFPageProxy, planName: string | n
     .map((t) => ({ t, m: t.str.match(/^(\d{1,4}[.,]\d{1,3}[a-z]?)(?:\s*\(\s*([\w.-]+)\s*\))?$/i) }))
     .filter((x): x is { t: Text; m: RegExpMatchArray } => !!x.m)
     .map(({ t, m }) => ({ p: [t.x * mProPt, t.y * mProPt] as Punkt, nr: m[1], einheit: m[2] ?? null }))
-  const raeume: Raum[] = raeumeErmitteln(fein.maske, fein.breite, fein.hoehe, fensterMeter).map(({ punkte, pixel }) => {
+  const raumErgebnis = raeumeErmitteln(fein.maske, fein.breite, fein.hoehe, fensterMeter)
+  const tueren = raumErgebnis.tueren
+  const raeume: Raum[] = raumErgebnis.raeume.map(({ punkte, pixel }) => {
     const drin = stempel.filter((s) => punktInPolygon(s.p, punkte))
     const bester = drin.find((s) => s.einheit) ?? drin[0]
     return {
@@ -599,6 +666,7 @@ export async function seiteAnalysieren(seite: PDFPageProxy, planName: string | n
     flaecheM2,
     einheiten,
     raeume,
+    tueren,
   }
 }
 
@@ -608,6 +676,7 @@ export interface Etage {
   umrissUebernommen: boolean
   einheiten: { name: string; x: number; z: number }[]
   raeume: Raum[]
+  tueren: Tuer[]
   // Gebaeudekoordinaten + blattVersatz = Blatt-Meter dieser Etage (fuer grundrissBild)
   blattVersatz: { x: number; z: number }
 }
@@ -693,12 +762,16 @@ export function gebaeudeZusammensetzen(analysen: (SeitenAnalyse & { ebene: numbe
       }
       if (bester) raum.einheit = bester.name
     }
+    const tueren = a.tueren
+      .map((t) => ({ ...t, x: t.x + dx, z: t.z + dz }))
+      .filter((t) => !umriss || punktInPolygon([t.x, t.z], umriss))
     etagen.push({
       ebene: a.ebene,
       umriss,
       umrissUebernommen: uebernommen,
       einheiten,
       raeume,
+      tueren,
       blattVersatz: { x: -dx, z: -dz },
     })
   }
@@ -722,6 +795,10 @@ export function gebaeudeZusammensetzen(analysen: (SeitenAnalyse & { ebene: numbe
         return { name: x.name, x: px, z: pz }
       }),
       raeume: e.raeume.map((x) => ({ ...x, punkte: x.punkte.map(zentrieren) })),
+      tueren: e.tueren.map((t) => {
+        const [x, z] = zentrieren([t.x, t.z])
+        return { ...t, x, z }
+      }),
     })),
   }
 }

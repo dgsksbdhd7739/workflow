@@ -178,6 +178,8 @@ export interface Geschoss {
   massstab: number | null
   // Raeume 1:1 aus dem Plan; einheit = Name der Einheit auf diesem Geschoss
   raeume: { punkte: [number, number][]; nr: string | null; einheit: string | null; flaeche: number }[] | null
+  // Tueren aus dem Plan: Mitte, lichte Breite, Richtung der Wand (0 = entlang x, 90 = entlang z)
+  tueren: { x: number; z: number; breite: number; winkel: 0 | 90 }[] | null
   erstellt_am: string
 }
 

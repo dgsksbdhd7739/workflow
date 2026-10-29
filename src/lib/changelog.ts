@@ -11,6 +11,16 @@ export interface ChangelogEintrag {
 
 export const CHANGELOG: ChangelogEintrag[] = [
   {
+    version: '2.6.0',
+    datum: '2026-10-29',
+    aenderungen: [
+      'Türen werden aus dem Plan erkannt und in 3D in die Wände eingesetzt (Zimmer-, Bad- und Balkontüren).',
+      'Gebäudeansicht: bis auf wenige Meter heranzoomen – dorthin, wo Maus oder Finger sind; verschieben mit Rechtsklick bzw. zwei Fingern. Das Planbild auf dem Boden ist viermal schärfer, Plantexte sind aus der Nähe lesbar.',
+      'Zimmer-Schilder bleiben beim Heranzoomen klein und verdecken den Plan nicht mehr.',
+      'Für bereits aufgebaute Gebäude einmal erneut „Aus Plänen aufbauen“ ausführen, damit Türen und das schärfere Planbild übernommen werden.',
+    ],
+  },
+  {
     version: '2.5.0',
     datum: '2026-10-29',
     aenderungen: [

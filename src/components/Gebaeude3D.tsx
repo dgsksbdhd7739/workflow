@@ -6,12 +6,12 @@
 // Wird per React.lazy geladen (three.js ist gross) -- daher Default-Export.
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { Canvas, type ThreeEvent } from '@react-three/fiber'
+import { Canvas, type ThreeEvent, useThree } from '@react-three/fiber'
 import { Edges, OrbitControls } from '@react-three/drei'
 import type { Einheit, Gebaeude, Geschoss } from '../types/database'
 import { type GebaeudeAuswertung, STATUS_FARBE, STATUS_TEXT, einheitenAufteilen } from '../lib/gebaeude3d'
 import { Schild3D } from './Schild3D'
-import { useFlaechenGeometrie, useGrundrissTextur, useUmrissGeometrie, useWandGeometrie } from './umriss3d'
+import { useFlaechenGeometrie, useGrundrissTextur, useTuerGeometrie, useUmrissGeometrie, useWandGeometrie } from './umriss3d'
 
 interface Props {
   gebaeude: Gebaeude
@@ -78,7 +78,7 @@ function RaumBoden({ raum, farbe, aktiv, onClick }: { raum: RaumDaten; farbe: st
       <meshBasicMaterial
         color={aktiv ? '#4f46e5' : (farbe ?? '#ffffff')}
         transparent
-        opacity={farbe || aktiv ? 0.55 : 0.12}
+        opacity={farbe || aktiv ? 0.35 : 0.08}
         depthWrite={false}
         toneMapped={false}
       />
@@ -88,18 +88,27 @@ function RaumBoden({ raum, farbe, aktiv, onClick }: { raum: RaumDaten; farbe: st
 
 /** Waende 1:1 aus dem Plan (Umriss minus Raeume), halbhoch fuer den Blick hinein. */
 function Waende({ g, hoehe }: { g: Geschoss; hoehe: number }) {
-  const geometrie = useWandGeometrie(g.grundriss, g.raeume, hoehe)
+  const geometrie = useWandGeometrie(g.grundriss, g.raeume, hoehe, g.tueren)
+  const tueren = useTuerGeometrie(g.tueren, hoehe * 0.95)
   if (!geometrie) return null
   return (
-    <mesh geometry={geometrie} position={[0, DECKE, 0]} raycast={() => null}>
-      <meshStandardMaterial color="#cbd5e1" />
-    </mesh>
+    <>
+      <mesh geometry={geometrie} position={[0, DECKE, 0]} raycast={() => null}>
+        <meshStandardMaterial color="#cbd5e1" />
+      </mesh>
+      {tueren && (
+        <mesh geometry={tueren} position={[0, DECKE, 0]} raycast={() => null}>
+          <meshStandardMaterial color="#b45309" />
+        </mesh>
+      )}
+    </>
   )
 }
 
 /** Planbild als Boden des aufgeschnittenen Geschosses. */
 function Planboden({ g }: { g: Geschoss }) {
-  const textur = useGrundrissTextur(g.plan_bild_pfad)
+  const anisotropie = useThree((s) => s.gl.capabilities.getMaxAnisotropy())
+  const textur = useGrundrissTextur(g.plan_bild_pfad, anisotropie)
   const lage = g.plan_bild_lage
   if (!textur || !lage) return null
   return (
@@ -223,6 +232,7 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
                       untertitel={STATUS_TEXT[st]}
                       aktiv={aktiv}
                       hoehe={einheitSchild}
+                      bildschirm
                       onClick={() => onEinheit(aktiv ? null : e.id)}
                     />
                   )
@@ -254,6 +264,7 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
                       untertitel={STATUS_TEXT[st]}
                       aktiv={aktiv}
                       hoehe={einheitSchild}
+                      bildschirm
                       onClick={() => onEinheit(aktiv ? null : e.id)}
                     />
                   </group>
@@ -311,8 +322,11 @@ export default function Gebaeude3D({ gebaeude, geschosse, einheiten, auswertung,
         enableDamping
         target={[0, ausgewaehlt ? ausgewaehlt.y + ausgewaehlt.h / 2 : gesamtHoehe / 3, 0]}
         maxPolarAngle={Math.PI / 2.1}
-        minDistance={groesse * 0.6}
+        // Bis auf wenige Meter heran, dorthin wo Maus/Finger sind -- zum Lesen des Plans
+        minDistance={1.5}
         maxDistance={abstand * 3}
+        zoomToCursor
+        screenSpacePanning
       />
     </Canvas>
   )

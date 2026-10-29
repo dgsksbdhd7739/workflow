@@ -248,7 +248,7 @@ export function GebaeudeDetail() {
             ))}
           </div>
           <p className="pointer-events-none absolute right-3 top-3 rounded bg-surface/90 px-2 py-1 text-[11px] text-text-subtle shadow-sm">
-            Ziehen zum Drehen · Etage anklicken
+            Ziehen: drehen · Rechtsklick/2 Finger: verschieben · Rad/Pinch: zoomen · Etage anklicken
           </p>
         </section>
 

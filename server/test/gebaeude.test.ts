@@ -126,10 +126,11 @@ describe('Geschosse und Einheiten', () => {
 
     const grundriss = [[-40.5, -12], [40.5, -12], [40.5, 12], [-40.5, 12]]
     const lage = { x: -42.5, z: -14, breite: 85, tiefe: 28 }
+    const tueren = [{ x: -37.5, z: -6, breite: 0.9, winkel: 0 }]
     const raeume = [{ punkte: [[-40, -11], [-35, -11], [-35, -6], [-40, -6]], nr: '101.20', einheit: '101', flaeche: 25 }]
     const r = await a.daten('geschosse', {
       aktion: 'update', rueckgabe: true, filter: [{ spalte: 'id', op: 'eq', wert: og.id }],
-      werte: { plan_id: plaene.json().data[1].id, plan_seite: 2, grundriss, plan_bild_lage: lage, massstab: 50, raeume },
+      werte: { plan_id: plaene.json().data[1].id, plan_seite: 2, grundriss, plan_bild_lage: lage, massstab: 50, raeume, tueren },
     })
     assert.equal(r.statusCode, 200, r.body)
     const g = r.json().data[0]
@@ -137,6 +138,7 @@ describe('Geschosse und Einheiten', () => {
     assert.deepEqual(g.plan_bild_lage, lage)
     assert.equal(g.massstab, 50)
     assert.deepEqual(g.raeume, raeume)
+    assert.deepEqual(g.tueren, tueren)
 
     const e = await a.daten('einheiten', { aktion: 'insert', rueckgabe: true, werte: { geschoss_id: og.id, projekt_id: p.id, name: '101', lage_x: -30.25, lage_z: -9.5 } })
     assert.equal(e.statusCode, 200, e.body)

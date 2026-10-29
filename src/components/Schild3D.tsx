@@ -15,13 +15,16 @@ interface Props {
   aktiv?: boolean
   // Hoehe des Schilds in Metern (Breite ergibt sich aus dem Text)
   hoehe?: number
+  // Feste Bildschirmgroesse statt Metern (Anteil der Ansichtshoehe): bleibt beim
+  // Heranzoomen klein und verdeckt den Plan nicht
+  bildschirm?: boolean
   onClick?: () => void
 }
 
 const PIXEL_PRO_ZEILE = 44
 const SCHRIFT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
 
-export function Schild3D({ position, titel, untertitel, aktiv = false, hoehe = 1.4, onClick }: Props) {
+export function Schild3D({ position, titel, untertitel, aktiv = false, hoehe = 1.4, bildschirm = false, onClick }: Props) {
   const { textur, seitenverhaeltnis } = useMemo(() => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')!
@@ -64,7 +67,8 @@ export function Schild3D({ position, titel, untertitel, aktiv = false, hoehe = 1
 
   useEffect(() => () => textur.dispose(), [textur])
 
-  const skaliertHoehe = untertitel ? hoehe * 1.6 : hoehe
+  const grundHoehe = bildschirm ? 0.045 : hoehe
+  const skaliertHoehe = untertitel ? grundHoehe * 1.6 : grundHoehe
   return (
     <sprite
       position={position}
@@ -81,7 +85,7 @@ export function Schild3D({ position, titel, untertitel, aktiv = false, hoehe = 1
       onPointerOut={onClick && (() => (document.body.style.cursor = ''))}
     >
       {/* toneMapped aus: sonst wirken weisse Schilder grau */}
-      <spriteMaterial map={textur} depthTest={false} transparent toneMapped={false} />
+      <spriteMaterial map={textur} depthTest={false} transparent toneMapped={false} sizeAttenuation={!bildschirm} />
     </sprite>
   )
 }

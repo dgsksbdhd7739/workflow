@@ -139,6 +139,7 @@ export function PlanAufbau({ projektId, gebaeude, geschosse, einheiten, onFertig
           plan_bild_lage: bildLage,
           massstab: k.massstab,
           raeume: etage.raeume.length ? etage.raeume : null,
+          tueren: etage.tueren.length ? etage.tueren : null,
         }
         const vorhanden = geschosse.find((g) => g.ebene === etage.ebene)
         let geschossId: string

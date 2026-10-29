@@ -180,7 +180,7 @@ export default function Baustelle3D({ gebaeude, geschosse, auswertung, onOeffnen
         )
       })}
 
-      <OrbitControls makeDefault enableDamping target={[0, 4, 0]} maxPolarAngle={Math.PI / 2.1} minDistance={15} maxDistance={ausdehnung * 4} />
+      <OrbitControls makeDefault enableDamping target={[0, 4, 0]} maxPolarAngle={Math.PI / 2.1} minDistance={3} zoomToCursor screenSpacePanning maxDistance={ausdehnung * 4} />
     </Canvas>
   )
 }
